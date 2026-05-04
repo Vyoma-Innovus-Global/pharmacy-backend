@@ -1,0 +1,809 @@
+<?php
+namespace App\Http\Controllers;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Carbon;
+use App\Models\Attendancepone;
+use App\Models\Rollnomodel;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Facades\Storage;
+use App\Exports\decodingList;
+use App\Exports\printingInstruction;
+use App\Exports\packingSlipDownload;
+use Maatwebsite\Excel\Facades\Excel;
+
+
+
+
+class ExaminationController extends Controller{
+    
+    public function getExamScheduleForAdmit($part_sem, $exam_year, $s_appl_form_num)  {
+              
+        $sch_tbl = 'pharmacy_exam_schedule';
+        $subj_tbl = 'pharmacy_subjects_master';
+
+        try{
+            $results = DB::table($sch_tbl . ' as sch')
+                        ->select([
+                            'sch.*', 
+                            'sub.subject_name'
+                        ])
+                        ->join($subj_tbl . ' as sub', 'sub.subject_id', '=', 'sch.exam_subject_id')
+                        ->where([
+                            'sch.exam_year'     => $exam_year,
+                            'sch.exam_part_sem' => $part_sem
+                        ])
+                        ->orderBy('sch.exam_date', 'ASC')
+                        ->get();
+            
+            $schedule = [];
+            foreach($results as $result){
+                $schedule[] = [
+                    'exam_date' => Carbon::parse($result->exam_date)->format('d-m-Y'),
+                    'exam_subj' => $result->subject_name,
+                    'exam_time' => $result->exam_time,
+                    //'exam_center' => $result->exam_time
+                ];
+            }
+            return $schedule;
+
+        }
+        catch(\Exception $e){
+            return response()->json([
+                'error'   => true,
+                'message' => 'An error occurred: ' . $e->getMessage(),
+            ], 500);
+        }
+    } 
+
+    public function downloadAdmitCard(Request $request)  {
+        $part_sem   = $request->part_sem;
+        $exam_year  = $request->exam_yr;
+        $form_no    = $request->form_num;
+        
+        if($part_sem == 'Part_I'){
+            $at_tbl = 'exam_attendance_pone';
+        }else{
+            $at_tbl = 'exam_attendance_ptwo';
+        }
+        $st_tbl = 'pharmacy_register_student_final';
+        $roll_tbl = 'pharmacy_roll_no';
+        $inst_tbl = 'institute_master';
+        $profile_photo = '';
+        $profile_sign = '';
+        try{
+            $selectField=  [
+                's_appl_form_num','s_appl_reg_no', 's_first_name','s_middle_name','s_last_name',
+                's_photo','s_sign','s_inst_code','enrl_type','roll','no_prefix','number',
+                'ea_inst_code','ea_center_code','ea_center_type', 'ea_part_sem',
+                'ea_exam_year','i_code','i_name','i_dist_code', 's_father_name'
+            ];
+
+           
+            $result = DB::table($st_tbl)->select($selectField)
+                        ->join($roll_tbl, 'form_no', '=', 's_appl_form_num')
+                        ->join($at_tbl, 'ea_form_number', '=', 'form_no')
+                        ->join($inst_tbl, 'i_code', '=', 'ea_inst_code')
+                        ->where([
+                                's_appl_form_num' => $form_no,
+                                'ea_form_number' => $form_no,
+                                'form_no' => $form_no,
+                                'ea_part_sem' => $part_sem,
+                                'part_sem' => $part_sem,
+                                'ea_exam_year' => $exam_year,
+                                'exam_year' => $exam_year
+                        ])->first();
+            $getExamScheduleForAdmit     =  $this->getExamScheduleForAdmit($part_sem, $exam_year,$result->s_appl_form_num);
+            $exam_month =   $getExamScheduleForAdmit[0]['exam_date'];
+         
+            $admitInfo = [
+                'st_form_number' => $result->s_appl_form_num,
+                'st_reg_number' => $result->s_appl_reg_no,
+                'st_full_name' => $result->s_first_name .' '.$result->s_middle_name .' '.$result->s_last_name,
+                'st_gur_name' => $result->s_father_name,
+                'st_roll' => $result->roll,
+                'st_admit_num' => $result->no_prefix .''.$result->number,
+                'st_part_sem' => $result->ea_part_sem,
+                'st_apr_type' => $result->enrl_type,
+                'st_institute' => $result->s_inst_code,
+                'st_institute_name' => $result->i_name,
+                'st_course' => 'PHARMACY (PHARM)',
+                'st_exm_yr' => $result->ea_exam_year,
+                'st_exm_center' => $result->ea_center_code,
+                'st_profile_img' => $result->s_photo,
+                'st_profile_sign' => $result->s_sign,
+                'exam_month' => Carbon::parse($exam_month)->format('F Y'),
+                'st_exam_schedule' => $getExamScheduleForAdmit,
+            ];
+            $fileName = 'admit-' . $form_no . '.pdf';
+            $pdf = PDF::loadView('admit', ['data' => $admitInfo])
+          ->setPaper('a4', 'landscape');
+
+            return $pdf->stream($fileName);
+
+        }
+        catch(\Exception $e){
+            return response()->json([
+                'error'   => true,
+                'message' => 'An error occurred: ' . $e->getMessage(),
+            ], 500);
+        }
+        
+    } 
+    public function downloadAdmitCardInbulk(Request $request)
+    {
+        $part_sem   = $request->part_sem;
+        $exam_year  = $request->exam_yr;
+        $form_numbers = $request->form_num; // array of form numbers
+        //dd($form_numbers);
+
+        $at_tbl   = ($part_sem == 'Part_I') ? 'exam_attendance_pone' : 'exam_attendance_ptwo';
+        $st_tbl   = 'pharmacy_register_student_final';
+        $roll_tbl = 'pharmacy_roll_no';
+        $inst_tbl = 'institute_master';
+
+        $admitCards = [];
+
+        try {
+            foreach ($form_numbers as $form_no) {
+                $result = DB::table($st_tbl)
+                    ->select([
+                        's_appl_form_num','s_appl_reg_no', 's_first_name','s_middle_name','s_last_name',
+                        's_photo','s_sign','s_inst_code','enrl_type','roll','no_prefix','number',
+                        'ea_inst_code','ea_center_code','ea_center_type','ea_room_code', 'ea_part_sem',
+                        'ea_exam_year','i_code','i_name','i_dist_code', 's_father_name'
+                    ])
+                    ->join($roll_tbl, 'form_no', '=', 's_appl_form_num')
+                    ->join($at_tbl, 'ea_form_number', '=', 'form_no')
+                    ->join($inst_tbl, 'i_code', '=', 'ea_inst_code')
+                    ->where([
+                        's_appl_form_num' => $form_no,
+                        'ea_form_number' => $form_no,
+                        'form_no' => $form_no,
+                        'ea_part_sem' => $part_sem,
+                        'part_sem' => $part_sem,
+                        'ea_exam_year' => $exam_year,
+                        'exam_year' => $exam_year
+                    ])
+                    ->first();
+                    
+                    $getExamScheduleForAdmit     =  $this->getExamScheduleForAdmit($part_sem, $exam_year,$result->s_appl_form_num);
+                    $exam_month =   $getExamScheduleForAdmit[0]['exam_date'];
+
+                if (!$result) {
+                    continue; 
+                }
+
+                $admitInfo = [
+                    'st_form_number' => $result->s_appl_form_num,
+                    'st_reg_number' => $result->s_appl_reg_no,
+                    'st_full_name' => $result->s_first_name .' '.$result->s_middle_name .' '.$result->s_last_name,
+                    'st_gur_name' => $result->s_father_name,
+                    'st_roll' => $result->roll,
+                    'st_admit_num' => $result->no_prefix .''.$result->number,
+                    'st_part_sem' => $result->ea_part_sem,
+                    'st_apr_type' => $result->enrl_type,
+                    'st_institute' => $result->s_inst_code,
+                    'st_institute_name' => $result->i_name,
+                    'st_course' => 'PHARMACY (PHARM)',
+                    'st_exm_yr' => $result->ea_exam_year,
+                    'st_exm_center' => $result->ea_center_code,
+                    'st_profile_img' => $result->s_photo,
+                    'st_profile_sign' => $result->s_sign,
+                    'exam_month' => Carbon::parse($exam_month)->format('F Y'),
+                    'st_exam_schedule' => $getExamScheduleForAdmit,
+                ];
+
+                $admitCards[] = $admitInfo;
+            }
+          
+            if (empty($admitCards)) {
+                return back()->with('error', 'No admit cards found.');
+            }
+
+            //dd($admitCards);
+            $pdf = PDF::loadView('admit-multi', ['student' => $admitCards])
+            ->setPaper('a4', 'landscape');
+
+            $fileName = 'admit-cards-' . time() . '.pdf';
+            return $pdf->stream($fileName);
+
+        } catch (\Exception $e) {
+            Log::error('Error fetching multiple admit cards: ' . $e->getMessage());
+            return back()->with('error', 'Unable to generate admit cards.');
+        }
+    }
+    public function downloadAdmitCardList(Request $request)
+    {
+         try{
+            $part_sem=$request->part_sem;
+            $exam_yr=$request->exam_yr;
+            $enrl_type=$request->enrl_type;
+            $inst_code=$request->inst_code;
+
+            $student_list = Rollnomodel::where('part_sem', $part_sem)
+            ->where('exam_year', $exam_yr)
+            ->where('enrl_type', $enrl_type)
+            ->where('inst_code', $inst_code)
+            ->get();
+
+            return response()->json([
+                'error' => false,
+                'message' => 'Student list found',
+                'student_list' => $student_list,
+            ]);
+         }
+          catch (\Exception $e) {
+                Log::error('Error fetching multiple admit cards: ' . $e->getMessage());
+                return back()->with('error', 'Unable to generate admit cards.');
+          }
+        
+    }
+    public function hallStickerList(Request $request)
+    {
+        try{
+            $exam_year=$request->exam_year;
+            $exam_type=$request->exam_type;
+            $inst_code=$request->inst_code;
+            $part_sem=$request->part_sem;
+            $subject_code=$request->subject_code;
+            
+            if($part_sem == 'Part_I'){
+                $at_tbl = 'exam_attendance_pone';
+            }else{
+                $at_tbl = 'exam_attendance_ptwo';
+            }
+            $students = Rollnomodel::query()             
+                ->selectRaw('COUNT(form_no) AS total_count')
+                ->join($at_tbl, 'form_no', '=', 'ea_form_number')               
+                ->where('part_sem', $part_sem)
+                ->where('exam_year', $exam_year)
+                ->where('enrl_type', $exam_type)
+                ->where('inst_code', $inst_code)
+                ->where('ea_subject_code', $subject_code);
+
+                $results = $students->first();
+
+               return [
+                'hall_sticker' => [
+                    'enrl_type'         => $exam_type,
+                    'cntr_code'         => $inst_code,
+                    'subj_code'         => $subject_code,
+                    'part_sem'          => $part_sem,
+                    'exam_year'         => $exam_year,
+                    'total_records'     => $results->total_count ?? 0,
+                    
+                ]
+            ];
+
+
+        }
+        catch (\Exception $e) {
+            Log::error('Error fetching multiple admit cards: ' . $e->getMessage());    
+             return back()->with('error', 'Unable to generate admit cards.');   
+        }
+    }
+    public function hallStickerDownload(Request $request)
+    {
+        try{
+            $cntr_code  = 	$request->cntr_code;
+            $subj_code    = $request->subj_code;
+            $part_sem   = 	$request->part_sem;
+            $exam_year    = $request->exam_year;
+            $enrl_type     = $request->enrl_type;
+            $tab     = $request->tab_no;
+            if($part_sem == 'Part_I'){
+                $at_tbl = 'exam_attendance_pone';
+            }else{
+                $at_tbl = 'exam_attendance_ptwo';
+            }
+            $per_page = 50;
+            $offset = ($tab - 1) * $per_page;
+            $students = Rollnomodel::query()
+                ->select('pharmacy_roll_no.form_no', 'pharmacy_roll_no.part_sem','pharmacy_roll_no.enrl_type','pharmacy_roll_no.exam_year','pharmacy_roll_no.inst_code','pharmacy_roll_no.roll','pharmacy_roll_no.no_prefix','pharmacy_roll_no.number','exam_attendance_pone.ea_subject_code','exam_attendance_pone.ea_room_code','pharmacy_register_student_final.s_candidate_name','institute_master.i_name')
+
+                ->join('exam_attendance_pone', 'pharmacy_roll_no.form_no', '=', 'exam_attendance_pone.ea_form_number')
+                
+                ->join('pharmacy_register_student_final','pharmacy_roll_no.form_no','pharmacy_register_student_final.s_appl_form_num')        
+                 ->join('institute_master','exam_attendance_pone.ea_center_code','institute_master.i_code')
+                 
+                
+
+                ->where('pharmacy_roll_no.part_sem', $part_sem)
+                ->where('pharmacy_roll_no.exam_year', $exam_year)
+                ->where('pharmacy_roll_no.enrl_type', $enrl_type)
+                ->where('pharmacy_roll_no.inst_code', $cntr_code)
+                ->where('exam_attendance_pone.ea_subject_code', $subj_code)
+                ->orderBy('pharmacy_roll_no.form_no')
+                ->offset($offset)
+                ->limit($per_page);
+                $rows = $students->get();
+            $finalData=[];
+            foreach ($rows as $row) {
+                $roll_no=$row->roll.$row->no_prefix.$row->number;
+                $finalData[] = [
+                    'part_sem'          => $part_sem,
+                    'exam_year'         => $exam_year,
+                    'roll_no'           => $roll_no,
+                    'subject_name'      => $row->subject_name,
+                    's_candidate_name'  => $row->s_candidate_name,
+                    'i_name'            => $row->i_name,
+                    'room_code'         => $row->ea_room_code
+                ];
+            }
+            
+             $fileName = 'hallSticker-' . time() . '.pdf';
+             $pdf = PDF::loadView('hallSticker', ['data' => $finalData])->setPaper('a4', 'landscape');
+             return $pdf->stream($fileName);
+
+            
+
+            
+        }
+        catch(\Exception $e){
+            return response()->json([
+                'error'   => true,
+                'message' => 'An error occurred: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+    public function descriptiveRoll(Request $request)
+    {
+        try{
+            $exam_year=$request->exam_year;
+            $exam_type=$request->exam_type;
+            $inst_code=$request->inst_code;
+            $part_sem=$request->part_sem;
+            $subject_code=$request->subject_code;
+            if($part_sem == 'Part_I'){
+                $at_tbl = 'exam_attendance_pone';
+            }else{
+                $at_tbl = 'exam_attendance_ptwo';
+            }       
+            
+           $students = DB::table($at_tbl)
+            ->select(
+                "$at_tbl.ea_form_number",
+                "$at_tbl.ea_room_code",
+                'institute_master.i_name as center_name'
+            )
+            ->join('institute_master', "$at_tbl.ea_center_code", '=', 'institute_master.i_code')
+            ->where("$at_tbl.ea_inst_code", $inst_code)
+            ->where("$at_tbl.ea_student_type", $exam_type)
+            ->where("$at_tbl.ea_subject_code", $subject_code)
+            ->where("$at_tbl.ea_part_sem", $part_sem)
+            ->where("$at_tbl.ea_exam_year", $exam_year)
+            ->orderBy("$at_tbl.ea_room_code")
+            ->get();
+
+        
+        $grouped = $students->groupBy('ea_room_code');
+
+       
+        $final = $grouped->map(function ($roomStudents, $roomCode) {
+            $center_name   = $roomStudents[0]->center_name;
+            $student_count = $roomStudents->count();
+
+            $formidChunks = $roomStudents
+                ->pluck('ea_form_number')
+                ->chunk(10)
+                ->map(fn($chunk) => $chunk->values())
+                ->values();
+
+            return [
+                'center_name'   => $center_name, 
+                'room_code'     => $roomCode,
+                'student_count' => $student_count,
+                'formid'        => $formidChunks
+            ];
+        })->values();
+
+        return response()->json([
+            'error'   => false,
+            'message' => 'Student list found',
+            'data'    => $final
+        ]);
+
+
+        }
+        catch (\Exception $e) {
+            Log::error('Error fetching multiple admit cards: ' . $e->getMessage());    
+             return back()->with('error', 'Unable to generate admit cards.');   
+        }
+    }
+    public function descriptiveRollDownload(Request $request)
+    {
+        try{
+            $students=$request->query('form_ids');
+            $finalData = [];
+            foreach($students as $student){
+                $data=DB::table('pharmacy_register_student_final')
+                ->select('pharmacy_register_student_final.s_photo','pharmacy_register_student_final.s_candidate_name','pharmacy_register_student_final.s_appl_reg_no','pharmacy_register_student_final.s_appl_reg_year','pharmacy_roll_no.roll','pharmacy_roll_no.no_prefix','pharmacy_roll_no.number','exam_attendance_pone.ea_center_code','exam_attendance_pone.ea_room_code','exam_attendance_pone.ea_subject_code','institute_master.i_name')
+                ->join('pharmacy_roll_no','pharmacy_register_student_final.s_appl_form_num','pharmacy_roll_no.form_no')
+                ->join('exam_attendance_pone','pharmacy_register_student_final.s_appl_form_num','exam_attendance_pone.ea_form_number')
+                ->join('institute_master','exam_attendance_pone.ea_center_code','institute_master.i_code')
+                ->where('s_appl_form_num',$student)          
+                ->first();
+                $finalData[]=[
+                   'center'=> $data->i_name,
+                   'room_code'=> $data->ea_room_code,
+                   'ea_subject_code'=> convertSubname($data->ea_subject_code),
+                   'photo' => $data->s_photo,
+                   'name' => $data->s_candidate_name,
+                   's_appl_reg_no' => $data->s_appl_reg_no,
+                   's_appl_reg_year' => $data->s_appl_reg_year,
+                   'roll_no'=> $data->roll.$data->no_prefix.$data->number
+                ];
+            }
+            $fileName = 'descriptive-' . time() . '.pdf';
+            $pdf = PDF::loadView('descriptive', ['data' => $finalData])
+           ->setPaper('a4', 'landscape');
+           return $pdf->stream($fileName);
+        }
+        catch(\Exception $e){
+            return response()->json([
+                'error'   => true,
+                'message' => 'An error occurred: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+     public function topSheetCount(Request $request)  {
+        $exam_type  = 	$request->exam_type;
+		$subject    = 	$request->subject_code;
+		$part_sem   = 	$request->part_sem;
+		$exam_yr    = 	$request->exam_yr;
+		$center     = 	$request->exam_center;
+	
+        if($part_sem == 'Part_I'){
+            $at_tbl = 'exam_attendance_pone';
+        }else{
+            $at_tbl = 'exam_attendance_ptwo';
+        }
+        try{
+            $presentQuery = DB::table($at_tbl)
+                        ->selectRaw('COUNT(ea_roll_number) AS total_count')
+                        ->where('ea_is_present_external', 1)
+                        ->where('ea_part_sem', $part_sem)
+                        ->where('ea_exam_year', $exam_yr)
+                        ->where('ea_subject_code', $subject)
+                        ->where('ea_student_type', $exam_type)
+                        ->where('ea_center_code', $center);
+            $results = $presentQuery->first();
+            //Second query: expelled or RA count
+            $exQuery = DB::table($at_tbl)
+                ->selectRaw('COUNT(ea_roll_number) AS total_count')
+                ->where('ea_is_present_external', 1)
+               ->where('ea_part_sem', $part_sem)
+                ->where('ea_exam_year', $exam_yr)
+                ->where('ea_subject_code', $subject)
+                ->where('ea_student_type', $exam_type)
+                ->where('ea_center_code', $center)
+                ->whereRaw('(ea_is_expel_internal = 1 OR ea_is_expel_external = 1 OR ea_is_ra_external = 1 OR ea_is_ra_internal = 1)');
+
+            $ex_results = $exQuery->first();
+            //Return structured array
+            return [
+                'topsheet' => [
+                    'cntr_code'         => $center,
+                    'subj_code'         => $subject,
+                    'part_sem'          => $part_sem,
+                    'exam_year'         => $exam_yr,
+                    'total_records'     => $results->total_count ?? 0,
+                    'total_ex_records'  => $ex_results->total_count ?? 0,
+                ]
+            ];
+
+        }
+        catch(\Exception $e){
+            return response()->json([
+                'error'   => true,
+                'message' => 'An error occurred: ' . $e->getMessage(),
+            ], 500);
+        }
+    } 
+
+    //Topsheet Download
+     public function topSheetDownload(Request $request)  {
+        
+        $exam_type  = 	$request->exam_type;
+		$subject    = 	$request->subject_code;
+		$part_sem   = 	$request->part_sem;
+		$exam_yr    = 	$request->exam_yr;
+		$center     = 	$request->exam_center;
+		$tab     = 	$request->tab_no;
+	
+        if($part_sem == 'Part_I'){
+            $at_tbl = 'exam_attendance_pone';
+        }else{
+            $at_tbl = 'exam_attendance_ptwo';
+        }
+        $subj_tbl   = 'pharmacy_subjects_master';
+        $sch_tbl   = 'pharmacy_exam_schedule';
+        $cntr_tbl = 'pharmacy_exam_center';
+        $institute='institute_master';
+        try{
+            $per_page = 30;
+            $offset = ($tab - 1) * $per_page;
+             $query = DB::table($at_tbl . ' as ea')
+    ->distinct()
+    ->selectRaw("
+        ea.ea_center_code,
+        cntr.center_code,
+        ea.ea_part_sem,
+        ea.ea_subject_code,
+        subj.subject_name,
+        ea.ea_subject_code,
+        es.exam_year,
+        es.exam_date,
+        ea.ea_roll_number,
+        ea.ea_is_expel_internal,
+        ea_is_expel_external,
+        ea.ea_is_ra_internal,
+        ea.ea_is_ra_external,
+        ins.i_name
+    ")
+    ->join($cntr_tbl . ' as cntr', 'cntr.center_code', '=', 'ea.ea_center_code')
+    ->join($subj_tbl . ' as subj', 'subj.subject_id', '=', 'ea.ea_subject_id')
+    ->join($sch_tbl . ' as es', DB::raw('es.exam_subject_general_code'), '=', DB::raw('ea.ea_subject_code::text'))
+    ->join($institute . ' as ins', 'ea.ea_center_code', '=', 'ins.i_code')
+    ->where([
+        'es.exam_year'               => $exam_yr,
+        'es.exam_part_sem'           => (string) $part_sem,
+        'ea.ea_exam_year'            => $exam_yr,
+        'ea.ea_subject_code'         => $subject,
+        'ea.ea_part_sem'             => (string) $part_sem,
+        'ea.ea_center_code'          => (string) $center,
+        'ea.ea_is_blocked'           => 0,
+        'ea.ea_is_present_external'  => 1,
+        'ea.ea_is_present_internal'  => 1,
+    ])
+    ->orderBy('ea.ea_roll_number')
+    ->offset($offset)
+    ->limit($per_page);
+                $rows = $query->get();
+
+                //Format results
+                $results = [];
+                foreach ($rows as $row) {
+                $course = 'PHARMACY';
+                $results[] = [
+                    'exam_name'   => $course . ' ' . $row->ea_part_sem . ' Examination, ' . $row->exam_year,
+                    'centre_name' => $row->i_name . ' [' . $row->ea_center_code . ']',
+                    'subject'     => $row->subject_name . ' [' . $row->ea_subject_code . ']',
+                    'yr_sem'      => $row->ea_part_sem,
+                    'exam_date'   => date('d-F-Y', strtotime($row->exam_date)),
+                    'sign_date'   => date('jS F, Y', strtotime($row->exam_date)),
+                    'roll_num'    => $row->ea_roll_number,
+                    'is_expel'    => $row->ea_is_expel_external,
+                    'is_ra'       => $row->ea_is_ra_external,
+                    'univ_logo'   => '',//asset('assets/img/bu_logo90.jpg'),
+                ];
+            }
+
+            //return ['info' => $results];
+            $fileName = 'top_sheet-' . time() . '.pdf';
+            $pdf = PDF::loadView('top_sheet', ['data' => $results])->setPaper('a4', 'potrait');         
+            return $pdf->stream($fileName);
+            
+        }
+        catch(\Exception $e){
+            return response()->json([
+                'error'   => true,
+                'message' => 'An error occurred: ' . $e->getMessage(),
+            ], 500);
+        }
+    } 
+    public function packingSlipDownload(Request $request)
+    {
+        try{
+            $show_type=$request->input('show_type');
+            $part_sem=$request->input('part_sem');
+            if($part_sem == 'Part_I'){
+                $at_tbl = 'exam_attendance_pone';
+            }else{
+                $at_tbl = 'exam_attendance_ptwo';
+            }
+            $subquery = DB::table('pharmacy_exam_schedule')
+                ->select(
+                    DB::raw('MIN(exam_date) as exam_date'),
+                    DB::raw('MIN(exam_time) as exam_time'),
+                    'exam_subject_general_code'
+                )
+                ->groupBy('exam_subject_general_code');
+
+            $data = DB::table(DB::raw("$at_tbl as eap"))
+                ->joinSub($subquery, 'pes', function ($join) {
+                    $join->on(DB::raw('CAST(eap.ea_subject_code AS TEXT)'), '=', DB::raw('CAST(pes.exam_subject_general_code AS TEXT)'));
+                })
+                ->join('pharmacy_subjects_master as psm', DB::raw('CAST(eap.ea_subject_code AS TEXT)'), '=', DB::raw('CAST(psm.general_code AS TEXT)'))
+                ->when($request->filled('inst_code'), function ($query) use ($request) {
+                    $query->where('eap.ea_inst_code', (string) $request->input('inst_code'));
+                })
+                ->where('eap.ea_exam_year', (string) $request->input('exam_year'))
+                ->where('eap.ea_part_sem', (string) $request->input('part_sem'))
+                ->select(
+                    'eap.ea_inst_code',
+                    'psm.subject_name',
+                    DB::raw("CASE 
+                        WHEN eap.ea_part_sem = 'Part_I' THEN 1 
+                        WHEN eap.ea_part_sem = 'Part_II' THEN 2 
+                    END as sem_code"),
+                    DB::raw('COUNT(*) as packet_count'),
+                    DB::raw('CEIL(COUNT(*) / 20.0) as packet_required'),
+                    'psm.q_code',
+                    DB::raw("CONCAT('SO', 
+                        psm.id,
+                        CASE 
+                            WHEN eap.ea_part_sem = 'Part_I' THEN '1'
+                            WHEN eap.ea_part_sem = 'Part_II' THEN '2'
+                            ELSE '0'
+                        END,
+                        RIGHT(CAST(eap.ea_exam_year AS TEXT), 2)
+                    ) as subject_d_code"), // SO+ id+sem+examyr
+                     DB::raw("TO_CHAR(pes.exam_date, 'DD-Mon-YYYY') as exam_date"),
+                    'pes.exam_time as exam_hlf'
+                )
+                ->groupBy(
+                    'eap.ea_inst_code',
+                    'eap.ea_exam_year',
+                    'psm.id',
+                    'psm.subject_name',
+                    'eap.ea_part_sem',
+                    'psm.q_code',
+                    'pes.exam_date',
+                    'pes.exam_time'
+                )
+                ->get();
+           
+            if($show_type == 'export')
+            {
+                return Excel::download(new packingSlipDownload($data->toArray()), 'packing-slip-download.xlsx');
+            } else {
+                return response()->json([
+                    'error'   => false,
+                    'data' => $data,
+                ], 200); 
+            }        
+
+        }
+        catch(\Exception $e){
+            return response()->json([
+                'error'   => true,
+                'message' => 'An error occurred: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+    public function printingInstruction(Request $request)
+    {
+        try{
+            $show_type=$request->input('show_type');
+            $part_sem=$request->input('part_sem');
+            if($part_sem == 'Part_I'){
+                $at_tbl = 'exam_attendance_pone';
+            }else{
+                $at_tbl = 'exam_attendance_ptwo';
+            }
+
+           $data = DB::table(DB::raw("$at_tbl as eap"))
+            ->join(DB::raw('pharmacy_subjects_master as psm'), 
+                DB::raw("CAST(eap.ea_subject_code AS TEXT)"), '=', 
+                DB::raw('CAST(psm.general_code AS TEXT)')
+            )
+            ->when($request->filled('inst_code'), function ($query) use ($request) {
+                $query->where('eap.ea_inst_code', (string) $request->input('inst_code'));
+            })
+            ->where('eap.ea_exam_year', (string) $request->input('exam_year'))
+            ->where('eap.ea_part_sem', (string) $request->input('part_sem'))
+            ->select(
+                'psm.q_code',
+                'psm.subject_name',
+                DB::raw("CASE 
+                    WHEN eap.ea_part_sem = 'Part_I' THEN 1 
+                    WHEN eap.ea_part_sem = 'Part_II' THEN 2 
+                END as sem_code"),
+                DB::raw('COUNT(*) as qty_to_be_printed'),
+                DB::raw('CEIL(COUNT(*) / 2.0) as no_of_packets'),
+            )
+            ->groupBy('psm.id','psm.q_code', 'psm.subject_name', 'eap.ea_part_sem', 'eap.ea_exam_year')
+            ->get();
+
+            
+            
+             
+            if($show_type == 'export')
+            {
+                return Excel::download(new printingInstruction($data->toArray()), 'printing-instruction.xlsx');
+            } else {
+                return response()->json([
+                    'error'   => false,
+                    'data' => $data,
+                ], 200); 
+            }
+        }
+        catch(\Exception $e){
+            return response()->json([
+                'error'   => true,
+                'message' => 'An error occurred: ' . $e->getMessage(),
+            ], 500);
+        }
+
+    }
+    public function decodingList(Request $request)
+    {
+        try{
+            $show_type=$request->input('show_type');
+            $part_sem=$request->input('part_sem');
+            if($part_sem == 'Part_I'){
+                $at_tbl = 'exam_attendance_pone';
+            }else{
+                $at_tbl = 'exam_attendance_ptwo';
+            }
+             $subquery = DB::table('pharmacy_exam_schedule')
+                ->select(
+                    DB::raw('MIN(exam_date) as exam_date'),
+                    DB::raw('MIN(exam_time) as exam_time'),
+                    'exam_subject_general_code'
+                )
+                ->groupBy('exam_subject_general_code');
+
+                
+            $data = DB::table(DB::raw("$at_tbl as eap"))
+            ->joinSub($subquery, 'pes', function ($join) {
+                    $join->on(DB::raw('CAST(eap.ea_subject_code AS TEXT)'), '=', DB::raw('CAST(pes.exam_subject_general_code AS TEXT)'));
+                })
+            ->join(DB::raw('pharmacy_subjects_master as psm'), 
+                DB::raw("CAST(eap.ea_subject_code AS TEXT)"), '=', 
+                DB::raw('CAST(psm.general_code AS TEXT)')
+            )
+            ->when($request->filled('inst_code'), function ($query) use ($request) {
+                $query->where('eap.ea_inst_code', (string) $request->input('inst_code'));
+            })
+            ->where('eap.ea_exam_year', (string) $request->input('exam_year'))
+            ->where('eap.ea_part_sem', (string) $request->input('part_sem'))
+            ->select(
+                
+                DB::raw("CONCAT('SO', 
+                            psm.id,
+                            CASE 
+                                WHEN eap.ea_part_sem = 'Part_I' THEN '1'
+                                WHEN eap.ea_part_sem = 'Part_II' THEN '2'
+                                ELSE '0'
+                            END,
+                            RIGHT(CAST(eap.ea_exam_year AS TEXT), 2)
+                        ) as packet_code"), // SO+ id+sem+examyr
+                
+                'psm.q_code as q_code',
+                'psm.subject_name',
+                 DB::raw("CASE 
+                    WHEN eap.ea_part_sem = 'Part_I' THEN 1 
+                    WHEN eap.ea_part_sem = 'Part_II' THEN 2 
+                END as sem_code"),
+                DB::raw("TO_CHAR(pes.exam_date, 'DD-Mon-YYYY') as exam_date"),
+                'pes.exam_time'
+               
+               
+            )
+             ->groupBy('psm.id', 'psm.subject_name', 'eap.ea_part_sem', 'eap.ea_exam_year','pes.exam_date','pes.exam_time')
+            ->get();
+            if($show_type=='export')
+            {
+             
+              return Excel::download(new decodingList($data), 'decoding-list.xlsx');
+
+            } else {
+                return response()->json([
+                    'error'   => false,
+                    'data' => $data,
+                ], 200); 
+            }
+             
+        }
+        catch(\Exception $e){
+            return response()->json([
+                'error'   => true,
+                'message' => 'An error occurred: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+}

@@ -1,0 +1,1466 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\File;
+use STS\ZipStream\Facades\Zip;
+use Exception;
+use App\Models\User;
+use App\Models\Token;
+use App\Models\Institute;
+use App\Models\Subject;
+use App\Models\Elective;
+use Illuminate\Support\Str;
+use App\Models\Registerstudent;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\URL;
+use App\Http\Controllers\Controller;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\StudentMail;
+
+class StudentController extends Controller
+{
+    //Student Data update
+    public function studentInfoUpdate(Request $request)
+    {
+
+        if ($request->header('token')) {
+            $now = date('Y-m-d H:i:s');
+            $token_check = Token::where('t_token', '=', $request->header('token'))->where('t_expired_on', '>=', $now)->first();
+
+            if ($token_check) {
+                $user_id = $token_check->t_user_id;
+
+                if ($request->user_role != "STUDENT") {
+                    $user_data = User::select('u_id', 'u_ref', 'u_role_id')->where('u_id', $user_id)->first();
+
+                    $role_url_access_id = DB::table('pharmacy_auth_roles_permissions')->where('rp_role_id', $user_data->u_role_id)->pluck('rp_url_id');
+                } else {
+                    $role_url_access_id = DB::table('pharmacy_auth_roles_permissions')->where('rp_role_id', 2)->pluck('rp_url_id');
+                }
+
+
+                if (sizeof($role_url_access_id) > 0) {
+                    $urls = DB::table('pharmacy_auth_urls')->where('url_visible', 1)->whereIn('url_id', $role_url_access_id)->get()->toArray();
+                    $url_data = array_column($urls, 'url_name');
+
+                    if (in_array('student/student-info-update', $url_data)) {
+                        $validator = Validator::make($request->all(), [
+                            'form_no' => 'required|max:255',
+                            //'i_code' => 'required|max:255',
+                        ]);
+                        if ($validator->fails()) {
+                            return response()->json(['errors' => true, 'message' => $validator->errors()], 422);
+                        }
+                        try {
+                            $student = Registerstudent::where('s_appl_form_num', $request->form_no)->where('is_active', 1)->first();
+                            if (!$student) {
+                                return response()->json([
+                                    'error' => true,
+                                    'message' => 'Student record not found!'
+                                ], 404);
+                            }
+                            $phoneExists = Registerstudent::whereNotNull('s_phone')->where('s_phone', $request->s_phone)
+                                ->whereNot('s_appl_form_num', $request->form_no)
+                                ->where('is_active', 1)
+                                ->count();
+
+                            $emailExists = Registerstudent::whereNotNull('s_email')->where('s_email', $request->s_email)
+                                ->whereNot('s_appl_form_num', $request->form_no)
+                                ->where('is_active', 1)
+                                ->count();
+                            if ($phoneExists) {
+                                return response()->json([
+                                    'error' => true,
+                                    'message' => "This phone number already exists"
+                                ]);
+                            }
+
+                            if ($emailExists) {
+                                return response()->json([
+                                    'error' => true,
+                                    'message' => "This email address already exists"
+                                ]);
+                            }
+                            if ($request->user_role != "COUNCIL_ADMIN") {
+                                $validated = Validator::make($request->all(), [
+                                    'first_name' => ['required'],
+                                    'middle_name' => ['nullable'],
+                                    'last_name' => ['required'],
+                                    'father_name' => ['required'],
+                                    'mother_name' => ['required'],
+                                    'dob' => ['required'],
+                                    'email' => ['required'],
+                                    's_phone' => ['required'],
+                                    's_aadhar_no' => ['required'],
+                                    'gender' => ['required'],
+                                    'address' => ['required'],
+                                    'ps' => ['required'],
+                                    'po' => ['required'],
+                                    'pin' => ['required'],
+                                    'is_married' => ['required'],
+                                    'is_kanyashree' => ['required'],
+                                    'is_pwd' => ['required'],
+                                    's_photo' => ['required'],
+                                    's_sign' => ['required'],
+                                    'ei_guardian_name' => ['required'],
+                                    'ei_guardian_relation' => ['required'],
+                                    'ei_citizenship' => ['required'],
+                                    'ei_citizenship_doc' => [
+                                        Rule::requiredIf(function () {
+                                            return request('ei_citizenship') !== 'INDIAN';
+                                        }),
+                                    ],
+                                    'ei_state' => ['required'],
+                                    'ei_district' => ['required'],
+                                    'ei_sub_division' => ['required'],
+                                    'ei_municipalty_block' => ['required'],
+                                    'ei_cast_doc' => [
+                                        Rule::requiredIf(function () use ($student) {
+                                            return $student->s_caste !== 'GENERAL';
+                                        }),
+                                    ],
+                                    'ei_pc_certificate_doc' => [
+                                        Rule::requiredIf(function () {
+                                            return request('is_pwd') == true;
+                                        }),
+                                    ],
+                                    'ei_aadhar_doc' => [
+                                        'required',
+
+                                    ],
+                                    'ei_board_name' => ['required'],
+                                    'ei_last_institute' => ['required'],
+                                    'ei_passing_yr' => ['required'],
+                                    'ei_aggregate_marks' => ['required'],
+                                    'ei_marks_obtained' => ['required'],
+                                    'ei_marks_percentage' => ['required'],
+                                    'ei_physics_marks' => ['required'],
+                                    'ei_chemistry_marks' => ['required'],
+                                    'ei_bio_or_math_marks' => ['required'],
+
+
+                                ], [
+                                    'first_name.required' => 'First name is required',
+                                    'last_name.required' => 'Last name is required',
+                                    'father_name.required' => 'Father\'s name is required',
+                                    'mother_name.required' => 'Mother\'s name is required',
+                                    'dob.required' => 'Date of birth is required',
+                                    'email.required' => 'Email is required',
+                                    's_phone.required' => 'Student phone number is required',
+                                    's_aadhar_no.required' => 'Aadhar number is required',
+                                    'gender.required' => 'Gender is required',
+                                    'address.required' => 'Address is required',
+                                    'ps.required' => 'Police Station is required',
+                                    'po.required' => 'Post Office is required',
+                                    'pin.required' => 'PIN code is required',
+                                    'is_married.required' => 'Marital status is required',
+                                    'is_kanyashree.required' => 'Kanyashree status is required',
+                                    'is_pwd.required' => 'Disability status is required',
+                                    's_photo.required' => 'Photos is required',
+                                    's_sign.required' => 'Sign is required',
+                                    'ei_guardian_name.required' => 'Guardian name is required',
+                                    'ei_guardian_relation.required' => 'Guardian relation is required',
+                                    'ei_citizenship.required' => 'Citizenship is required',
+                                    'ei_citizenship_doc.required' => 'Citizenship document is required for Non Indian citizens',
+
+                                    'ei_state.required' => 'State is required',
+                                    'ei_district.required' => 'District is required',
+                                    'ei_sub_division.required' => 'Sub Division is required',
+                                    'ei_municipalty_block.required' => 'Block or Municipalty is required',
+
+                                    'ei_cast_doc.required' => 'Caste certificate is required for non-General category',
+                                    'ei_pc_certificate_doc.required' => 'PWD certificate is required for PWD students',
+                                    'ei_aadhar_doc.required' => 'Aadhar document is required',
+                                    'ei_aadhar_doc.mimes' => 'Aadhar document must be a file of type: jpg, jpeg, png, pdf',
+                                    'ei_cast_doc.mimes' => 'Caste certificate must be a file of type: jpg, jpeg, png, pdf',
+                                    'ei_pc_certificate_doc.mimes' => 'PWD certificate must be a file of type: jpg, jpeg, png, pdf',
+                                    'ei_citizenship_doc.mimes' => 'Citizenship document must be a file of type: jpg, jpeg, png, pdf',
+                                    'ei_other_qualification.required' => 'Please specify your other qualification if applicable.',
+                                    'ei_board_name.required' => 'Board Name is required',
+                                    'ei_last_institute.required' => 'Last Institute Name is required',
+                                    'ei_passing_yr.required' => 'Passing Year is required',
+                                    'ei_aggregate_marks.required' => 'Aggregate Marks is required',
+                                    'ei_marks_obtained.required' => 'Obtained Marks is required',
+                                    'ei_marks_percentage.required' => 'Marks percentageis is required',
+                                    'ei_physics_marks' => 'Physics Marks is required',
+                                    'ei_chemistry_marks' => 'Chemistry Marks is required',
+                                    'ei_bio_or_math_marks' => 'Marks of Biology or Mathamatics is required',
+
+                                ]);
+
+                                if ($validated->fails()) {
+                                    return response()->json([
+                                        'error' => true,
+                                        'message' => $validated->errors()->first()
+                                    ]);
+                                }
+                            }
+
+                            Artisan::call('storage:link');
+                            //$aadharNo = $student->s_aadhar_original;
+                            $aadharbyInput = $request->s_aadhar_no;
+                            $lastFourDigits = substr($aadharbyInput, -4);
+                            $encryptAadhar = encryptHEXFormat($lastFourDigits);
+
+                            $photoPath = null;
+                            $signPath = null;
+                            $ei_citizenship_doc = null;
+                            $ei_pc_certificate_doc = null;
+                            $ei_aadhar_doc = null;
+                            $ei_cast_doc = null;
+                            $time = time();
+                            $sess_year = $student->s_appl_sess_year;
+                            if ($request->hasFile('ei_citizenship_doc')) {
+                                $image = $request->file('ei_citizenship_doc');
+                                $imageName = $request->form_no . '_citizen' . $time . '.' . $image->getClientOriginalExtension();
+                                $ei_citizenship_doc = 'uploads/student_doc/' . $sess_year . '/' . $imageName;
+                                $image->storeAs('uploads/student_doc/' . $sess_year . '/', $imageName, 'public');
+                            }
+                            if ($request->hasFile('ei_cast_doc')) {
+                                $image = $request->file('ei_cast_doc');
+                                $imageName = $request->form_no . '_cast' . $time . '.' . $image->getClientOriginalExtension();
+                                $ei_cast_doc = 'uploads/student_doc/' . $sess_year . '/' . $imageName;
+                                $image->storeAs('uploads/student_doc/' . $sess_year . '/', $imageName, 'public');
+                            }
+                            if ($request->hasFile('ei_pc_certificate_doc')) {
+                                $image = $request->file('ei_pc_certificate_doc');
+                                $imageName = $request->form_no . '_pc' . $time . '.' . $image->getClientOriginalExtension();
+                                $ei_pc_certificate_doc = 'uploads/student_doc/' . $sess_year . '/' . $imageName;
+                                $image->storeAs('uploads/student_doc/' . $sess_year . '/', $imageName, 'public');
+                            }
+                            if ($request->hasFile('ei_aadhar_doc')) {
+                                $image = $request->file('ei_aadhar_doc');
+                                $imageName = $request->form_no . '_aadhar' . $time . '.' . $image->getClientOriginalExtension();
+                                $ei_aadhar_doc = 'uploads/student_doc/' . $sess_year . '/' . $imageName;
+                                $image->storeAs('uploads/student_doc/' . $sess_year . '/', $imageName, 'public');
+                            }
+                            if ($request->hasFile('s_photo')) {
+                                $image = $request->file('s_photo');
+                                $imageName = $request->form_no . '_image' . $time . '.' . $image->getClientOriginalExtension();
+                                $photoPath = 'uploads/student_doc/' . $sess_year . '/' . $imageName;
+                                $image->storeAs('uploads/student_doc/' . $sess_year . '/', $imageName, 'public');
+                            } else {
+                                $photoPath = $student->s_photo;
+                            }
+                            if ($request->hasFile('s_sign')) {
+                                $signature = $request->file('s_sign');
+                                $signatureName = $request->form_no . '_sign' . $time . '.' . $signature->getClientOriginalExtension();
+                                $signPath = 'uploads/student_doc/' . $sess_year . '/' . $signatureName;
+                                $signature->storeAs('uploads/student_doc/' . $sess_year . '/', $signatureName, 'public');
+                            } else {
+                                $signPath = $student->s_sign;
+                            }
+
+
+                            $student->update([
+                                's_first_name' => $request->first_name,
+                                's_middle_name' => $request->middle_name,
+                                's_last_name' => $request->last_name,
+                                's_candidate_name' => Str::replace('  ', ' ', "{$request->first_name} {$request->middle_name} {$request->last_name}"),
+                                's_father_name' => $request->father_name,
+                                's_mother_name' => $request->mother_name,
+                                's_dob' => $request->dob,
+                                's_email' => $request->email,
+                                's_phone' => $request->s_phone,
+                                's_aadhar_no' => $encryptAadhar,
+                                's_aadhar_original' => $aadharbyInput,
+                                's_gender' => $request->gender,
+                                'address' => $request->address,
+                                'ps' => $request->ps,
+                                'po' => $request->po,
+                                'pin' => $request->pin,
+                                'is_married' => $request->is_married ? 1 : 0,
+                                'is_kanyashree' => $request->is_kanyashree ? 1 : 0,
+                                's_pwd' => $request->is_pwd ? 1 : 0,
+                                'is_profile_updated' => 1,
+                                's_photo' => $photoPath,
+                                's_sign' => $signPath,
+                            ]);
+
+                            $dataForExtraInfo = [
+                                'ei_appl_form_num' => $student->s_appl_form_num,
+                                'ei_guardian_name' => $request->ei_guardian_name,
+                                'ei_guardian_relation' => $request->ei_guardian_relation,
+                                'ei_citizenship' => $request->ei_citizenship,
+                                'ei_citizenship_doc' => $ei_citizenship_doc,
+                                'ei_state' => $request->ei_state,
+                                'ei_district' => $request->ei_district,
+                                'ei_sub_division' => $request->ei_sub_division,
+                                'ei_municipalty_block' => $request->ei_municipalty_block,
+                                'ei_cast_doc' => $ei_cast_doc,
+                                'ei_pc_certificate_doc' => $ei_pc_certificate_doc,
+                                'ei_aadhar_doc' => $ei_aadhar_doc,
+                                'ei_board_name' => $request->ei_board_name,
+                                'ei_last_institute' => $request->ei_last_institute,
+                                'ei_passing_yr' => $request->ei_passing_yr,
+                                'ei_aggregate_marks' => $request->ei_aggregate_marks,
+                                'ei_marks_obtained' => $request->ei_marks_obtained,
+                                'ei_marks_percentage' => $request->ei_marks_percentage,
+                                'ei_physics_marks' => $request->ei_physics_marks,
+                                'ei_chemistry_marks' => $request->ei_chemistry_marks,
+                                'ei_bio_or_math_marks' => $request->ei_bio_or_math_marks,
+                                'ei_other_qualification' => $request->ei_other_qualification,
+                                'ei_physics_full_marks' => $request->ei_physics_full_marks,
+                                'ei_chemistry_full_marks' => $request->ei_chemistry_full_marks,
+                                'ei_bio_or_math_full_marks' => $request->ei_bio_or_math_full_marks,
+                            ];
+
+
+                            DB::table('pharmacy_student_extraInfo')->updateOrInsert(
+                                ['ei_appl_form_num' => $student->s_appl_form_num],
+                                $dataForExtraInfo
+                            );
+                            //auditTrail($student->s_appl_form_num, "{$student->s_candidate_name} updated details");
+                            studentActivite($student->s_appl_form_num, "{$student->s_appl_form_num} with {$student->s_candidate_name} updated the required details.");
+
+                            $studentData = Registerstudent::where('s_appl_form_num', $request->form_no)->first();
+
+                            $rank_data = [];
+                            $userRank = $studentData;
+
+                            $rankArr = [
+                                's_gen_rank',
+                                's_sc_rank',
+                                's_st_rank',
+                                's_obca_rank',
+                                's_obcb_rank',
+                                's_pwd_rank',
+                                's_tfw_rank',
+                                's_ews_rank',
+                                's_llq_rank',
+                                's_exsm_rank'
+                            ];
+
+                            foreach ($rankArr as $val) {
+                                $userRankData = (int) $userRank[$val];
+                                if (!is_null($userRankData) && ($userRankData != 0)) {
+                                    array_push($rank_data, [
+                                        'category' => casteValue(Str::upper(explode('_', $val)[1])),
+                                        'rank' => $userRankData
+                                    ]);
+                                }
+                            }
+
+
+
+                            return response()->json([
+                                'error' => false,
+                                'message' => 'Updated Successfully',
+                                'profile_update' => (bool) $studentData->is_profile_updated,
+
+                                'user' => [
+                                    's_id' => $studentData->s_id,
+                                    's_uuid' => $studentData->s_uuid,
+                                    's_appl_form_num' => $studentData->s_appl_form_num,
+                                    's_first_name' => $studentData->s_first_name,
+                                    's_middle_name' => $studentData->s_middle_name,
+                                    's_last_name' => $studentData->s_last_name,
+                                    's_full_name' => $studentData->s_candidate_name,
+                                    's_father_name' => $studentData->s_father_name,
+                                    's_mother_name' => $studentData->s_mother_name,
+                                    's_dob' => $studentData->s_dob,
+                                    's_aadhar_no' => $encryptAadhar,
+                                    's_aadhar_original' => $aadharbyInput,
+                                    's_phone' => $studentData->s_phone,
+                                    's_email' => $studentData->s_email,
+                                    's_gender' => $studentData->s_gender,
+                                    's_religion' => $studentData->s_religion,
+                                    's_caste' => $studentData->s_caste,
+                                    's_tfw' => $studentData->s_tfw,
+                                    's_pwd' => $studentData->s_pwd,
+                                    's_llq' => $studentData->s_llq,
+                                    's_exsm' => $studentData->s_exsm,
+                                    's_inst_code' => $studentData->s_inst_code,
+                                    's_photo' => URL::to("storage/{$studentData->s_photo}"),
+                                    's_sign' => URL::to("storage/{$studentData->s_sign}"),
+                                    's_home_district' => !is_null($studentData->s_home_district) ? $studentData->s_home_district : "",
+                                    's_schooling_district' => !is_null($studentData->s_schooling_district) ? $studentData->s_schooling_district : "",
+                                    's_state_id' => $studentData->s_state_id,
+                                    'created_at' => $studentData->created_at,
+                                    'updated_at' => $studentData->updated_at,
+                                    'address' => $studentData->address,
+                                    'ps' => $studentData->ps,
+                                    'po' => $studentData->po,
+                                    'pin' => $studentData->pin,
+                                    'is_married' => (bool) $studentData->is_married,
+                                    'is_kanyashree' => (bool) $studentData->is_kanyashree,
+                                    'role_id' => 2,
+                                    'ei_guardian_name' => $request->ei_guardian_name,
+                                    'ei_guardian_relation' => $request->ei_guardian_relation,
+                                    'ei_citizenship' => $request->ei_citizenship,
+                                    'ei_citizenship_doc' => $ei_citizenship_doc,
+                                    'ei_state' => $request->ei_state,
+                                    'ei_district' => $request->ei_district,
+                                    'ei_sub_division' => $request->ei_sub_division,
+                                    'ei_municipalty_block' => $request->ei_municipalty_block,
+                                    'ei_cast_doc' => $ei_cast_doc,
+                                    'ei_pc_certificate_doc' => $ei_pc_certificate_doc,
+                                    'ei_aadhar_doc' => $ei_aadhar_doc,
+                                    'ei_board_name' => $request->ei_board_name,
+                                    'ei_last_institute' => $request->ei_last_institute,
+                                    'ei_passing_yr' => $request->ei_passing_yr,
+                                    'ei_aggregate_marks' => $request->ei_aggregate_marks,
+                                    'ei_marks_obtained' => $request->ei_marks_obtained,
+                                    'ei_marks_percentage' => $request->ei_marks_percentage,
+                                    'ei_physics_marks' => $request->ei_physics_marks,
+                                    'ei_chemistry_marks' => $request->ei_chemistry_marks,
+                                    'ei_bio_or_math_marks' => $request->ei_bio_or_math_marks,
+                                    'ei_other_qualification' => $request->ei_other_qualification,
+                                ],
+                            ]);
+                        } catch (Exception $e) {
+                            return response()->json([
+                                'error' => true,
+                                'message' => $e->getMessage()
+                            ]);
+                        }
+                    } else {
+                        return response()->json([
+                            'error' => true,
+                            'message' => "Oops! you don't have sufficient permission"
+                        ], 403);
+                    }
+                } else {
+                    return response()->json([
+                        'error' => true,
+                        'message' => 'Unable to process your request due to invalid token'
+                    ], 401);
+                }
+            } else {
+                return response()->json([
+                    'error' => true,
+                    'message' => 'Unable to process your request due to non availability of token'
+                ], 401);
+            }
+        } else {
+            return response()->json([
+                'error' => true,
+                'message' => 'Unable to process your request due to non availability of token'
+            ], 401);
+        }
+    }
+
+    //Download Form after Photo Sign upload
+    public function downloadForm($from_num)
+    {
+        try {
+            $registerstudent = DB::table('pharmacy_register_student_final')
+                ->where(['s_appl_form_num' => $from_num])
+                ->leftJoin('institute_master', 'i_code', '=', 's_inst_code')
+                ->select(
+                    'pharmacy_register_student_final.*',
+                    'institute_master.i_id',
+                    'institute_master.i_name',
+                    'institute_master.i_code'
+                )
+                ->first();
+
+            $pdf = PDF::loadView('exports.applicationform', [
+                'registerstudent' => $registerstudent,
+            ]);
+            return $pdf->setPaper('a4', 'portrait')
+                ->setOption(['defaultFont' => 'sans-serif'])
+                ->stream("applicationform_{$from_num}.pdf");
+        } catch (Exception $e) {
+            generateLaravelLog($e);
+            return response()->json([
+                'error' => true,
+                'message' => $e->getMessage()
+            ], 400);
+        }
+    }
+
+    public function checkRedirect($user_id)
+    {
+        $newuser = Registerstudent::where('s_appl_form_num', $user_id)->where('is_active', 1)->first();
+
+        if ($newuser) {
+            $profile_updated = false;
+            $profile_updated = (bool) $newuser->is_profile_updated;
+            $redirect = [
+                'profile_update' => $profile_updated,
+                'registration_fees_paid' => (bool) $newuser->is_registration_payment,
+                'overall_status' => getOverallStatus($newuser->s_id),
+                'part1_status' => $newuser->s_part1_status
+
+            ];
+
+            return response()->json([
+                'error' => false,
+                'message' => 'Data found',
+                'redirect' => $redirect
+            ]);
+        }
+    }
+
+    public function studentdetails($form_num)
+    {
+
+        $student = Registerstudent::where('s_appl_form_num', $form_num)
+            ->leftJoin(
+                'diploma_enrollment',
+                'diploma_register_student_final.s_appl_form_num',
+                '=',
+                'diploma_enrollment.enrl_form_num'
+            )
+            ->first();
+
+        $amount = DB::table('diploma_fees')
+            ->where('fees_type', 'ENROLLMENT')
+            ->where('anual', $student->s_part_sem)
+            ->pluck('fees_amount')
+            ->first();
+
+        $studentExtraInfo = DB::table('diploma_student_extraInfo')->where('ei_appl_form_num', $form_num)->first();
+
+        if (!$student) {
+            return response()->json([
+                'error' => true,
+                'message' => 'Student not found',
+            ], 404);
+        }
+        $year = $student->s_appl_sess_year;
+        $enrl_year = substr($year, -4);
+
+        $currentYear = date("Y");
+        $filteredGrades = [];
+        if ($currentYear == $enrl_year) {
+            $chance = 1;
+            $type = "REGULAR";
+        } else {
+            $type = "CASUAL";
+        }
+        $studentData = [
+            's_id' => $student->s_id,
+            's_uuid' => $student->s_uuid,
+            's_appl_form_num' => $student->s_appl_form_num,
+            's_appl_sess_year' => $student->s_appl_sess_year,
+            's_part1_status' => $student->s_part1_status,
+            's_part2_status' => $student->s_part2_status,
+            's_appl_reg_no' => $student->s_appl_reg_no,
+            'profile_update' => (bool) $student->is_profile_updated,
+            's_first_name' => $student->s_first_name,
+            's_middle_name' => $student->s_middle_name,
+            's_last_name' => $student->s_last_name,
+            's_full_name' => $student->s_candidate_name,
+            's_father_name' => $student->s_father_name,
+            's_mother_name' => $student->s_mother_name,
+            's_dob' => $student->s_dob,
+            's_aadhar_no' => $student->s_aadhar_original,
+            's_phone' => $student->s_phone,
+            's_email' => $student->s_email,
+            's_gender' => $student->s_gender,
+            's_religion' => $student->s_religion,
+            's_caste' => $student->s_caste,
+            'address' => $student->address,
+            's_tfw' => $student->s_tfw,
+            's_pwd' => $student->s_pwd,
+            's_llq' => $student->s_llq,
+            's_exsm' => $student->s_exsm,
+            'ps' => $student->ps,
+            'po' => $student->po,
+            'pin' => $student->pin,
+            's_remarks' => $student->s_remarks ?? null,
+            'institute_code' => $student->s_inst_code,
+            's_alloted_category' => $student->s_alloted_category,
+            's_photo' => $student->s_photo ? URL::to("storage/{$student->s_photo}") : '',
+            's_sign' => $student->s_sign ? URL::to("storage/{$student->s_sign}") : '',
+            'is_married' => (bool) $student->is_married,
+            'is_kanyashree' => (bool) $student->is_kanyashree,
+            'role_id' => 2,
+            'part_sem' => $student->enrl_part_sem,
+            'is_registration_payment' => (bool) $student->is_registration_payment,
+            'adm_type' => $student->admission_type,
+
+            "ei_guardian_name" => $studentExtraInfo->ei_guardian_name ?? null,
+            "ei_guardian_relation" => $studentExtraInfo->ei_guardian_relation ?? null,
+            "ei_citizenship" => $studentExtraInfo->ei_citizenship ?? null,
+            "ei_citizenship_doc" => optional($studentExtraInfo)->ei_citizenship_doc ? URL::to("storage/{$studentExtraInfo->ei_citizenship_doc}") : '',
+            "ei_state" => $studentExtraInfo->ei_state ?? null,
+            "ei_district" => $studentExtraInfo->ei_district ?? null,
+            "ei_sub_division" => $studentExtraInfo->ei_sub_division ?? null,
+            "ei_municipalty_block" => $studentExtraInfo->ei_municipalty_block ?? null,
+            'ei_cast_doc' => optional($studentExtraInfo)->ei_cast_doc ? URL::to("storage/{$studentExtraInfo->ei_cast_doc}") : '',
+            'ei_pc_certificate_doc' => optional($studentExtraInfo)->ei_pc_certificate_doc ? URL::to("storage/{$studentExtraInfo->ei_pc_certificate_doc}") : '',
+            'ei_aadhar_doc' => optional($studentExtraInfo)->ei_aadhar_doc ? URL::to("storage/{$studentExtraInfo->ei_aadhar_doc}") : '',
+            "ei_board_name" => $studentExtraInfo->ei_board_name ?? null,
+            "ei_last_institute" => $studentExtraInfo->ei_last_institute ?? null,
+            "ei_passing_yr" => $studentExtraInfo->ei_passing_yr ?? null,
+            "ei_aggregate_marks" => $studentExtraInfo->ei_aggregate_marks ?? null,
+            "ei_marks_obtained" => $studentExtraInfo->ei_marks_obtained ?? null,
+            "ei_marks_percentage" => $studentExtraInfo->ei_marks_percentage ?? null,
+            "ei_physics_marks" => $studentExtraInfo->ei_physics_marks ?? null,
+            "ei_chemistry_marks" => $studentExtraInfo->ei_chemistry_marks ?? null,
+            "ei_bio_or_math_marks" => $studentExtraInfo->ei_bio_or_math_marks ?? null,
+            "ei_other_qualification" => $studentExtraInfo->ei_other_qualification ?? null,
+            'ei_physics_full_marks' => $studentExtraInfo->ei_physics_full_marks ?? null,
+            'ei_chemistry_full_marks' => $studentExtraInfo->ei_chemistry_full_marks ?? null,
+            'ei_bio_or_math_full_marks' => $studentExtraInfo->ei_bio_or_math_full_marks ?? null,
+            'type' => $type,
+            'exam_year' => now()->format('Y'),
+            'applied_paper' => $student->applied_paper ?? null,
+            'enroll_year' => $student->enrl_year ?? null,
+            'amount' => $amount,
+            'appreance_type' => $student->enrl_type
+        ];
+
+        return response()->json([
+            'error' => false,
+            'message' => 'Data found',
+            'data' => $studentData,
+        ]);
+    }
+
+    public function sessionList()
+    {
+        $years = Registerstudent::distinct()->pluck('s_appl_sess_year');
+
+        $exam_year = $years->map(function ($year) {
+            $parts = explode('-', $year);
+            return $parts[1] ?? null;
+        })->filter()->values();
+
+        return response()->json([
+            'years' => $years,
+            'exam_year' => $exam_year
+        ]);
+    }
+
+    public function instituteList(Request $request)
+    {
+        try {
+            $istitute = Institute::select('i_code', 'i_name');
+            if ($request->i_code) {
+                $istitute = $istitute->where('i_code', $request->i_code);
+            }
+            $istitute = $istitute->get();
+
+            return response()->json([
+                'institute' => $istitute,
+
+            ]);
+        } catch (Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    public function registrationList(Request $request)
+    {
+        try {
+            $i_code = $request->i_code;
+            $sess_year = $request->sess_year;
+            $reg_status = $request->reg_status;
+
+            $students = Registerstudent::when($i_code, function ($query) use ($i_code) {
+                return $query->where('s_inst_code', $i_code);
+            })
+                ->where('is_active', 1)
+                ->where('is_registration_payment', 1)
+                ->when($reg_status === 'ACTIVE', function ($query) {
+                    return $query->where('s_registration_cancel', 0)->whereBetween('s_part1_status', [1, 8]);
+                })
+                ->when($reg_status === 'CANCELLED', function ($query) {
+                    return $query->where('s_registration_cancel', 1)->where('s_part1_status', 9);
+                })
+                ->when(empty($reg_status), function ($query) {
+                    return $query->where('s_registration_cancel', 0)->whereBetween('s_part1_status', [1, 8]);
+                })
+                ->where('s_appl_sess_year', $sess_year)
+                ->select(
+                    's_id',
+                    's_appl_reg_no',
+                    's_appl_reg_year',
+                    's_candidate_name',
+                    's_appl_form_num',
+                    's_inst_code',
+                    's_reg_cancel_reason',
+                    'admission_type'
+                )
+                ->orderBy('s_inst_code', 'asc')
+                ->get();
+
+            return response()->json([
+                'status' => 'success',
+                'list' => $students,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to fetch student list: ' . $e->getMessage(),
+            ], 500);
+        }
+
+    }
+
+    public function generateRegNo(Request $request)
+    {
+        try {
+            DB::beginTransaction();
+            $form_id = $request->form_id_array;
+            $students = Registerstudent::whereIn('s_appl_form_num', $form_id)->get();
+            $counter = 1;
+            foreach ($students as $formid) {
+                if ($formid->s_appl_reg_no) {
+                    return response()->json([
+                        'status' => 'error',
+                        'message' => "Registration number already generated for {$formid->s_appl_form_num}!",
+                    ], 400);
+                }
+
+                $lastRegistration = Registerstudent::where('s_appl_sess_year', $formid->s_appl_sess_year)
+                    ->whereNotNull('s_appl_reg_no')
+                    ->where('is_active', 1)
+                    ->orderBy('s_appl_reg_no', 'desc')
+                    ->first();
+
+                if ($lastRegistration && $lastRegistration->s_appl_reg_no) {
+                    $lastNumber = substr($lastRegistration->s_appl_reg_no, -5);
+                    $counter = (int) $lastNumber + 1;
+                }
+
+                $sessionParts = explode('-', $formid->s_appl_sess_year);
+                $sessionCode = substr($sessionParts[0], -2) . substr($sessionParts[1], -2);
+                $prefix = 'PHARM' . $sessionCode;
+                $registrationId = $prefix . str_pad($counter, 8, '0', STR_PAD_LEFT);
+
+                Registerstudent::where('s_appl_form_num', $formid->s_appl_form_num)->where('is_active', 1)->update([
+                    's_appl_reg_no' => $registrationId,
+                    's_appl_reg_year' => $formid->s_appl_sess_year,
+                    's_part1_status' => 2,
+                ]);
+
+                auditTrail(authUserId(), "Form Number {$formid->s_appl_form_num} {$formid->s_candidate_name} Registration Number Generated Successfully.");
+                $this->sendMail(
+                    $formid->s_candidate_name,
+                    $formid->s_appl_form_num,
+                    $formid->s_email,
+                    $registrationId
+                );
+                $counter++;
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Registration number(s) generated successfully!',
+            ]);
+        } catch (\Exception $e) {
+            DB::rollback();
+
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Error generating registration number(s): ' . $e->getMessage(),
+            ], 500);
+        }
+
+
+
+
+    }
+
+    //Print Registration List
+    public function printRegistrationList(Request $request)
+    {
+        try {
+            $i_code = $request->i_code;
+            $sess_year = $request->sess_year;
+
+            $students = Registerstudent::when($i_code, function ($query) use ($i_code) {
+                return $query->where('s_inst_code', $i_code);
+            })
+                ->where('is_active', 1)
+                ->where('is_registration_payment', 1)
+                ->whereBetween('s_part1_status', [2, 8])
+                ->where('s_appl_sess_year', $sess_year)
+                ->select(
+                    's_id',
+                    's_appl_reg_no',
+                    's_appl_reg_year',
+                    's_candidate_name',
+                    's_appl_form_num',
+                    's_inst_code',
+                    's_reg_cancel_reason',
+                    'admission_type'
+                )
+                ->orderBy('s_inst_code', 'asc')
+                ->get();
+
+            return response()->json([
+                'status' => 'success',
+                'list' => $students,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to fetch student list: ' . $e->getMessage(),
+            ], 500);
+        }
+
+    }
+    //Download Registration Certificate
+    public function printRegistrationCertificate_bkp(Request $request)
+    {
+        $inst_code = $request->inst_code;
+        $sess_yr = $request->sess_yr;
+        $reg_numbers = $request->reg_numbers;
+        $st_tbl = 'pharmacy_register_student_final';
+        $inst_tbl = 'institute_master';
+
+        $certificates = [];
+
+        try {
+            foreach ($reg_numbers as $reg_no) {
+                $result = DB::table($st_tbl)
+                    ->select([
+                        's_appl_form_num',
+                        's_appl_reg_no',
+                        's_first_name',
+                        's_middle_name',
+                        's_last_name',
+                        's_photo',
+                        's_sign',
+                        's_inst_code',
+                        'i_code',
+                        'i_name',
+                        's_father_name',
+                        's_appl_sess_year'
+                    ])
+                    ->join($inst_tbl, 'i_code', '=', 's_inst_code')
+                    ->where([
+                        's_appl_reg_no' => $reg_no,
+                        's_appl_sess_year' => $sess_yr,
+                        's_inst_code' => $inst_code
+                    ])
+                    ->first();
+
+                if (!$result) {
+                    continue;
+                }
+
+                $certInfo = [
+                    'st_form_number' => $result->s_appl_form_num,
+                    'st_reg_number' => $result->s_appl_reg_no,
+                    'st_session' => $result->s_appl_sess_year,
+                    'st_full_name' => $result->s_first_name . ' ' . $result->s_middle_name . ' ' . $result->s_last_name,
+                    'st_gur_name' => $result->s_father_name,
+                    'st_institute' => $result->s_inst_code,
+                    'st_institute_name' => $result->i_name,
+                    'st_course' => 'PHARMACY (PHARM)',
+                    'st_profile_img' => $result->s_photo,
+                    'st_profile_sign' => $result->s_sign,
+                ];
+
+                $certificates[] = $certInfo;
+            }
+
+            if (empty($certificates)) {
+                return back()->with('error', 'No Certificate found.');
+
+            }
+
+            //dd($certificates);
+            $pdf = PDF::loadView('registration-certificate', ['student' => $certificates])
+                ->setPaper('a4', 'landscape');
+
+            $fileName = 'PHARM-REG_CERTIFICATE-' . $inst_code . '-' . time() . '.pdf';
+            return $pdf->stream($fileName);
+
+        } catch (\Exception $e) {
+            Log::error('Error fetching multiple reg Certificate: ' . $e->getMessage());
+            return response()->json([
+                'status' => 'error',
+                'message' => $e->getMessage(),
+            ], 500);
+            #  return back()->with('error', 'Unable to generate Certificate.');
+        }
+    }
+
+    public function printRegistrationCertificate(Request $request)
+    {
+        $sess_yr = $request->sess_yr;
+        $reg_numbers = $request->reg_numbers;
+        $st_tbl = 'pharmacy_register_student_final';
+        $inst_tbl = 'institute_master';
+
+        try {
+            // group registration numbers by institute
+            $students = DB::table($st_tbl)
+                ->select([
+                    's_appl_form_num',
+                    's_appl_reg_no',
+                    's_first_name',
+                    's_middle_name',
+                    's_last_name',
+                    's_photo',
+                    's_sign',
+                    's_inst_code',
+                    'i_code',
+                    'i_name',
+                    's_father_name',
+                    's_appl_sess_year'
+                ])
+                ->join($inst_tbl, 'i_code', '=', 's_inst_code')
+                ->whereIn('s_appl_reg_no', $reg_numbers)
+                ->where('s_appl_sess_year', $sess_yr)
+                ->get();
+
+            if ($students->isEmpty()) {
+                return back()->with('error', 'No students found.');
+            }
+
+            // Group by institute
+            $groupedByInstitute = $students->groupBy('s_inst_code');
+
+            $savedFiles = [];
+            ini_set('memory_limit', '1024M');
+            ini_set('max_execution_time', 0);
+            foreach ($groupedByInstitute as $inst_code => $studentGroup) {
+                $certificates = [];
+				$allHtml = '';
+                foreach ($studentGroup as $result) {
+                    $certInfo = [
+                        'st_form_number' => $result->s_appl_form_num,
+                        'st_reg_number' => $result->s_appl_reg_no,
+                        'st_session' => $result->s_appl_sess_year,
+                        'st_full_name' => trim($result->s_first_name . ' ' . $result->s_middle_name . ' ' . $result->s_last_name),
+                        'st_gur_name' => $result->s_father_name,
+                        'st_institute' => $result->s_inst_code,
+                        'st_institute_name' => $result->i_name,
+                        'st_course' => 'PHARMACY (PHARM)',
+                        'st_profile_img' => $result->s_photo,
+                        'st_profile_sign' => $result->s_sign,
+                    ];
+
+                    #$certificates[] = $certInfo;
+					
+					 $html = view('registration-certificate', ['data' => $certInfo])->render();
+					 $allHtml .= $html;
+                }
+
+                // Create PDF for this institute
+                /*$pdf = PDF::loadView('registration-certificate', ['student' => $certificates])
+                    ->setPaper('a4', 'portrait');*/
+				$pdf = PDF::loadHTML($allHtml)->setPaper('a4', 'portrait');
+                $fileName = 'PHARM-REG_CERTIFICATE-' . $inst_code . '-' . $sess_yr . '.pdf';
+                $filePath = storage_path('app/public/reg_certificates/' . $sess_yr . '/' . $fileName);
+
+                // Ensure directory exists
+                if (!file_exists(dirname($filePath))) {
+                    mkdir(dirname($filePath), 0777, true);
+                }
+
+                // Save file
+                $pdf->save($filePath);
+                unset($pdf);
+                gc_collect_cycles();
+                $savedFiles[] = $filePath;
+            }
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Registration Certificate Generated Sucessfully',
+            ], 200);
+        } catch (\Exception $e) {
+            Log::error('Error generating institute-wise certificates: ' . $e->getMessage());
+            return response()->json([
+                'status' => 'error',
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+    public function downloadRegZip(Request $request)
+        {
+            $sess_yr      = $request->sess_yr;
+            try {
+                $files = File::allFiles(public_path("storage/reg_certificates/{$sess_yr}"));
+                return Zip::create("REG-CERTIFICATE-PHARM-{$sess_yr}.zip", $files);
+            } catch (\Exception $e) {
+                Log::error('Error generating institute-wise certificates: ' . $e->getMessage());
+                return response()->json([
+                    'status' => 'error',
+                    'message' => $e->getMessage(),
+                ], 500);
+            }
+    }
+
+
+
+    public function getDataforsyllabus(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'session_year' => 'required|max:255',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => true, 'message' => $validator->errors()], 422);
+        }
+
+        try {
+            $institute_code = $request->institute_code;
+            $session_year = $request->session_year;
+
+
+            $data = Registerstudent::leftJoin('pharmacy_users_master', 'pharmacy_register_student_final.s_inst_code', '=', 'pharmacy_users_master.u_inst_code')
+                ->where('pharmacy_register_student_final.s_appl_sess_year', $session_year)
+                ->when($institute_code, function ($query, $institute_code) {
+                    return $query->where('pharmacy_register_student_final.s_inst_code', $institute_code);
+                })
+                ->whereNotNull('pharmacy_register_student_final.s_appl_reg_no')
+                ->select(
+                    DB::raw("CONCAT_WS(' ', pharmacy_register_student_final.s_first_name, pharmacy_register_student_final.s_middle_name, pharmacy_register_student_final.s_last_name) as full_name"),
+                    'pharmacy_register_student_final.s_appl_form_num',
+                    'pharmacy_register_student_final.s_appl_reg_no',
+                    'pharmacy_register_student_final.s_inst_code',
+                    'pharmacy_users_master.u_inst_name as s_inst_name',
+                    'pharmacy_register_student_final.syllabus_id'
+                )
+                ->get();
+
+            return response()->json([
+                'error' => false,
+                'data' => $data
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => true,
+                'message' => 'Error fetching data: ' . $e->getMessage()
+            ], 500);
+        }
+
+    }
+
+    //Syllabus List
+    public function syllabus_idList(Request $request)
+    {
+        try {
+            $data = DB::table('pharmacy_subjects_master')
+                ->select(
+                    'syllabus',
+                    'syllabus_id',
+                    DB::raw("CONCAT(syllabus, ' (', syllabus_id, ')') as syllabus_name")
+                )
+                ->groupBy('syllabus', 'syllabus_id')
+                ->get();
+
+            return response()->json([
+                'status' => 'success',
+                'syllabusData' => $data
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Error fetching data: ' . $e->getMessage()
+            ], 500);
+        }
+
+    }
+
+    //Syllabus tag with registered Students
+    public function syllabusTagSubmit(Request $request)
+    {
+
+        try {
+            $syllabus_id = $request->syllabus_id;
+            $session_year = $request->sess_year;
+
+            $data = Registerstudent::where('s_appl_sess_year', $session_year)
+                ->whereNotNull('s_appl_reg_no')
+                ->whereNull('syllabus_id')
+                ->select('s_appl_form_num')
+                ->get();
+            if ($data->isNotEmpty()) {
+                foreach ($data as $dataUpdate) {
+                    Registerstudent::where('s_appl_form_num', $dataUpdate->s_appl_form_num)
+                        ->update([
+                            'syllabus_id' => $syllabus_id
+                        ]);
+                }
+                return response()->json(['status' => 'success', 'message' => 'Syllabus Tagged successfully.']);
+            } else {
+                return response()->json([
+                    'error' => true,
+                    'message' => "Syllabus Already Tagged"
+                ], 200);
+            }
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Error fetching data: ' . $e->getMessage()
+            ], 500);
+        }
+
+    }
+
+    //Subject List for elective selection
+    public function subjectList(Request $request)
+    {
+        try {
+            $session = $request->session_year;
+            $semester = $request->part_sem;
+            $institute = $request->inst_code;
+
+            $avlData = Registerstudent::select('s_appl_form_num', 'part_I_elective')
+                ->where('s_appl_sess_year', $session)
+                ->where('is_active', 1)
+                ->whereNotNull('s_appl_reg_no')
+                ->whereNotNull('syllabus_id')
+                ->where('s_part_sem', $semester)
+                ->where('s_inst_code', $institute)
+                ->get();
+            if ($avlData) {
+                $paperList = Subject::where('semester', $semester)
+                    ->where('is_active', 1)
+                    ->orderBy('subject_sn', 'asc')
+                    ->get();
+
+                $electiveList = Elective::where('elect_part_sem', $semester)
+                    ->where('elect_session_year', $session)
+                    ->where('elect_inst_code', $institute)
+                    ->get();
+                $electiveSet = false;
+                $electPapers = [];
+                $output = [];
+                if ($electiveList->count() > 0) {
+                    $electiveSet = true;
+                    $electPapers = $electiveList->pluck('elect_paper');
+                    $output = explode(',', $electPapers[0]);
+                }
+
+                return response()->json([
+                    'status' => 'success',
+                    'data' => $paperList,
+                    'electiveSet' => $electiveSet,
+                    'electPapers' => $output,
+                ]);
+            } else {
+                return response()->json([
+                    'error' => true,
+                    'message' => "No data available or Syllabus not tagged till now."
+                ], 200);
+            }
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Error fetching data: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    //Submit Elective Paper
+    public function submitElectivePaper(Request $request)
+    {
+        try {
+            $session = $request->session_year;
+            $semester = $request->part_sem;
+            $institute = $request->inst_code;
+            $electives = $request->subject_ids;
+            $is_updated = false;
+            DB::beginTransaction();
+            Registerstudent::where('s_appl_sess_year', $session)
+                ->where('s_part_sem', $semester)
+                ->where('s_inst_code', $institute)
+                ->update([
+                    'part_I_elective' => is_array($electives) ? implode(',', $electives) : $electives
+                ]);
+            Elective::updateOrCreate([
+                'elect_session_year' => $session,
+                'elect_inst_code' => $institute,
+                'elect_part_sem' => $semester,
+
+            ], [
+                'elect_paper' => is_array($electives) ? implode(',', $electives) : $electives
+            ]);
+            $is_updated = true;
+            DB::commit();
+            if ($is_updated) {
+                return response()->json(['status' => 'success', 'message' => 'Elective Paper saved successfully.']);
+            } else {
+                return response()->json(['status' => 'error', 'message' => 'Something went wrong.']);
+            }
+        } catch (\Exception $e) {
+            DB::rollback();
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Error fetching data: ' . $e->getMessage()
+            ], 500);
+        }
+
+    }
+
+    public function studentRegEligible(Request $request)
+    {
+        if ($request->header('token')) {
+            $now = date('Y-m-d H:i:s');
+            $token_check = Token::where('t_token', '=', $request->header('token'))->where('t_expired_on', '>=', $now)->first();
+            if ($token_check) {
+                $user_id = $token_check->t_user_id;
+
+                $user_data = User::select('u_id', 'u_ref', 'u_role_id', 'u_username')->where('u_id', $user_id)->first();
+
+                $role_url_access_id = DB::table('pharmacy_auth_roles_permissions')->where('rp_role_id', $user_data->u_role_id)->pluck('rp_url_id');
+                //dd($role_url_access_id);
+
+
+                if (sizeof($role_url_access_id) > 0) {
+                    $urls = DB::table('pharmacy_auth_urls')->where('url_visible', 1)->whereIn('url_id', $role_url_access_id)->get()->toArray();
+                    $url_data = array_column($urls, 'url_name');
+
+                    if (in_array('student/eligible-for-registration', $url_data)) {
+                        DB::beginTransaction();
+
+                        try {
+                            $formId = $request->form_id;
+                            //$s_inst_code = $request->inst_code;
+                            $status = $request->status;
+                            $remarks = $request->remarks;
+
+
+
+                            if ($status == 1) {
+                                $student = Registerstudent::where('s_appl_form_num', $formId)->where('is_profile_updated', 1)->first();
+                                if (!$student) {
+                                    return response()->json([
+                                        'error' => true,
+                                        'message' => 'Student not found'
+                                    ], 404);
+                                }
+                                $update_data = [];
+                                $message = '';
+                                $update_data = [
+                                    's_part1_status' => 1,
+                                    's_remarks' => 'approved'
+
+                                ];
+                                $message = 'Student ' . $formId . ' eligable for registration';
+                            } else {
+                                $update_data = [
+                                    's_part1_status' => 9,
+                                    's_remarks' => $remarks
+                                ];
+                                $message = 'Student ' . $formId . ' Not eligable for registration';
+                            }
+                            Registerstudent::where('s_appl_form_num', $formId)->update($update_data);
+
+                            DB::commit();
+
+                            auditTrail(authUserId(), "{$message}");
+                            return response()->json([
+                                'error' => false,
+                                'message' => $message,
+                            ], 200);
+                        } catch (\Exception $e) {
+                            DB::rollback();
+                            #  auditTrail(authUserId(), "{$formId} Error eligible status updating");
+                            return response()->json([
+                                'status' => 'error',
+                                'message' => 'Error eligible status updating: ' . $e->getMessage()
+                            ], 500);
+                        }
+                    } else {
+                        return response()->json([
+                            'error' => true,
+                            'message' => "Oops! you don't have sufficient permission"
+                        ], 403);
+                    }
+                } else {
+                    return response()->json([
+                        'error' => true,
+                        'message' => 'Unable to process your request due to invalid token'
+                    ], 401);
+                }
+            } else {
+                return response()->json([
+                    'error' => true,
+                    'message' => 'Unable to process your request due to non availability of token'
+                ], 401);
+            }
+        } else {
+            return response()->json([
+                'error' => true,
+                'message' => 'Unable to process your request due to non availability of token'
+            ], 401);
+        }
+    }
+
+    private function sendMail($name, $form_num, $email, $reg_no)
+    {
+        try {
+
+            Mail::to($email)->send(new StudentMail($name, $form_num, $email, $reg_no));
+            auditTrail($form_num, $reg_no . ' - Email sent! Registration number generate');
+        } catch (\Exception $e) {
+            return $e->getMessage();
+        }
+    }
+
+    public function studentRegEligibleList(Request $request)
+    {
+        try {
+            $i_code = $request->i_code;
+            $sess_year = $request->sess_year;
+
+
+            $students = $students = Registerstudent::when(!empty($i_code), function ($query) use ($i_code) {
+                return $query->where('s_inst_code', $i_code);
+            })
+
+                ->where('is_registration_payment', 1)
+                ->where('s_appl_sess_year', $sess_year)
+                ->where('is_profile_updated', 1)
+                ->where('is_active', 1)
+                ->select('s_id', 's_appl_reg_no', 's_appl_reg_year', 's_candidate_name', 's_appl_form_num', 's_inst_code', 'admission_type', 's_part1_status', 's_part2_status')
+                ->get();
+
+            if ($students->isEmpty()) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'No eligible students found or Registration IDs already generated.',
+                ], 409);
+            }
+
+            return response()->json([
+                'status' => 'success',
+                'list' => $students,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to fetch student list: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    //Registration Cancelled
+    public function registrationCancel(Request $request)
+    {
+        DB::beginTransaction();
+        try {
+            $form_no = $request->form_no;
+            $reg_no = $request->reg_no;
+            $remarks = $request->remarks;
+
+            $student = Registerstudent::where('s_appl_form_num', $form_no)
+                ->where('s_appl_reg_no', $reg_no)
+                ->where('is_active', 1)->first();
+            if (!$student) {
+                return response()->json([
+                    'error' => true,
+                    'message' => 'Student not found'
+                ], 404);
+            }
+            $update_data = [];
+            $message = '';
+            $update_data = [
+                's_part1_status' => 9,
+                's_registration_cancel' => 1,
+                's_reg_cancel_reason' => $remarks
+
+            ];
+            $message = 'Student Form no. ' . $form_no . ' registration is cancelled';
+
+            Registerstudent::where('s_appl_form_num', $form_no)
+                ->where('s_appl_reg_no', $reg_no)->update($update_data);
+
+            DB::commit();
+
+            auditTrail(authUserId(), "{$message}");
+            return response()->json([
+                'error' => false,
+                'message' => $message,
+            ], 200);
+        } catch (\Exception $e) {
+            DB::rollback();
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Error eligible status updating: ' . $e->getMessage()
+            ], 500);
+        }
+
+    }
+
+    public function regReportList(Request $request)
+    {
+        try {
+            $inst_code = $request->inst_code;
+            $sess_yr = $request->sess_yr;
+
+            $students = DB::table('pharmacy_register_student_final')
+                ->select([
+                    's_appl_reg_no',
+                    DB::raw("CONCAT(
+                        COALESCE(s_first_name, ''), 
+                        ' ', 
+                        COALESCE(s_middle_name, ''), 
+                        ' ', 
+                        COALESCE(s_last_name, '')
+                    ) as full_name"),
+                    's_father_name'
+                ])
+                ->where('s_inst_code', $inst_code)
+                ->where('s_appl_sess_year', $sess_yr)
+                ->whereNotNull('s_appl_reg_no')
+                ->get();
+
+            return response()->json([
+                'status' => 'success',
+                'count' => $students->count(),
+                'regList' => $students,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Error fetching student list: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function regReportDownload(Request $request)
+    {
+        try {
+            $inst_code = $request->inst_code;
+            $sess_yr = $request->sess_yr;
+
+            $students = DB::table('pharmacy_register_student_final')
+                ->select([
+                    's_appl_reg_no',
+                    DB::raw("CONCAT(
+                        COALESCE(s_first_name, ''), 
+                        ' ', 
+                        COALESCE(s_middle_name, ''), 
+                        ' ', 
+                        COALESCE(s_last_name, '')
+                    ) as full_name"),
+                    's_father_name'
+                ])
+                ->where('s_inst_code', $inst_code)
+                ->where('s_appl_sess_year', $sess_yr)
+                ->whereNotNull('s_appl_reg_no')
+                ->get();
+            $institute = Institute::where('i_code', $inst_code)
+                ->select('i_code','i_name')
+                ->first();
+
+
+            $pdf = PDF::loadView('registration-list', ['count' => $students->count(), 
+                            'students' => $students,'sess_yr'=>$sess_yr,'institute'=>$institute])
+                            ->setPaper('a4', 'portrait');
+
+            $fileName = 'PHARM-REG_LIST-' . $inst_code . '-' . time() . '.pdf';
+            return $pdf->stream($fileName);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Error fetching student list: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+
+}
