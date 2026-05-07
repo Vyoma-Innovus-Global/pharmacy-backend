@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admit Card</title>
+    <style>
+        body {
+            background-image: url("assets/logo_bg.png");
+            background-position: center;
+            background-repeat: no-repeat;
+            background-size: 35%;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding:0;
+        }
+        td {
+            font-size: 14px;
+        }
+
+        .left {
+            float: left;
+            margin-right: 20px;
+            margin-left: 15px;
+        }
+
+        .right {
+            float: right;
+        }
+
+        .header {
+            text-align: center;
+          
+        }
+
+        .main-section {
+            
+            position: relative;
+            text-align: left;
+           font-style: italic;
+            /* margin-top: 20px;  */
+        }
+
+        .logo-container img {
+            width: 70px;
+            height: auto;
+            display: block;
+            margin-left: 20px;
+        }
+
+        /* .test td{
+             border: 1px solid black;
+        } */
+        .center-horizontally {
+            margin-left: auto;
+            margin-right: auto;
+            text-align: center;
+        }
+
+        .center-both {
+            display: flex;
+            justify-content: center;
+            /* Center horizontally */
+            align-items: center;
+            /* Center vertically */
+            height: 100vh;
+            /* Full height of the viewport */
+        }
+
+        .rectangle {
+            width: 150px;
+            height: 150px;
+
+            background-color: white;
+            border: 2px solid black;
+            margin-left: 17px;
+            margin-top: 20px;
+        }
+         .rectangle-image {
+            width: 120px;
+            height: 150px;
+            margin-right: 10px;
+            border: 1px solid #ccc;
+        }
+
+        .rectangle1 {
+            width: 180px;
+            height: 50px;
+            position: center;
+            background-color: white;
+            border: 2px solid black;
+            margin-right: 10px;
+            display: inline-block;
+            margin-top: 20px;
+        }
+        .underline {
+            display: inline-block;
+            border-bottom: 1px solid #000;
+            width: 200px; /* Adjust the underline length */
+            height: 18px;
+            vertical-align: bottom;
+        }
+        .underline large{
+             display: inline-block;
+            border-bottom: 1px solid #000;
+            width: 500px; /* Adjust the underline length */
+            height: 18px;
+            vertical-align: bottom;
+
+        }
+        
+        .header {
+            page-break-before: always;
+        }
+
+        .main-section, .footer {
+            page-break-inside: avoid;
+        }
+        </style>
+</head>
+
+<body>
+    @foreach($student as $data)
+    <div class="header" style="position:relative;">
+        <div class="logo-container"style="position:absolute; margin-top:5px; margin-left:15px;">
+            <img src="{{ public_path('images/logo.png') }}" alt="Left Logo">
+        </div>
+        <div class="header-text" style="text-align: left;margin-right: 40px;">
+            <p style="line-height:1;margin:10.13px 130.27px 0px 128.93px;text-align:center;">
+                <span style="color:black;font-family:Arial, sans-serif;font-size:14px;">
+                    <span style="font-stretch:115%;">
+                        <strong>WEST BENGAL STATE COUNCIL OF TECHNICAL & VOCATIONAL EDUCATION AND SKILL
+                            DEVELOPMENT</strong>
+                    </span>
+                </span>
+            </p>
+             <div class="right">
+                <div class="image-sign">
+                    <div class="rectangle-image">
+                        @if(!empty($data['st_profile_img']))
+                            <img src="{{ public_path('storage/' . $data['st_profile_img']) }}"style="width: 150px; height: 150px; object-fit: cover;">
+                        @endif
+                    </div>
+                </div>
+            </div>
+            
+
+          
+            <p style="line-height: 1.4; margin: 0 130px 4px 130px; text-align: left;">
+                <span style="font-size: 13px; font-weight: bold;">
+                    (Formerly WEST BENGAL STATE COUNCIL OF TECHNICAL EDUCATION)
+                </span>
+            </p>
+        
+            <p style="line-height: 1.4; margin: 0 130px; text-align: left;">
+                <span style="font-size: 12px;font-weight: bold;">
+                    "Karigari Bhavan", 4th Floor, Plot No. B/7, Action Area-III, Newtown, Rajarhat, Kolkata-700160
+                </span>
+            </p>
+
+            
+        </div>
+        <div>
+          <h2 style="text-align:center; letter-spacing: 10px;">ADMIT</h2>
+
+        </div>
+    </div>  
+
+    <div class="main-section"> 
+            <div>
+                <span class="label">Roll</span>
+                <span class="underline"><b>{{$data['st_roll']}} </b></span>
+                <span class="label">Number</span>
+                <span class="underline"><b>{{$data['st_admit_num']}}</b></span>
+                <span class="label">Part/Semester</span>
+                <span class="underline"><b>{{ $data['st_part_sem'] }}</b></span>
+
+            </div>
+            <div style="margin-top: 10px;">
+                <span class="label">Branch/Trade</span>
+                <span class="underline"style="width: 905px;"><b>{{ $data['st_course'] }}</b></span>
+               
+
+            </div>
+            <div style="margin-top: 10px;">
+                <span class="label">Name of the Student</span>
+                <span class="underline"style="width: 850px;"><b>{{ $data['st_full_name'] }}</b></span>
+                
+
+            </div>
+            <div style="margin-top: 10px;">
+                <span class="label">Father's/Mother's Name</span>
+                <span class="underline"style="width: 830px;"> <b>{{ $data['st_gur_name'] }}</b> </span>
+                
+
+            </div>
+            <div style="margin-top: 10px;">
+                <span class="label">Institute From where appearing</span>
+                <span class="underline"style="width: 780px;"><b>{{ $data['st_institute_name'] }}</b></span>
+            </div>
+            <div style="margin-top: 10px;">
+                <span class="label">Examination Center </span>
+                <span class="underline"style="width: 780px;"><b>{{ $data['st_exm_center'] }}</b></span>
+            </div>
+            <div style="margin-top: 10px;">
+                <span class="label">Month of Examination</span>
+                <span class="underline"><b>{{ $data['exam_month'] }}</b></span>
+                <span class="label">Year of Examination</span>
+                <span class="underline" style="width: 480px;"><b>{{ $data['st_exm_yr'] }}</b></span>
+                
+                
+
+            </div>
+        </div>
+         <div>
+            <p style="text-decoration: underline;font-style:italic;">Examination schedule </p>
+            <table width="100%" cellpadding="0" cellspacing="0" border="1">
+            <thead>
+                <tr>
+                    <th>Sl.</th>
+                    <th>Date</th>
+                    <th>Subject</th>
+                    <th>Time</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach ($data['st_exam_schedule'] as $index => $item)
+                <tr style="text-align:center;">
+                    <td>{{ $index + 1 }}</td>
+                    <td>{{ $item['exam_date'] }}</td>
+                    <td>{{ $item['exam_subj'] }}</td>
+                    <td>{{ $item['exam_time'] }}</td>
+                </tr>
+                @endforeach
+            </tbody>
+        </table>
+
+        </div>
+        <div class="footer" style="margin-top: 60px;">
+            <div>
+                <span style="font-style:italic;">Date of Download: </span>
+                <span class="underline"> {{ now()->format('d-m-Y') }}</span>
+                <span class="right"style="font-size:16px;">Senior Administrative officer
+                    <span style="display: block;text-align:center;">(Examination)</span>
+                </span>
+                
+            </div>
+        </div> 
+    </div>
+        @endforeach
+</body>
+
+</html>
