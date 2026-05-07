@@ -25,10 +25,10 @@ class EvaluatorController extends Controller
         try {
             $part_sem = $request->part_sem;
             $data = DB::table('pharmacy_subjects_master')
-            ->where('semester', $part_sem)
-            ->where('subject_type', 'Theoretical')
-            ->where('type', 'Main')
-            ->select('general_code', 'subject_name')->get();
+                ->where('semester', $part_sem)
+                ->where('subject_type', 'Theoretical')
+                ->where('type', 'Main')
+                ->select('general_code', 'subject_name')->get();
             return response()->json([
                 'error' => false,
                 'subjectList' => $data
@@ -59,9 +59,9 @@ class EvaluatorController extends Controller
     {
         try {
             $exam_year = $request->exam_year;
-            $part_sem  = $request->part_sem;
-            $ev_id     = $request->ev_id;
-            $subject_type = $request->subject_type; 
+            $part_sem = $request->part_sem;
+            $ev_id = $request->ev_id;
+            $subject_type = $request->subject_type;
             $subject_data = DB::table('pharmacy_evaluator_allocations as pea')
                 ->join(
                     'pharmacy_subjects_master as psm',
@@ -84,12 +84,12 @@ class EvaluatorController extends Controller
 
             return response()->json([
                 'status' => 'success',
-                'subjectList'   => $subject_data,
+                'subjectList' => $subject_data,
             ], 200);
 
         } catch (\Exception $e) {
             return response()->json([
-                'status'  => 'error',
+                'status' => 'error',
                 'message' => 'Failed to fetch subject list: ' . $e->getMessage(),
             ], 500);
         }
@@ -99,31 +99,31 @@ class EvaluatorController extends Controller
     {
         try {
             $exam_year = $request->exam_year;
-            $part_sem  = $request->part_sem;
-            $ev_id     = $request->ev_id;
-            $subject_code = $request->subject; 
+            $part_sem = $request->part_sem;
+            $ev_id = $request->ev_id;
+            $subject_code = $request->subject;
             $ins_data = DB::table('pharmacy_evaluator_allocations as pea')
-                        ->join('institute_master as im', 'pea.inst_code', '=', 'im.i_code')
-                        ->where('pea.part_sem', $part_sem)
-                        ->where('pea.exam_year', $exam_year)
-                        ->where('pea.examiner_id', $ev_id)
-                        ->where('pea.subject_code', $subject_code)
-                        ->select(
-                            'pea.inst_code as institute_code',
-                            'im.i_name as institute_name'
-                        )
-                        ->distinct()
-                        ->orderBy('pea.inst_code')
-                        ->get();
+                ->join('institute_master as im', 'pea.inst_code', '=', 'im.i_code')
+                ->where('pea.part_sem', $part_sem)
+                ->where('pea.exam_year', $exam_year)
+                ->where('pea.examiner_id', $ev_id)
+                ->where('pea.subject_code', $subject_code)
+                ->select(
+                    'pea.inst_code as institute_code',
+                    'im.i_name as institute_name'
+                )
+                ->distinct()
+                ->orderBy('pea.inst_code')
+                ->get();
 
             return response()->json([
                 'status' => 'success',
-                'data'   => $ins_data,
+                'data' => $ins_data,
             ], 200);
 
         } catch (\Exception $e) {
             return response()->json([
-                'status'  => 'error',
+                'status' => 'error',
                 'message' => 'Failed to fetch subject list: ' . $e->getMessage(),
             ], 500);
         }
@@ -134,7 +134,7 @@ class EvaluatorController extends Controller
         DB::beginTransaction();
         try {
             $data = $request->all();
-            $data['subject_part_I']  = isset($data['subject_part_I']) && is_array($data['subject_part_I'])
+            $data['subject_part_I'] = isset($data['subject_part_I']) && is_array($data['subject_part_I'])
                 ? implode(',', $data['subject_part_I']) : null;
             $data['subject_part_II'] = isset($data['subject_part_II']) && is_array($data['subject_part_II'])
                 ? implode(',', $data['subject_part_II']) : null;
@@ -145,14 +145,14 @@ class EvaluatorController extends Controller
             $updated_flag = false;
             if (!empty($data['id'])) {
                 $updateData = $request->only([
-                                'account_no',
-                                'pan',
-                                'bank_name',
-                                'branch_name',
-                                'ifsc_code',
-                                'email',
-                                'is_details_updated'
-                            ]);
+                    'account_no',
+                    'pan',
+                    'bank_name',
+                    'branch_name',
+                    'ifsc_code',
+                    'email',
+                    'is_details_updated'
+                ]);
                 $updated = DB::table('pharmacy_evaluator')
                     ->where('id', $data['id'])
                     ->where('ev_id', $data['ev_id'])
@@ -162,8 +162,7 @@ class EvaluatorController extends Controller
                 }
                 $message = 'Evaluator data updated successfully';
                 $updated_flag = true;
-            } 
-            else {
+            } else {
 
                 $maxEvId = DB::table('pharmacy_evaluator')->max('ev_id');
                 $data['ev_id'] = $maxEvId ? $maxEvId + 1 : 100001;
@@ -192,113 +191,113 @@ class EvaluatorController extends Controller
     //Allocation Submit
     public function allocationSubmit(Request $request)
     {
+        $validated = Validator::make($request->all(), [
+            'id' => ['nullable'],
+            'exam_year' => ['required'],
+            'cdc_code' => ['required'],
+            'subject_code' => ['required'],
+            'inst_code' => ['required'],
+            'part_sem' => ['required'],
+
+            'old_examiner_id' => ['nullable'],
+            // 'old_head_examiner_id' => ['nullable'],
+            // 'old_scrutinizer_id' => ['nullable'],
+
+            'new_examiner_id' => ['required'],
+            // 'new_head_examiner_id' => ['required'],
+            // 'new_scrutinizer_id' => ['required'],
+        ], [
+            'new_examiner_id.required' => 'Examiner not selected',
+            // 'new_head_examiner_id.required' => 'Head Examiner not selected',
+            // 'new_scrutinizer_id.required' => 'Scrutinizer not selected',
+        ]);
+
+        if ($request->id) {
             $validated = Validator::make($request->all(), [
-                'id' => ['nullable'],
-                'exam_year' => ['required'],
-                'cdc_code' => ['required'],
-                'subject_code' => ['required'],
-                'inst_code' => ['required'],
-                'part_sem' => ['required'],
-
-                'old_examiner_id' => ['nullable'],
-                // 'old_head_examiner_id' => ['nullable'],
-                // 'old_scrutinizer_id' => ['nullable'],
-
-                'new_examiner_id' => ['required'],
-                // 'new_head_examiner_id' => ['required'],
-                // 'new_scrutinizer_id' => ['required'],
+                'old_examiner_id' => ['required'],
+                // 'old_head_examiner_id' => ['required'],
+                // 'old_scrutinizer_id' => ['required'],
             ], [
-                'new_examiner_id.required' => 'Examiner not selected',
-                // 'new_head_examiner_id.required' => 'Head Examiner not selected',
-                // 'new_scrutinizer_id.required' => 'Scrutinizer not selected',
+                'old_examiner_id.required' => 'Old Examiner not selected',
+                // 'old_head_examiner_id.required' => 'Old Head Examiner not selected',
+                // 'old_scrutinizer_id.required' => 'Old Scrutinizer not selected',
             ]);
+        }
 
-            if ($request->id) {
-                $validated = Validator::make($request->all(), [
-                    'old_examiner_id' => ['required'],
-                    // 'old_head_examiner_id' => ['required'],
-                    // 'old_scrutinizer_id' => ['required'],
-                ], [
-                    'old_examiner_id.required' => 'Old Examiner not selected',
-                    // 'old_head_examiner_id.required' => 'Old Head Examiner not selected',
-                    // 'old_scrutinizer_id.required' => 'Old Scrutinizer not selected',
-                ]);
-            }
+        if ($validated->fails()) {
+            return response()->json([
+                'error' => true,
+                'message' => $validated->errors()->first(),
+            ], 422);
+        }
 
-            if ($validated->fails()) {
-                return response()->json([
-                    'error' => true,
-                    'message' => $validated->errors()->first(),
-                ], 422);
-            }
+        $id = $request->id;
+        $exam_year = $request->exam_year;
+        $cdc_code = $request->cdc_code;
+        $subject_code = $request->subject_code;
+        $inst_code = $request->inst_code;
+        $inst_code_list = is_array($inst_code) ? $inst_code : [$inst_code];
+        $part_sem = $request->part_sem;
 
-            $id = $request->id;
-            $exam_year = $request->exam_year;
-            $cdc_code = $request->cdc_code;
-            $subject_code = $request->subject_code;
-            $inst_code = $request->inst_code;
-            $inst_code_list = is_array($inst_code) ? $inst_code : [$inst_code];
-            $part_sem = $request->part_sem;
+        $old_examiner_id = $request->old_examiner_id;
+        $old_head_examiner_id = $request->old_head_examiner_id;
+        $old_scrutinizer_id = $request->old_scrutinizer_id;
 
-            $old_examiner_id = $request->old_examiner_id;
-            $old_head_examiner_id = $request->old_head_examiner_id;
-            $old_scrutinizer_id = $request->old_scrutinizer_id;
+        $new_examiner_id = $request->new_examiner_id;
+        $new_head_examiner_id = $request->new_head_examiner_id;
+        $new_scrutinizer_id = $request->new_scrutinizer_id;
 
-            $new_examiner_id = $request->new_examiner_id;
-            $new_head_examiner_id = $request->new_head_examiner_id;
-            $new_scrutinizer_id = $request->new_scrutinizer_id;
+        try {
+            DB::beginTransaction();
 
-            try {
-                DB::beginTransaction();
+            // other data
+            $evaluators = [
+                'EXAMINER' => [
+                    'old_id' => $old_examiner_id,
+                    'new_id' => $new_examiner_id,
+                ],
+                'HEAD_EXAMINER' => [
+                    'old_id' => $old_head_examiner_id,
+                    'new_id' => $new_head_examiner_id,
+                ],
+                'SCRUTINIZER' => [
+                    'old_id' => $old_scrutinizer_id,
+                    'new_id' => $new_scrutinizer_id,
+                ]
+            ];
 
-                // other data
-                $evaluators = [
-                    'EXAMINER' => [
-                        'old_id' => $old_examiner_id,
-                        'new_id' => $new_examiner_id,
+            // create or update allocation
+            foreach ($inst_code_list as $code) {
+                EvaluatorAllocation::updateOrCreate(
+                    [
+                        'exam_year' => $exam_year,
+                        'cdc_code' => $cdc_code,
+                        'subject_code' => $subject_code,
+                        'inst_code' => $code,      // Insert one row per inst_code
+                        'part_sem' => $part_sem,
                     ],
-                    'HEAD_EXAMINER' => [
-                        'old_id' => $old_head_examiner_id,
-                        'new_id' => $new_head_examiner_id,
-                    ],
-                    'SCRUTINIZER' => [
-                        'old_id' => $old_scrutinizer_id,
-                        'new_id' => $new_scrutinizer_id,
+                    [
+                        'examiner_id' => $new_examiner_id,
+                        'head_examiner_id' => $new_head_examiner_id,
+                        'scrutinizer_id' => $new_scrutinizer_id,
                     ]
-                ];
-
-                // create or update allocation
-                foreach ($inst_code_list as $code) {
-                    EvaluatorAllocation::updateOrCreate(
-                        [
-                            'exam_year'    => $exam_year,
-                            'cdc_code'     => $cdc_code,
-                            'subject_code' => $subject_code,
-                            'inst_code'    => $code,      // Insert one row per inst_code
-                            'part_sem'     => $part_sem,
-                        ],
-                        [
-                            'examiner_id'       => $new_examiner_id,
-                            'head_examiner_id'  => $new_head_examiner_id,
-                            'scrutinizer_id'    => $new_scrutinizer_id,
-                        ]
-                    );
-                }
-
-                DB::commit();
-
-                return response()->json([
-                    'error' => false,
-                    'message' => 'Allocated Successfully'
-                ], 200);
-            } catch (Exception $e) {
-                DB::rollback();
-                return response()->json([
-                    'error'     =>  true,
-                    'message'   =>  $e->getMessage()
-                ], 400);
+                );
             }
-        
+
+            DB::commit();
+
+            return response()->json([
+                'error' => false,
+                'message' => 'Allocated Successfully'
+            ], 200);
+        } catch (Exception $e) {
+            DB::rollback();
+            return response()->json([
+                'error' => true,
+                'message' => $e->getMessage()
+            ], 400);
+        }
+
     }
 
     //Download PDF
@@ -324,35 +323,35 @@ class EvaluatorController extends Controller
             'is_active' => 1,
             'ev_id' => $evaluator_id,
         ])->with([
-            'examinerAllocation' => function ($query) use ($subject_code, $exam_year, $inst_code) {
-                $query->where([
-                    'subject_code' => $subject_code,
-                    'exam_year' => $exam_year,
-                    'inst_code' => $inst_code,
-                ]);
-            },
-            'headExaminerAllocation' => function ($query) use ($subject_code, $exam_year, $inst_code) {
-                $query->where([
-                    'subject_code' => $subject_code,
-                    'exam_year' => $exam_year,
-                    'inst_code' => $inst_code,
-                ]);
-            },
-            'scrutinizerAllocation' => function ($query) use ($subject_code, $exam_year, $inst_code) {
-                $query->where([
-                    'subject_code' => $subject_code,
-                    'inst_code' => $inst_code,
-                    'exam_year' => $exam_year,
-                ]);
-            },
-            'credential' => function ($query) use ($subject_code, $exam_year, $inst_code) {
-                $query->where([
-                    'subject_code' => $subject_code,
-                    'exam_year' => $exam_year,
-                    'inst_code' => $inst_code,
-                ]);
-            },
-        ])->first();
+                    'examinerAllocation' => function ($query) use ($subject_code, $exam_year, $inst_code) {
+                        $query->where([
+                            'subject_code' => $subject_code,
+                            'exam_year' => $exam_year,
+                            'inst_code' => $inst_code,
+                        ]);
+                    },
+                    'headExaminerAllocation' => function ($query) use ($subject_code, $exam_year, $inst_code) {
+                        $query->where([
+                            'subject_code' => $subject_code,
+                            'exam_year' => $exam_year,
+                            'inst_code' => $inst_code,
+                        ]);
+                    },
+                    'scrutinizerAllocation' => function ($query) use ($subject_code, $exam_year, $inst_code) {
+                        $query->where([
+                            'subject_code' => $subject_code,
+                            'inst_code' => $inst_code,
+                            'exam_year' => $exam_year,
+                        ]);
+                    },
+                    'credential' => function ($query) use ($subject_code, $exam_year, $inst_code) {
+                        $query->where([
+                            'subject_code' => $subject_code,
+                            'exam_year' => $exam_year,
+                            'inst_code' => $inst_code,
+                        ]);
+                    },
+                ])->first();
         if ($data) {
             try {
                 //$current_session = "2024-2025";
@@ -554,7 +553,7 @@ class EvaluatorController extends Controller
                 'account_no' => $evaluator_data->account_no,
                 'bank_name' => $evaluator_data->bank_name,
                 'branch_name' => $evaluator_data->branch_name,
-                'is_details_updated' => (bool)$evaluator_data->is_details_updated,
+                'is_details_updated' => (bool) $evaluator_data->is_details_updated,
                 'ifsc_code' => $evaluator_data->ifsc_code
             ];
             return response()->json([
@@ -575,19 +574,19 @@ class EvaluatorController extends Controller
         try {
             $id = (int) $request->id;
             $evaluator = DB::table('pharmacy_evaluator as pe')
-                        ->leftJoin('institute_master as im', function ($join) {
-                            $join->on(
-                                DB::raw("im.i_code::text = ANY (string_to_array(pe.institute, ','))"),
-                                DB::raw('true')
-                            );
-                        })
-                        ->select(
-                            'pe.*',
-                            DB::raw("STRING_AGG(im.i_name, ', ' ORDER BY im.i_name) as institute")
-                        )
-                        ->where('pe.ev_id', $id)
-                        ->groupBy('pe.id')
-                        ->first();
+                ->leftJoin('institute_master as im', function ($join) {
+                    $join->on(
+                        DB::raw("im.i_code::text = ANY (string_to_array(pe.institute, ','))"),
+                        DB::raw('true')
+                    );
+                })
+                ->select(
+                    'pe.*',
+                    DB::raw("STRING_AGG(im.i_name, ', ' ORDER BY im.i_name) as institute")
+                )
+                ->where('pe.ev_id', $id)
+                ->groupBy('pe.id')
+                ->first();
 
             if (!$evaluator) {
                 return response()->json([
@@ -596,13 +595,13 @@ class EvaluatorController extends Controller
                 ], 404);
             }
             $allocations = DB::table('pharmacy_evaluator_allocations as pea')
-                        ->join('institute_master as im', 'im.i_code', '=', 'pea.inst_code')
-                        ->select(
-                            'pea.*',
-                            'im.i_name'
-                        )
-                        ->where('pea.examiner_id', $id)
-                        ->get();
+                ->join('institute_master as im', 'im.i_code', '=', 'pea.inst_code')
+                ->select(
+                    'pea.*',
+                    'im.i_name'
+                )
+                ->where('pea.examiner_id', $id)
+                ->get();
 
 
             $inst_codes = $allocations->pluck('inst_code')->toArray();
@@ -615,34 +614,34 @@ class EvaluatorController extends Controller
             $subject_code_string = implode(',', $subject_codes);
 
             $result = [
-                'id'               => $evaluator->ev_id,
-                'name'             => $evaluator->name,
-                'phone'            => $evaluator->phone,
-                'email'            => $evaluator->email,
-                'pan'              => $evaluator->pan,
-                'aadhaar'          => $evaluator->aadhaar,
-                'designation'      => $evaluator->designation,
-                'qualification'    => $evaluator->qualification,
-                'experiance_yr'    => $evaluator->experiance_yr,
+                'id' => $evaluator->ev_id,
+                'name' => $evaluator->name,
+                'phone' => $evaluator->phone,
+                'email' => $evaluator->email,
+                'pan' => $evaluator->pan,
+                'aadhaar' => $evaluator->aadhaar,
+                'designation' => $evaluator->designation,
+                'qualification' => $evaluator->qualification,
+                'experiance_yr' => $evaluator->experiance_yr,
                 'designation_type' => $evaluator->designation_type,
-                'institute'        => explode(",", $evaluator->institute),
-                'allocated_inst_code' => $inst_codes, 
-                'allocated_inst_name' => $inst_names, 
-                'allocated_subj_code' => $subject_codes, 
+                'institute' => explode(",", $evaluator->institute),
+                'allocated_inst_code' => $inst_codes,
+                'allocated_inst_name' => $inst_names,
+                'allocated_subj_code' => $subject_codes,
                 'allocated_inst_code_string' => $inst_code_string,
                 'allocated_subj_code_string' => $subject_code_string,
-                'role_type'        => explode(",", $evaluator->role_type),
-                'evaluator_yr'     => $evaluator->evaluator_yr,
-                'account_no'       => $evaluator->account_no,
-                'bank_name'        => $evaluator->bank_name,
-                'branch_name'      => $evaluator->branch_name,
-                'is_details_updated' => (bool)$evaluator->is_details_updated,
-                'ifsc_code'        => $evaluator->ifsc_code
+                'role_type' => explode(",", $evaluator->role_type),
+                'evaluator_yr' => $evaluator->evaluator_yr,
+                'account_no' => $evaluator->account_no,
+                'bank_name' => $evaluator->bank_name,
+                'branch_name' => $evaluator->branch_name,
+                'is_details_updated' => (bool) $evaluator->is_details_updated,
+                'ifsc_code' => $evaluator->ifsc_code
             ];
 
             return response()->json([
                 'error' => false,
-                'data'  => $result
+                'data' => $result
             ]);
 
         } catch (Exception $e) {
@@ -684,74 +683,73 @@ class EvaluatorController extends Controller
         }
     }
     public function alocationSubjectList(Request $request)
-{
-    try {
-        // Convert inst_code input to array
-        $inst_code = $request->inst_code;
-        $inst_code_list = is_array($inst_code) ? $inst_code : explode(',', $inst_code);
-        $inst_code_list = array_map('trim', $inst_code_list);
+    {
+        try {
+            // Convert inst_code input to array
+            $inst_code = $request->inst_code;
+            $inst_code_list = is_array($inst_code) ? $inst_code : explode(',', $inst_code);
+            $inst_code_list = array_map('trim', $inst_code_list);
 
-        $part_sem = $request->part_sem;
-        $exam_year = $request->exam_year;
-        $get_id = $request->id ? $request->id : '';
+            $part_sem = $request->part_sem;
+            $exam_year = $request->exam_year;
+            $get_id = $request->id ? $request->id : '';
 
-        // Fetch all subjects
-        $subject_data = DB::table("pharmacy_subjects_master")
-            ->where('semester', $part_sem)
-            ->where('subject_type', 'Theoretical')
-            ->where('type', 'Main')
-            ->where('is_active', 1)
-            ->pluck('subject_name', 'general_code')
-            ->toArray();
+            // Fetch all subjects
+            $subject_data = DB::table("pharmacy_subjects_master")
+                ->where('semester', $part_sem)
+                ->where('subject_type', 'Theoretical')
+                ->where('type', 'Main')
+                ->where('is_active', 1)
+                ->pluck('subject_name', 'general_code')
+                ->toArray();
 
-        // Find which institutes exist in allocation table
-        $found_institutes = DB::table('pharmacy_evaluator_allocations')
-            ->where('exam_year', $exam_year)
-            ->where('part_sem', $part_sem)
-            ->whereIn('inst_code', $inst_code_list)
-            ->distinct()
-            ->pluck('inst_code')
-            ->toArray();
-
-        // If any institute NOT found ? return all subjects
-        if (count($found_institutes) !== count($inst_code_list)) {
-            $subject_codes = array_keys($subject_data);
-        } else {
-            // If all institutes exist ? exclude allocated subjects
-            $allocated_subjects = DB::table('pharmacy_evaluator_allocations')
+            // Find which institutes exist in allocation table
+            $found_institutes = DB::table('pharmacy_evaluator_allocations')
                 ->where('exam_year', $exam_year)
                 ->where('part_sem', $part_sem)
                 ->whereIn('inst_code', $inst_code_list)
-                ->pluck('subject_code')
-                ->map(fn($v) => (int)$v)
-                ->unique()
+                ->distinct()
+                ->pluck('inst_code')
                 ->toArray();
-        if($get_id){
-                $subject_codes = array_keys($subject_data);
-            }
-            else{
-                $subject_codes = array_diff(array_keys($subject_data), $allocated_subjects);
-            }
-            
-        }
 
-        //  Format the final array
-        $result = [];
-        foreach ($subject_codes as $code) {
-            $result[] = [
-                'subject_code' => (int)$code,
-                'subject_name' => $subject_data[$code] ?? null
+            // If any institute NOT found ? return all subjects
+            if (count($found_institutes) !== count($inst_code_list)) {
+                $subject_codes = array_keys($subject_data);
+            } else {
+                // If all institutes exist ? exclude allocated subjects
+                $allocated_subjects = DB::table('pharmacy_evaluator_allocations')
+                    ->where('exam_year', $exam_year)
+                    ->where('part_sem', $part_sem)
+                    ->whereIn('inst_code', $inst_code_list)
+                    ->pluck('subject_code')
+                    ->map(fn($v) => (int) $v)
+                    ->unique()
+                    ->toArray();
+                if ($get_id) {
+                    $subject_codes = array_keys($subject_data);
+                } else {
+                    $subject_codes = array_diff(array_keys($subject_data), $allocated_subjects);
+                }
+
+            }
+
+            //  Format the final array
+            $result = [];
+            foreach ($subject_codes as $code) {
+                $result[] = [
+                    'subject_code' => (int) $code,
+                    'subject_name' => $subject_data[$code] ?? null
+                ];
+            }
+
+            return $result; // Plain array of objects as requested
+
+        } catch (\Exception $e) {
+            return [
+                'error' => true,
+                'message' => $e->getMessage()
             ];
         }
-
-        return $result; // Plain array of objects as requested
-
-    } catch (\Exception $e) {
-        return [
-            'error' => true,
-            'message' => $e->getMessage()
-        ];
-    }
     }
 
 
@@ -764,17 +762,17 @@ class EvaluatorController extends Controller
             $inst_code = $request->inst_code;
             $inst_code_list = is_array($inst_code) ? $inst_code : [$inst_code];
 
-            $exam_year  = $request->exam_year;
-            $part_sem   = $request->part_sem;
+            $exam_year = $request->exam_year;
+            $part_sem = $request->part_sem;
             $subject_code = (int) $request->subject_code;
 
             $subject_column = ($part_sem === 'Part_I') ? 'subject_part_I' : 'subject_part_II';
 
             // Define roles
             $roles = [
-                'scrutinizer'    => 'scrutinizers',
-                'head_examiner'  => 'head_examiners',
-                'examiner'       => 'examiners'
+                'scrutinizer' => 'scrutinizers',
+                'head_examiner' => 'head_examiners',
+                'examiner' => 'examiners'
             ];
 
             // Start query
@@ -788,7 +786,7 @@ class EvaluatorController extends Controller
                         }
                     }
                 })
-                ->select('ev_id', 'name', 'role_type','phone')
+                ->select('ev_id', 'name', 'role_type', 'phone')
                 ->get();
 
             // Prepare result grouped by role
@@ -800,7 +798,7 @@ class EvaluatorController extends Controller
                     return in_array($single, $roleTypes);
                 })->map(function ($item) {
                     return [
-                        'id'   => $item->ev_id,
+                        'id' => $item->ev_id,
                         'name' => $item->name,
                         'role_type' => $item->role_type,
                         'phone' => $item->phone,
@@ -810,19 +808,18 @@ class EvaluatorController extends Controller
 
             return response()->json([
                 'error' => false,
-                'list'  => $result
+                'list' => $result
             ], 200);
 
         } catch (\Exception $e) {
 
             return response()->json([
-                'error'   => true,
+                'error' => true,
                 'message' => $e->getMessage()
             ], 400);
         }
     }
 
-    
     public function evaluatorAllocationCDCList(Request $request)
     {
         try {
@@ -911,6 +908,7 @@ class EvaluatorController extends Controller
 
     public function allocationList(Request $request)
     {
+        set_time_limit(0); // Set time limit to infinity to prevent timeout error
         try {
 
             $exam_year = $request->exam_year;
@@ -965,7 +963,6 @@ class EvaluatorController extends Controller
             ], 200);
 
         } catch (Exception $e) {
-            DB::rollback();
             return response()->json([
                 'error' => true,
                 'message' => $e->getMessage()
@@ -1013,7 +1010,7 @@ class EvaluatorController extends Controller
                 ->where('evaluator_yr', $exam_year)
                 ->whereRaw('institute NOT LIKE ?', ['%' . $inst_code . '%'])
                 ->where($subject_column, "like", "%" . $subject_code . "%")
-                ->select('ev_id', 'name', 'role_type','phone')
+                ->select('ev_id', 'name', 'role_type', 'phone')
                 ->get();
 
             $result = [];

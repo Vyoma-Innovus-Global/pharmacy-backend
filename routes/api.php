@@ -31,7 +31,7 @@ Route::post('/registration-report-download', [StudentController::class, 'regRepo
 Route::get('/download-reg-report-zip', [StudentController::class, 'downloadRegReportZip']);
 Route::get('/download-reg-zip', [StudentController::class, 'downloadRegZip']);
 Route::prefix('student')->middleware('authenticate')->group(function () {
-    // Route::post('/student-info-update', [StudentController::class, 'studentInfoUpdate']);
+    Route::post('/student-info-update', [StudentController::class, 'studentInfoUpdate']);
     Route::get('/download-form/{from_num}', [StudentController::class, 'downloadForm'])->withoutMiddleware('authenticate');
     Route::get('/student-details/{from_num}', [StudentController::class, 'studentdetails']);
 
@@ -41,7 +41,7 @@ Route::prefix('student')->middleware('authenticate')->group(function () {
     Route::post('/branch-add', [MasterController::class, 'branchAdd']);
 
     Route::post('/eligible-for-registration-list', [StudentController::class, 'studentRegEligibleList']);
-    //Route::post('/eligible-for-registration', [StudentController::class, 'studentRegEligible']);
+    Route::post('/eligible-for-registration', [StudentController::class, 'studentRegEligible']);
     Route::post('/registration-list', [StudentController::class, 'registrationList']);
     Route::post('/generate-reg-numbers', [StudentController::class, 'generateRegNo']);
     Route::post('/cancel-reg-numbers', [StudentController::class, 'registrationCancel']);
