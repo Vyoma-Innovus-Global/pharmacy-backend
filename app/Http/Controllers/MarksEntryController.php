@@ -838,7 +838,7 @@ class MarksEntryController extends Controller
                 ]);
             } else if ($marks_type == 'mark_internal') {
                 // dd($marks_type);
-                $pdf = PDF::loadView('exports.written_marks_foil', [
+                $pdf = PDF::loadView('exports.internal_marks_foil', [
                     'data' => $data,
                     'theory_subject' => $theory_subject,
                     'sessional_subject' => $sessional_subject,
