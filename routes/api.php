@@ -15,6 +15,7 @@ use App\Http\Controllers\EvaluatorDashboardController;
 use App\Http\Controllers\AnswersheetController;
 use App\Http\Controllers\AdminDetailsController;
 use App\Http\Controllers\GenerateOtpController;
+use App\Http\Controllers\EvaluatorInstAllocationController;
 use App\Http\Controllers\MarksEntryController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ReviewController;
@@ -262,4 +263,8 @@ Route::prefix('generate-otp')->group(function () {
     Route::post('/send',             [GenerateOtpController::class, 'generate'])->withoutMiddleware('authenticate');
     Route::post('/update-otp-used',  [GenerateOtpController::class, 'updateOtpUsed'])->withoutMiddleware('authenticate');
     Route::post('/verify',           [GenerateOtpController::class, 'verifyOtp'])->withoutMiddleware('authenticate');
+});
+
+Route::prefix('evaluator')->group(function () {
+    Route::post('/inst-allocation-summary', [EvaluatorInstAllocationController::class, 'getSummary'])->withoutMiddleware('authenticate');
 });
