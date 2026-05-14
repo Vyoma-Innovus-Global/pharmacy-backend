@@ -11,7 +11,10 @@ use App\Http\Controllers\MasterController;
 use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\ExaminationController;
 use App\Http\Controllers\EvaluatorController;
+use App\Http\Controllers\EvaluatorDashboardController;
 use App\Http\Controllers\AnswersheetController;
+use App\Http\Controllers\AdminDetailsController;
+use App\Http\Controllers\GenerateOtpController;
 use App\Http\Controllers\MarksEntryController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ReviewController;
@@ -162,6 +165,9 @@ Route::prefix('answersheet')->middleware('authenticate')->group(function () {
 });
 
 Route::prefix('evaluator')->middleware('authenticate')->group(function () {
+    Route::get('/marks-entry-dashboard', [EvaluatorDashboardController::class, 'dashboard'])->withoutMiddleware('authenticate');
+    Route::get('/marks-entry-courses', [EvaluatorDashboardController::class, 'courseList'])->withoutMiddleware('authenticate');
+
     Route::get('/subject-list', [EvaluatorController::class, 'subjectList']);
 
     Route::get('/exam-year-list', [EvaluatorController::class, 'examYearList']);
@@ -170,7 +176,7 @@ Route::prefix('evaluator')->middleware('authenticate')->group(function () {
 
     Route::get('/evaluator-list', [EvaluatorController::class, 'evaluatorList']);
     Route::get('/evaluator-detail', [EvaluatorController::class, 'evaluatorDetail']);
-    Route::get('/evaluator-profile-info', [EvaluatorController::class, 'evaluatorProfileInfo']);
+    Route::get('/evaluator-profile-info', [EvaluatorController::class, 'evaluatorProfileInfo'])->withoutMiddleware('authenticate');
     Route::post('/evaluator-submit', [EvaluatorController::class, 'evaluatorSubmit']);
 
     Route::post('/evaluator-allocation-submit', [EvaluatorController::class, 'allocationSubmit']);
@@ -227,4 +233,33 @@ Route::prefix('review')->middleware('authenticate')->group(function () {
     Route::post('/marks-entry/submit', [ReviewController::class, 'marksEntrySubmit']);
     Route::post('/marks-verify/hoe-list', [ReviewController::class, 'MarksVerifyhoeList']);
 
+});
+
+/*
+|--------------------------------------------------------------------------
+| Admin Details Routes  —  fn_getadmindetailsbyusername
+|--------------------------------------------------------------------------
+*/
+Route::prefix('admin-details')->group(function () {
+    // Public lookup — password is stripped from the response
+    Route::get('/by-username',  [AdminDetailsController::class, 'getByUsername']);
+    Route::post('/by-username', [AdminDetailsController::class, 'getByUsername']);
+
+    // Raw response including password hash — requires valid auth token
+    Route::post('/raw', [AdminDetailsController::class, 'getRaw'])->middleware('authenticate');
+});
+
+/*
+|--------------------------------------------------------------------------
+| Generate OTP Routes  —  fn_generateotp
+|--------------------------------------------------------------------------
+| Type  8        → Email only
+| Type  9,10,11  → SMS only
+| Type  12       → SMS + Email
+|--------------------------------------------------------------------------
+*/
+Route::prefix('generate-otp')->group(function () {
+    Route::post('/send',             [GenerateOtpController::class, 'generate'])->withoutMiddleware('authenticate');
+    Route::post('/update-otp-used',  [GenerateOtpController::class, 'updateOtpUsed'])->withoutMiddleware('authenticate');
+    Route::post('/verify',           [GenerateOtpController::class, 'verifyOtp'])->withoutMiddleware('authenticate');
 });
