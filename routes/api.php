@@ -20,6 +20,7 @@ use App\Http\Controllers\AdminScheduleController;
 use App\Http\Controllers\MarksEntryController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ReviewController;
+use App\Http\Controllers\StudentMarksController;
 
 
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
@@ -272,4 +273,8 @@ Route::prefix('evaluator')->middleware('authenticate')->group(function () {
 
 Route::prefix('admin/schedule')->middleware('authenticate')->group(function () {
     Route::post('/check', [AdminScheduleController::class, 'checkSchedule']);
+});
+
+Route::prefix('marks')->middleware('authenticate')->group(function () {
+    Route::post('/student-marks-info-v1', [StudentMarksController::class, 'getStudentMarksInfoV1']);
 });
