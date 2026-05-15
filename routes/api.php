@@ -16,6 +16,7 @@ use App\Http\Controllers\AnswersheetController;
 use App\Http\Controllers\AdminDetailsController;
 use App\Http\Controllers\GenerateOtpController;
 use App\Http\Controllers\EvaluatorInstAllocationController;
+use App\Http\Controllers\AdminScheduleController;
 use App\Http\Controllers\MarksEntryController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ReviewController;
@@ -267,4 +268,8 @@ Route::prefix('generate-otp')->group(function () {
 
 Route::prefix('evaluator')->middleware('authenticate')->group(function () {
     Route::post('/inst-allocation-summary', [EvaluatorInstAllocationController::class, 'getSummary']);
+});
+
+Route::prefix('admin/schedule')->middleware('authenticate')->group(function () {
+    Route::post('/check', [AdminScheduleController::class, 'checkSchedule']);
 });

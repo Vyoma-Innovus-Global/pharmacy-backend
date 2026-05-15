@@ -64,8 +64,15 @@ class GenerateOtpController extends Controller
             if (empty($result) || json_last_error() !== JSON_ERROR_NONE) {
                 return response()->json(['error' => true, 'message' => 'OTP generation failed.'], 500);
             }
-            if ((int)($otpData['p_errorcode'] ?? -1) !== 0) {
-                return response()->json(['error' => true, 'p_errorcode' => $otpData['p_errorcode'], 'message' => $otpData['p_message'] ?? 'DB error.'], 400);
+
+            $errorCode = (int)($otpData['p_errorcode'] ?? -1);
+            if ($errorCode !== 0) {
+                $errorMessages = [
+                    200 => 'Invalid username or user type. Please check your credentials and try again.',
+                    1   => 'OTP generation failed due to a server error. Please try again.',
+                ];
+                $message = $errorMessages[$errorCode] ?? ($otpData['p_message'] ?? 'OTP generation failed. Please try again.');
+                return response()->json(['error' => true, 'message' => $message], 400);
             }
 
             $otp = (string)$otpData['p_otp'];
