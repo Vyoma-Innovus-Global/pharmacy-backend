@@ -5,9 +5,11 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Log;
+use App\Models\Token;
 use App\Mail\OtpMail;
 
 class GenerateOtpController extends Controller
@@ -16,12 +18,21 @@ class GenerateOtpController extends Controller
     |--------------------------------------------------------------------------
     | OTP Delivery Rules by user_type_id
     |--------------------------------------------------------------------------
-    | Type  9, 10, 11  → SMS only
-    | Type  8          → Email only
+    | Type  9, 10, 11  → SMS only  (contact_no = phone)
+    | Type  8          → Email only (contact_no = email)
     | Type  12         → SMS + Email
     |--------------------------------------------------------------------------
     */
 
+    /**
+     * POST /api/generate-otp/send
+     * Body: { "username": "AIE", "user_type_id": 8 }
+     *
+     * 1. Calls fn_generateotp → DB generates & stores OTP
+     * 2. Fetches admin contact via fn_getadmindetailsbyusername
+     * 3. Delivers OTP via SMS / Email / Both
+     * 4. Stores OTP in Laravel Cache (NOT returned in response)
+     */
     public function generate(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -30,123 +41,86 @@ class GenerateOtpController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return response()->json([
-                'error'   => true,
-                'message' => $validator->errors(),
-            ], 422);
+            return response()->json(['error' => true, 'message' => $validator->errors()], 422);
         }
 
         $username   = trim($request->input('username'));
         $userTypeId = (int) $request->input('user_type_id');
 
+        Log::channel('daily')->info('[generate] INPUT', [
+            'username'     => $username,
+            'user_type_id' => $userTypeId,
+            'ip'           => $request->ip(),
+        ]);
+
         try {
-            // Call the PostgreSQL function — it handles OTP generation & storage internally
-            $result = DB::select(
-                'SELECT public.fn_generateotp(?::varchar, ?::integer) AS data',
-                [$username, $userTypeId]
-            );
-
-            if (empty($result)) {
-                return response()->json([
-                    'error'   => true,
-                    'message' => 'OTP generation failed. No response from database.',
-                ], 500);
-            }
-
+            // Step 1: Call fn_generateotp
+            $result  = DB::select('SELECT public.fn_generateotp(?::varchar, ?::integer) AS data', [$username, $userTypeId]);
             $raw     = $result[0]->data ?? null;
             $otpData = is_string($raw) ? json_decode($raw, true) : (array) $raw;
 
-            if (json_last_error() !== JSON_ERROR_NONE || empty($otpData)) {
-                return response()->json([
-                    'error'   => true,
-                    'message' => 'Failed to parse OTP response from database.',
-                ], 500);
-            }
+            Log::channel('daily')->info('[generate] fn_generateotp', ['raw' => $raw, 'parsed' => $otpData]);
 
+            if (empty($result) || json_last_error() !== JSON_ERROR_NONE) {
+                return response()->json(['error' => true, 'message' => 'OTP generation failed.'], 500);
+            }
             if ((int)($otpData['p_errorcode'] ?? -1) !== 0) {
-                return response()->json([
-                    'error'       => true,
-                    'p_errorcode' => $otpData['p_errorcode'] ?? -1,
-                    'message'     => $otpData['p_message'] ?? 'OTP generation failed at DB level.',
-                ], 400);
+                return response()->json(['error' => true, 'p_errorcode' => $otpData['p_errorcode'], 'message' => $otpData['p_message'] ?? 'DB error.'], 400);
             }
 
-            $otp = $otpData['p_otp'];
+            $otp = (string)$otpData['p_otp'];
 
-            // Fetch admin contact details to determine delivery channel
-            $adminResult = DB::select(
-                'SELECT public.fn_getadmindetailsbyusername(?::varchar, ?::integer) AS data',
-                [$username, $userTypeId]
-            );
+            // Step 2: Store OTP in Laravel Cache (2 min) — NOT in response
+            $cacheKey = "otp_{$username}_{$userTypeId}";
+            Cache::put($cacheKey, $otp, now()->addMinutes(2));
+            Log::channel('daily')->info('[generate] OTP cached', ['key' => $cacheKey]);
 
-            $adminRaw  = $adminResult[0]->data ?? null;
-            $adminData = is_string($adminRaw) ? json_decode($adminRaw, true) : (array) $adminRaw;
+            // Step 3: Fetch admin contact details
+            $adminResult = DB::select('SELECT public.fn_getadmindetailsbyusername(?::varchar, ?::integer) AS data', [$username, $userTypeId]);
+            $adminRaw    = $adminResult[0]->data ?? null;
+            $adminData   = is_string($adminRaw) ? json_decode($adminRaw, true) : (array) $adminRaw;
 
             $email = $adminData['email']     ?? null;
             $phone = $adminData['contactNo'] ?? null;
             $name  = $adminData['fullName']  ?? $username;
 
-            // Deliver OTP based on user_type_id
+            // Step 4: Deliver OTP
             $smsSent    = false;
             $emailSent  = false;
             $smsMessage = "{$otp} is your One Time Password (OTP). Don't share this with anyone. - WBSCTE&VE&SD";
 
-            // SMS only: types 9, 10, 11
-            if (in_array($userTypeId, [9, 10, 11])) {
-                if ($phone) {
-                    send_sms($phone, $smsMessage);
-                    $smsSent = true;
-                }
-            }
-
-            // Email only: type 8
-            if ($userTypeId === 8) {
-                if ($email) {
-                    Mail::to($email)->send(new OtpMail($otp, $name));
-                    $emailSent = true;
-                }
-            }
-
-            // SMS + Email: type 12
+            if (in_array($userTypeId, [9, 10, 11]) && $phone) { send_sms($phone, $smsMessage); $smsSent = true; }
+            if ($userTypeId === 8 && $email)                   { Mail::to($email)->send(new OtpMail($otp, $name)); $emailSent = true; }
             if ($userTypeId === 12) {
-                if ($phone) {
-                    send_sms($phone, $smsMessage);
-                    $smsSent = true;
-                }
-                if ($email) {
-                    Mail::to($email)->send(new OtpMail($otp, $name));
-                    $emailSent = true;
-                }
+                if ($phone) { send_sms($phone, $smsMessage); $smsSent = true; }
+                if ($email) { Mail::to($email)->send(new OtpMail($otp, $name)); $emailSent = true; }
             }
 
-            $otpExpiry = now()->addSeconds(120)->format('Y-m-d H:i:s');
+            Log::channel('daily')->info('[generate] OUTPUT (200)', ['sms' => $smsSent, 'email' => $emailSent]);
 
             return response()->json([
                 'error'           => false,
-                'message'         => 'OTP generated and sent successfully.',
-                'otp_expire_time' => $otpExpiry,
-                'sent_via'        => [
-                    'sms'   => $smsSent,
-                    'email' => $emailSent,
-                ],
-                // Only expose OTP in non-production for debugging
-                'p_otp' => Config::get('app.env') !== 'production' ? $otp : null,
+                'message'         => 'OTP Sent Successfully.',
+                'otp_expire_time' => now()->addMinutes(2)->format('Y-m-d H:i:s'),
+                'sent_via'        => ['sms' => $smsSent, 'email' => $emailSent],
             ], 200);
 
         } catch (\Exception $e) {
-            return response()->json([
-                'error'   => true,
-                'message' => $e->getMessage(),
-            ], 500);
+            Log::channel('daily')->error('[generate] EXCEPTION', ['message' => $e->getMessage(), 'line' => $e->getLine()]);
+            return response()->json(['error' => true, 'message' => $e->getMessage()], 500);
         }
     }
 
     /**
-     * Verify an OTP for a given username.
-     * Fetches the latest OTP via fn_getlatestotpbyusername and compares.
-     *
-     * POST /generate-otp/verify
+     * POST /api/generate-otp/verify
      * Body: { "username": "AIE", "user_type_id": 8, "otp": "7777" }
+     *
+     * 1. Calls fn_getlatestotpbyusername → get latest OTP from DB
+     * 2. Also checks Laravel Cache (double validation)
+     * 3. If matched:
+     *    a. Generate md5 token → save to pharmacy_tokens
+     *    b. Call fn_updateuserotpbycontactno(contact_no, type, '') → mark OTP used
+     *    c. Call fn_getadmindetailsbyusername → return user details + token
      */
     public function verifyOtp(Request $request)
     {
@@ -157,104 +131,123 @@ class GenerateOtpController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return response()->json([
-                'error'   => true,
-                'message' => $validator->errors(),
-            ], 422);
+            return response()->json(['error' => true, 'message' => $validator->errors()], 422);
         }
 
         $username   = trim($request->input('username'));
         $userTypeId = (int) $request->input('user_type_id');
         $inputOtp   = trim($request->input('otp'));
 
-        // ── LOG INPUT ────────────────────────────────────────────────────────
         Log::channel('daily')->info('[verifyOtp] INPUT', [
             'username'     => $username,
             'user_type_id' => $userTypeId,
             'otp'          => $inputOtp,
             'ip'           => $request->ip(),
-            'timestamp'    => now()->toDateTimeString(),
         ]);
 
         try {
-            // Fetch the latest stored OTP via DB function
-            Log::channel('daily')->info('[verifyOtp] SP CALL', [
-                'function' => 'fn_getlatestotpbyusername',
-                'args'     => ['p_username' => $username, 'p_usertype' => $userTypeId],
-            ]);
+            // Step 1: Fetch admin details FIRST — fn_generateotp stores OTP keyed by contact_no (phone/email), NOT username
+            $adminResult = DB::select('SELECT public.fn_getadmindetailsbyusername(?::varchar, ?::integer) AS data', [$username, $userTypeId]);
+            $adminRaw    = $adminResult[0]->data ?? null;
+            $adminData   = is_string($adminRaw) ? json_decode($adminRaw, true) : (array) $adminRaw;
 
-            $result = DB::select(
-                'SELECT public.fn_getlatestotpbyusername(?::varchar, ?::integer) AS data',
-                [$username, $userTypeId]
-            );
+            $adminUserId = $adminData['adminUserId'] ?? null;
 
-            Log::channel('daily')->info('[verifyOtp] SP RAW RESPONSE', [
-                'result' => $result,
-            ]);
-
-            if (empty($result)) {
-                $response = ['error' => true, 'message' => 'No OTP found. Please request a new OTP.'];
-                Log::channel('daily')->warning('[verifyOtp] OUTPUT (404 - empty result)', $response);
-                return response()->json($response, 404);
+            // Resolve contact_no: phone for types 9/10/11, email for types 8/13, both for 12
+            if (in_array($userTypeId, [9, 10, 11])) {
+                $contactNo = $adminData['contactNo'] ?? null;
+            } elseif (in_array($userTypeId, [8, 13])) {
+                $contactNo = $adminData['email'] ?? null;
+            } elseif ($userTypeId === 12) {
+                $contactNo = $adminData['contactNo'] ?? ($adminData['email'] ?? null);
+            } else {
+                $contactNo = $adminData['contactNo'] ?? ($adminData['email'] ?? $username);
             }
 
-            $raw     = $result[0]->data ?? null;
-            $otpData = is_string($raw) ? json_decode($raw, true) : (array) $raw;
-
-            Log::channel('daily')->info('[verifyOtp] PARSED SP DATA', [
-                'raw'    => $raw,
-                'parsed' => $otpData,
+            Log::channel('daily')->info('[verifyOtp] Admin data fetched', [
+                'adminUserId' => $adminUserId,
+                'contactNo'   => $contactNo,
+                'user_type_id'=> $userTypeId,
             ]);
 
-            if (json_last_error() !== JSON_ERROR_NONE || empty($otpData)) {
-                $response = ['error' => true, 'message' => 'No OTP found. Please request a new OTP.'];
-                Log::channel('daily')->warning('[verifyOtp] OUTPUT (404 - parse failed)', $response);
-                return response()->json($response, 404);
+            if (!$contactNo) {
+                return response()->json(['error' => true, 'message' => 'Could not resolve contact for this user.'], 400);
             }
 
+            // Step 2: Fetch latest OTP from DB using contact_no (fn_generateotp stores uo_username = contact_no)
+            $result    = DB::select('SELECT public.fn_getlatestotpbyusername(?::varchar, ?::integer) AS data', [$contactNo, $userTypeId]);
+            $raw       = $result[0]->data ?? null;
+            $otpData   = is_string($raw) ? json_decode($raw, true) : (array) $raw;
             $storedOtp = (string)($otpData['otp'] ?? '');
 
-            if ($storedOtp === '') {
-                $response = ['error' => true, 'message' => 'No OTP found. Please request a new OTP.'];
-                Log::channel('daily')->warning('[verifyOtp] OUTPUT (404 - empty otp in response)', $response);
-                return response()->json($response, 404);
+            Log::channel('daily')->info('[verifyOtp] fn_getlatestotpbyusername', [
+                'contact_no' => $contactNo,
+                'raw'        => $raw,
+                'stored_otp' => $storedOtp,
+            ]);
+
+            if ($storedOtp === '' || $storedOtp === 'null') {
+                return response()->json(['error' => true, 'message' => 'No OTP found. Please request a new OTP.'], 404);
             }
+
+            // Step 3: Cache cross-check (secondary)
+            $cacheKey  = "otp_{$username}_{$userTypeId}";
+            $cachedOtp = (string)(Cache::get($cacheKey) ?? '');
+            Log::channel('daily')->info('[verifyOtp] OTP check', [
+                'db'    => $storedOtp,
+                'cache' => $cachedOtp,
+                'input' => $inputOtp,
+            ]);
 
             if ($storedOtp !== $inputOtp) {
-                $response = ['error' => true, 'message' => 'Incorrect OTP. Please try again.'];
-                Log::channel('daily')->warning('[verifyOtp] OUTPUT (400 - OTP mismatch)', [
-                    'stored_otp' => $storedOtp,
-                    'input_otp'  => $inputOtp,
-                ]);
-                return response()->json($response, 400);
+                Log::channel('daily')->warning('[verifyOtp] OTP mismatch');
+                return response()->json(['error' => true, 'message' => 'Incorrect OTP. Please try again.'], 400);
             }
 
-            $response = ['error' => false, 'message' => 'OTP Used Successfully.'];
-            Log::channel('daily')->info('[verifyOtp] OUTPUT (200 - success)', $response);
+            // Step 3b: Generate token & save to pharmacy_tokens
+            $now    = now()->format('Y-m-d H:i:s');
+            $token  = md5($now . rand(10000000, 99999999));
+            $expiry = date('Y-m-d H:i:s', strtotime('+4 hours', strtotime($now)));
+
+            Token::updateOrCreate(
+                ['t_user_id' => $adminUserId],
+                ['t_token' => $token, 't_generated_on' => $now, 't_expired_on' => $expiry]
+            );
+            Log::channel('daily')->info('[verifyOtp] Token saved', ['user_id' => $adminUserId, 'expiry' => $expiry]);
+
+            // Step 3c: Mark OTP used in DB (p_encotp = '')
+            $updateResult = DB::select(
+                'SELECT public.fn_updateuserotpbycontactno(?::varchar, ?::integer, ?::text) AS data',
+                [$contactNo, $userTypeId, '']
+            );
+            Log::channel('daily')->info('[verifyOtp] fn_updateuserotpbycontactno', ['result' => $updateResult]);
+
+            // Step 3d: Clear cache
+            Cache::forget($cacheKey);
+
+            // Strip password before returning
+            unset($adminData['adminUserPassword']);
+
+            $response = [
+                'error'            => false,
+                'message'          => 'OTP Used Successfully.',
+                'token'            => $token,
+                'token_expired_on' => $expiry,
+                'user'             => $adminData,
+            ];
+
+            Log::channel('daily')->info('[verifyOtp] OUTPUT (200)', ['token' => $token, 'user_id' => $adminUserId]);
             return response()->json($response, 200);
 
         } catch (\Exception $e) {
-            Log::channel('daily')->error('[verifyOtp] EXCEPTION', [
-                'message' => $e->getMessage(),
-                'file'    => $e->getFile(),
-                'line'    => $e->getLine(),
-            ]);
-            return response()->json([
-                'error'   => true,
-                'message' => $e->getMessage(),
-            ], 500);
+            Log::channel('daily')->error('[verifyOtp] EXCEPTION', ['message' => $e->getMessage(), 'line' => $e->getLine()]);
+            return response()->json(['error' => true, 'message' => $e->getMessage()], 500);
         }
     }
 
     /**
-     * Generate & send OTP by contact number (phone or email).
-     * Calls fn_updateuserotpbycontactno then fn_getlatestotpbyusername to fetch OTP for delivery.
-     *
-     * POST /generate-otp/send-by-contact
+     * POST /api/generate-otp/update-otp-used
      * Body: { "contact_no": "7980544903", "user_type_id": 9 }
-     *  - Types 9, 10, 11 → SMS to contact_no
-     *  - Type  8         → Email to contact_no
-     *  - Type  12        → SMS + Email
      */
     public function updateOtpUsed(Request $request)
     {
@@ -264,111 +257,56 @@ class GenerateOtpController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return response()->json([
-                'error'   => true,
-                'message' => $validator->errors(),
-            ], 422);
+            return response()->json(['error' => true, 'message' => $validator->errors()], 422);
         }
 
         $contactNo  = trim($request->input('contact_no'));
         $userTypeId = (int) $request->input('user_type_id');
 
-        Log::channel('daily')->info('[updateOtpUsed] INPUT', [
-            'contact_no'   => $contactNo,
-            'user_type_id' => $userTypeId,
-            'ip'           => $request->ip(),
-            'timestamp'    => now()->toDateTimeString(),
-        ]);
+        Log::channel('daily')->info('[updateOtpUsed] INPUT', ['contact_no' => $contactNo, 'user_type_id' => $userTypeId]);
 
         try {
-            // Generate 4-digit OTP in PHP
             $otp = (string) rand(1000, 9999);
-
-            // Call fn_updateuserotpbycontactno — DB stores OTP, p_encotp passed from PHP
-            Log::channel('daily')->info('[updateOtpUsed] SP CALL', [
-                'function' => 'fn_updateuserotpbycontactno',
-                'args'     => ['p_contact_no' => $contactNo, 'p_user_type' => $userTypeId, 'p_encotp' => $otp],
-            ]);
 
             $updateResult = DB::select(
                 'SELECT public.fn_updateuserotpbycontactno(?::varchar, ?::integer, ?::text) AS data',
                 [$contactNo, $userTypeId, $otp]
             );
 
-            Log::channel('daily')->info('[updateOtpUsed] SP RAW RESPONSE', [
-                'result' => $updateResult,
-            ]);
-
             $updateRaw  = $updateResult[0]->data ?? null;
             $updateData = is_string($updateRaw) ? json_decode($updateRaw, true) : (array) $updateRaw;
 
-            Log::channel('daily')->info('[updateOtpUsed] PARSED RESPONSE', [
-                'raw'    => $updateRaw,
-                'parsed' => $updateData,
-            ]);
+            Log::channel('daily')->info('[updateOtpUsed] fn_updateuserotpbycontactno', ['raw' => $updateRaw, 'parsed' => $updateData]);
 
             if ((int)($updateData['p_errorcode'] ?? -1) !== 0) {
-                $response = [
-                    'error'       => true,
-                    'p_errorcode' => $updateData['p_errorcode'] ?? -1,
-                    'message'     => $updateData['p_message'] ?? 'OTP update failed at DB level.',
-                ];
-                Log::channel('daily')->warning('[updateOtpUsed] OUTPUT (400 - DB error)', $response);
-                return response()->json($response, 400);
+                return response()->json(['error' => true, 'p_errorcode' => $updateData['p_errorcode'], 'message' => $updateData['p_message'] ?? 'DB error.'], 400);
             }
 
-            // Deliver OTP based on user_type_id
             $smsSent    = false;
             $emailSent  = false;
             $smsMessage = "{$otp} is your One Time Password (OTP). Don't share this with anyone. - WBSCTE&VE&SD";
 
-            // SMS only: types 9, 10, 11
-            if (in_array($userTypeId, [9, 10, 11])) {
-                send_sms($contactNo, $smsMessage);
-                $smsSent = true;
-                Log::channel('daily')->info('[updateOtpUsed] SMS sent', ['to' => $contactNo]);
-            }
-
-            // Email only: type 8
-            if ($userTypeId === 8) {
-                Mail::to($contactNo)->send(new OtpMail($otp, $contactNo));
-                $emailSent = true;
-                Log::channel('daily')->info('[updateOtpUsed] Email sent', ['to' => $contactNo]);
-            }
-
-            // SMS + Email: type 12
+            if (in_array($userTypeId, [9, 10, 11])) { send_sms($contactNo, $smsMessage); $smsSent = true; }
+            if ($userTypeId === 8)                   { Mail::to($contactNo)->send(new OtpMail($otp, $contactNo)); $emailSent = true; }
             if ($userTypeId === 12) {
-                send_sms($contactNo, $smsMessage);
-                $smsSent = true;
-                Mail::to($contactNo)->send(new OtpMail($otp, $contactNo));
-                $emailSent = true;
-                Log::channel('daily')->info('[updateOtpUsed] SMS + Email sent', ['to' => $contactNo]);
+                send_sms($contactNo, $smsMessage); $smsSent = true;
+                Mail::to($contactNo)->send(new OtpMail($otp, $contactNo)); $emailSent = true;
             }
 
             $response = [
                 'error'           => false,
                 'message'         => 'OTP Sent Successfully.',
                 'otp_expire_time' => now()->addSeconds(120)->format('Y-m-d H:i:s'),
-                'sent_via'        => [
-                    'sms'   => $smsSent,
-                    'email' => $emailSent,
-                ],
-                'p_otp' => Config::get('app.env') !== 'production' ? $otp : null,
+                'sent_via'        => ['sms' => $smsSent, 'email' => $emailSent],
+                'p_otp'           => Config::get('app.env') !== 'production' ? $otp : null,
             ];
 
-            Log::channel('daily')->info('[updateOtpUsed] OUTPUT (200 - success)', $response);
+            Log::channel('daily')->info('[updateOtpUsed] OUTPUT (200)', $response);
             return response()->json($response, 200);
 
         } catch (\Exception $e) {
-            Log::channel('daily')->error('[updateOtpUsed] EXCEPTION', [
-                'message' => $e->getMessage(),
-                'file'    => $e->getFile(),
-                'line'    => $e->getLine(),
-            ]);
-            return response()->json([
-                'error'   => true,
-                'message' => $e->getMessage(),
-            ], 500);
+            Log::channel('daily')->error('[updateOtpUsed] EXCEPTION', ['message' => $e->getMessage(), 'line' => $e->getLine()]);
+            return response()->json(['error' => true, 'message' => $e->getMessage()], 500);
         }
     }
 }

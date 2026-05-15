@@ -2,7 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\UpdateController;
-use App\Http\Controllers\TestController;
+// use App\Http\Controllers\TestController;
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -15,11 +15,10 @@ use App\Http\Controllers\TestController;
 */
 
 Route::get('/update', function () {
-	
-    
+
+
 });
 #->prefix('update')
 #Route::get('update/details', [UpdateController::class, 'details']);
 
 Route::post('update/update-photo', [UpdateController::class, 'update_details']);
- 

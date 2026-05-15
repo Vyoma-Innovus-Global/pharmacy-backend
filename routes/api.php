@@ -265,6 +265,6 @@ Route::prefix('generate-otp')->group(function () {
     Route::post('/verify',           [GenerateOtpController::class, 'verifyOtp'])->withoutMiddleware('authenticate');
 });
 
-Route::prefix('evaluator')->group(function () {
-    Route::post('/inst-allocation-summary', [EvaluatorInstAllocationController::class, 'getSummary'])->withoutMiddleware('authenticate');
+Route::prefix('evaluator')->middleware('authenticate')->group(function () {
+    Route::post('/inst-allocation-summary', [EvaluatorInstAllocationController::class, 'getSummary']);
 });

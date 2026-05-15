@@ -2,7 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\PaymentController;
-use App\Http\Controllers\TestController;
+// use App\Http\Controllers\TestController;
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -32,7 +32,7 @@ Route::get('/clear-all', function() {
     Artisan::call('cache:clear');
     return 'All caches cleared!';
 });
-Route::post('/packing-slip-list', [TestController::class, 'packingSlipList']);
+// Route::post('/packing-slip-list', [TestController::class, 'packingSlipList']);
 
 Route::get('/get-password', function () {
     $password = request()->get('password');
