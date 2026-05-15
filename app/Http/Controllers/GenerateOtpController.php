@@ -92,16 +92,19 @@ class GenerateOtpController extends Controller
             $name  = $adminData['fullName']  ?? $username;
 
             // Step 4: Deliver OTP
+            // TODO: Re-enable SMS/Email sending before production deployment
             $smsSent    = false;
             $emailSent  = false;
             $smsMessage = "{$otp} is your One Time Password (OTP). Don't share this with anyone. - WBSCTE&VE&SD";
 
-            if (in_array($userTypeId, [9, 10, 11]) && $phone) { send_sms($phone, $smsMessage); $smsSent = true; }
-            if ($userTypeId === 8 && $email)                   { Mail::to($email)->send(new OtpMail($otp, $name)); $emailSent = true; }
-            if ($userTypeId === 12) {
-                if ($phone) { send_sms($phone, $smsMessage); $smsSent = true; }
-                if ($email) { Mail::to($email)->send(new OtpMail($otp, $name)); $emailSent = true; }
-            }
+            // --- SEND BLOCKED (dev mode) ---
+            // if (in_array($userTypeId, [9, 10, 11]) && $phone) { send_sms($phone, $smsMessage); $smsSent = true; }
+            // if ($userTypeId === 8 && $email)                   { Mail::to($email)->send(new OtpMail($otp, $name)); $emailSent = true; }
+            // if ($userTypeId === 12) {
+            //     if ($phone) { send_sms($phone, $smsMessage); $smsSent = true; }
+            //     if ($email) { Mail::to($email)->send(new OtpMail($otp, $name)); $emailSent = true; }
+            // }
+            // --- END SEND BLOCKED ---
 
             Log::channel('daily')->info('[generate] OUTPUT (200)', ['sms' => $smsSent, 'email' => $emailSent]);
 
