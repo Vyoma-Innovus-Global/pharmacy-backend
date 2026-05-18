@@ -21,6 +21,9 @@ use App\Http\Controllers\MarksEntryController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\ReviewController;
 use App\Http\Controllers\StudentMarksController;
+use App\Http\Controllers\AdminDesignationController;
+use App\Http\Controllers\AdminInstituteController;
+use App\Http\Controllers\AdminSemesterController;
 
 
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
@@ -277,4 +280,10 @@ Route::prefix('admin/schedule')->middleware('authenticate')->group(function () {
 
 Route::prefix('marks')->middleware('authenticate')->group(function () {
     Route::post('/student-marks-info-v1', [StudentMarksController::class, 'getStudentMarksInfoV1']);
+});
+
+Route::prefix('admin')->middleware('authenticate')->group(function () {
+    Route::post('/designations', [AdminDesignationController::class, 'getAllDesignations']);
+    Route::post('/institutes', [AdminInstituteController::class, 'getAllInstitutes']);
+    Route::post('/semesters', [AdminSemesterController::class, 'getAllSemesters']);
 });
