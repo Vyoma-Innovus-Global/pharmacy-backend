@@ -24,6 +24,11 @@ use App\Http\Controllers\StudentMarksController;
 use App\Http\Controllers\AdminDesignationController;
 use App\Http\Controllers\AdminInstituteController;
 use App\Http\Controllers\AdminSemesterController;
+use App\Http\Controllers\AdminSubjectCategoryController;
+use App\Http\Controllers\AdminDepartmentController;
+use App\Http\Controllers\AdminSubjectController;
+use App\Http\Controllers\AdminTeacherController;
+
 
 
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
@@ -286,4 +291,10 @@ Route::prefix('admin')->middleware('authenticate')->group(function () {
     Route::post('/designations', [AdminDesignationController::class, 'getAllDesignations']);
     Route::post('/institutes', [AdminInstituteController::class, 'getAllInstitutes']);
     Route::post('/semesters', [AdminSemesterController::class, 'getAllSemesters']);
+    Route::post('/subject-categories', [AdminSubjectCategoryController::class, 'getAllSubjectCategories']);
+    Route::post('/departments', [AdminDepartmentController::class, 'getDepartmentsByInst']);
+    Route::post('/subjects', [AdminSubjectController::class, 'getDeptAllSubjects']);
+    Route::post('/save-teacher', [AdminTeacherController::class, 'saveTeacherWithSubjects']);
+    Route::post('/get-assigned-teachers', [AdminTeacherController::class, 'getAssignedTeacherInfo']);
 });
+
