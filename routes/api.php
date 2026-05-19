@@ -28,6 +28,7 @@ use App\Http\Controllers\AdminSubjectCategoryController;
 use App\Http\Controllers\AdminDepartmentController;
 use App\Http\Controllers\AdminSubjectController;
 use App\Http\Controllers\AdminTeacherController;
+use App\Http\Controllers\AdminStudentMarksController;
 
 
 
@@ -297,5 +298,6 @@ Route::prefix('admin')->middleware('authenticate')->group(function () {
     Route::post('/save-teacher', [AdminTeacherController::class, 'saveTeacherWithSubjects']);
     Route::post('/get-assigned-teachers', [AdminTeacherController::class, 'getAssignedTeacherInfo']);
     Route::post('/get-evaluator-subject-allocation-summary', [AdminTeacherController::class, 'getEvaluatorSubjectAllocationSummary']);
+    Route::post('/save-student-marks', [AdminStudentMarksController::class, 'saveStudentMarks']);
 });
 
