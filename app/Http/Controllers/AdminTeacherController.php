@@ -507,5 +507,154 @@ class AdminTeacherController extends Controller
 
         return $result;
     }
+
+    /**
+     * Get Evaluator Subject Allocation Summary
+     *
+     * Calls fn_admin_getevaluatorsubjectallocationsummary stored procedure
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     *
+     * Expected Request Format:
+     * {
+     *   "admin_user_id": 5,
+     *   "user_type_id": 9,
+     *   "inst_id": 1,
+     *   "evaluator_type_id": 1,
+     *   "department_id": 1,
+     *   "exam_year": 2025,
+     *   "semester": 1
+     * }
+     *
+     * Response Format:
+     * {
+     *   "version": "1.0",
+     *   "status": 1,
+     *   "message": "Evaluator subject allocation summary retrieved successfully",
+     *   "data": [
+     *     {
+     *       "adminUserId": 5,
+     *       "totalStudents": 0,
+     *       "pendingSubject": 0,
+     *       "assignedInstCode": "JCG",
+     *       "assignedInstName": "JNAN CHANDRA GHOSH POLYTECHNIC",
+     *       "assignedSubjectId": 1,
+     *       "assignedSubjectCode": "PHCE",
+     *       "assignedSubjectName": "PHARMACEUTICS",
+     *       "assignedDepartmentCode": "PHARM",
+     *       "assignedDepartmentName": "Pharmacy"
+     *     }
+     *   ]
+     * }
+     */
+    public function getEvaluatorSubjectAllocationSummary(Request $request)
+    {
+        Log::info('=== GET EVALUATOR SUBJECT ALLOCATION SUMMARY API - REQUEST START ===');
+        Log::info('Request Data:', $request->all());
+
+        try {
+            // Validate request
+            $validator = Validator::make($request->all(), [
+                'admin_user_id' => 'required|integer',
+                'user_type_id' => 'required|integer',
+                'inst_id' => 'required|integer',
+                'evaluator_type_id' => 'required|integer',
+                'department_id' => 'required|integer',
+                'exam_year' => 'required|integer',
+                'semester' => 'required|integer',
+            ]);
+
+            if ($validator->fails()) {
+                Log::error('Validation Failed:', ['errors' => $validator->errors()->all()]);
+                return response()->json([
+                    'version' => '1.0',
+                    'status' => 0,
+                    'message' => 'Validation failed: ' . $validator->errors()->first(),
+                    'data' => []
+                ], 400);
+            }
+
+            $adminUserId = $request->input('admin_user_id');
+            $userTypeId = $request->input('user_type_id');
+            $instId = $request->input('inst_id');
+            $evaluatorTypeId = $request->input('evaluator_type_id');
+            $departmentId = $request->input('department_id');
+            $examYear = $request->input('exam_year');
+            $semester = $request->input('semester');
+
+            Log::info('Calling fn_admin_getevaluatorsubjectallocationsummary with parameters:', [
+                'admin_user_id' => $adminUserId,
+                'user_type_id' => $userTypeId,
+                'inst_id' => $instId,
+                'evaluator_type_id' => $evaluatorTypeId,
+                'department_id' => $departmentId,
+                'exam_year' => $examYear,
+                'semester' => $semester
+            ]);
+
+            // Call the stored procedure
+            $sql = "SELECT public.fn_admin_getevaluatorsubjectallocationsummary(?, ?, ?, ?, ?, ?, ?) as result";
+
+            $result = DB::selectOne($sql, [
+                $adminUserId,
+                $userTypeId,
+                $instId,
+                $evaluatorTypeId,
+                $departmentId,
+                $examYear,
+                $semester
+            ]);
+
+            Log::info('Database function raw result:', ['result' => $result]);
+
+            if (!$result || !isset($result->result)) {
+                Log::warning('No result returned from database function');
+                return response()->json([
+                    'version' => '1.0',
+                    'status' => 0,
+                    'message' => 'No data returned from database function',
+                    'data' => []
+                ], 404);
+            }
+
+            // Parse JSON result
+            $data = json_decode($result->result, true);
+
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                Log::error('JSON parsing error:', ['error' => json_last_error_msg()]);
+                return response()->json([
+                    'version' => '1.0',
+                    'status' => 0,
+                    'message' => 'Failed to parse database response',
+                    'data' => []
+                ], 500);
+            }
+
+            Log::info('Parsed data:', ['data' => $data, 'count' => count($data ?? [])]);
+
+            return response()->json([
+                'version' => '1.0',
+                'status' => 1,
+                'message' => 'Evaluator subject allocation summary retrieved successfully',
+                'data' => $data ?? []
+            ], 200);
+
+        } catch (\Exception $e) {
+            Log::error('Exception in getEvaluatorSubjectAllocationSummary:', [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'version' => '1.0',
+                'status' => 0,
+                'message' => 'Internal server error: ' . $e->getMessage(),
+                'data' => []
+            ], 500);
+        }
+    }
 }
 
