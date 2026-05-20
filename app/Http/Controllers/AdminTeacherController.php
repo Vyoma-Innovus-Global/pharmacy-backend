@@ -54,14 +54,26 @@ class AdminTeacherController extends Controller
      */
     public function saveTeacherWithSubjects(Request $request)
     {
-        // Log the complete incoming request
-        Log::info('=== SAVE TEACHER API - REQUEST START ===');
-        Log::info('Full Request Data:', [
-            'all_data' => $request->all(),
-            'headers' => $request->headers->all(),
-            'method' => $request->method(),
-            'url' => $request->fullUrl()
-        ]);
+        try {
+            // IMMEDIATE LOG - to verify request reaches controller
+            Log::channel('daily')->info('🚀 CONTROLLER HIT - saveTeacherWithSubjects() called');
+
+            // Log the complete incoming request
+            Log::channel('daily')->info('═══════════════════════════════════════════════════════════');
+            Log::channel('daily')->info('🔵 SAVE TEACHER API - FUNCTION INPUT (REQUEST START)');
+            Log::channel('daily')->info('═══════════════════════════════════════════════════════════');
+            Log::channel('daily')->info('REQUEST METHOD', ['method' => $request->method()]);
+            Log::channel('daily')->info('REQUEST URL', ['url' => $request->fullUrl()]);
+            Log::channel('daily')->info('REQUEST IP', ['ip' => $request->ip()]);
+            Log::channel('daily')->info('═══════════════════════════════════════════════════════════');
+            Log::channel('daily')->info('📥 INCOMING PAYLOAD (admin_user_id)', ['admin_user_id' => $request->input('admin_user_id')]);
+            Log::channel('daily')->info('📥 INCOMING PAYLOAD (teacherInfo)', ['teacherInfo' => $request->input('teacherInfo')]);
+            Log::channel('daily')->info('📥 INCOMING PAYLOAD (subjectList)', ['subjectList' => $request->input('subjectList')]);
+            Log::channel('daily')->info('📥 INCOMING PAYLOAD (FULL JSON)', ['payload' => $request->all()]);
+            Log::channel('daily')->info('═══════════════════════════════════════════════════════════');
+        } catch (\Exception $logEx) {
+            Log::channel('daily')->error('❌ ERROR IN INITIAL LOGGING', ['error' => $logEx->getMessage()]);
+        }
 
         try {
             // Validate main request structure
@@ -87,7 +99,7 @@ class AdminTeacherController extends Controller
             ]);
 
             if ($validator->fails()) {
-                Log::error('SAVE TEACHER API - Validation Failed:', [
+                Log::channel('daily')->error('SAVE TEACHER API - Validation Failed:', [
                     'errors' => $validator->errors()->all(),
                     'failed_fields' => $validator->errors()->keys()
                 ]);
@@ -99,30 +111,23 @@ class AdminTeacherController extends Controller
                 ], 400);
             }
 
+            Log::channel('daily')->info('✅ VALIDATION PASSED - Processing request');
+
             $adminUserId = $request->input('admin_user_id');
             $teacherInfo = $request->input('teacherInfo');
             $subjectList = $request->input('subjectList');
 
-            Log::info('AdminTeacherController::saveTeacherWithSubjects - Starting', [
+            Log::channel('daily')->info('📊 Extracted data from request', [
                 'admin_user_id' => $adminUserId,
                 'teacher_name' => $teacherInfo['full_name'],
                 'subjects_count' => count($subjectList)
             ]);
 
             // Step 1: Save Teacher Info
-            Log::info('CALLING fn_admin_saveteacherinfo with parameters:', [
+            Log::channel('daily')->info('🔄 STEP 1: Calling fn_admin_saveteacherinfo', [
                 'p_in_teacher_id' => $teacherInfo['in_teacher_id'],
                 'p_full_name' => $teacherInfo['full_name'],
-                'p_contact_no' => $teacherInfo['contact_no'],
-                'p_email' => $teacherInfo['email'],
-                'p_highest_qualification' => $teacherInfo['highest_qualification'],
-                'p_aadhar_no' => $teacherInfo['aadhar_no'] ?? null,
-                'p_inst_id' => $teacherInfo['inst_id'],
-                'p_inst_name' => $teacherInfo['inst_name'],
-                'p_designation_id' => $teacherInfo['designation_id'],
-                'p_image' => strlen($teacherInfo['image'] ?? '') > 100 ? substr($teacherInfo['image'], 0, 100) . '... [truncated]' : ($teacherInfo['image'] ?? null),
-                'p_remarks' => $teacherInfo['remarks'] ?? '',
-                'p_admin_user_id' => $adminUserId
+                'p_inst_id' => $teacherInfo['inst_id']
             ]);
 
             $saveTeacherQuery = "SELECT public.fn_admin_saveteacherinfo(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) as result";
@@ -142,12 +147,13 @@ class AdminTeacherController extends Controller
                 $adminUserId
             ]);
 
-            Log::info('OUTPUT from fn_admin_saveteacherinfo:', [
+            Log::channel('daily')->info('✅ fn_admin_saveteacherinfo executed', [
                 'raw_result' => $teacherResult,
                 'result_json' => $teacherResult->result ?? null
             ]);
 
             if (!$teacherResult || !$teacherResult->result) {
+                Log::channel('daily')->error('❌ Teacher save failed - no result returned');
                 return response()->json([
                     'version' => '1.0',
                     'status' => 0,
@@ -158,14 +164,13 @@ class AdminTeacherController extends Controller
 
             // Parse the result JSON: {"p_errorcode": 0, "p_teacher_id": 5}
             $resultData = json_decode($teacherResult->result, true);
-
-            Log::info('PARSED fn_admin_saveteacherinfo result:', [
-                'p_errorcode' => $resultData['p_errorcode'] ?? 'not_found',
-                'p_teacher_id' => $resultData['p_teacher_id'] ?? 'not_found',
-                'full_result' => $resultData
-            ]);
+            Log::channel('daily')->info('🔍 Parsed result data', ['resultData' => $resultData]);
 
             if (!$resultData || !isset($resultData['p_errorcode']) || $resultData['p_errorcode'] != 0) {
+                Log::channel('daily')->error('❌ Teacher save returned error', [
+                    'p_errorcode' => $resultData['p_errorcode'] ?? 'not_found',
+                    'p_teacher_id' => $resultData['p_teacher_id'] ?? 'not_found'
+                ]);
                 return response()->json([
                     'version' => '1.0',
                     'status' => 0,
@@ -175,20 +180,18 @@ class AdminTeacherController extends Controller
             }
 
             $teacherId = $resultData['p_teacher_id'];
-
-            Log::info('AdminTeacherController::saveTeacherWithSubjects - Teacher saved successfully', [
-                'teacher_id' => $teacherId
-            ]);
+            Log::channel('daily')->info('✅ Teacher saved successfully', ['teacher_id' => $teacherId]);
 
             // Step 2: Loop through subjects and assign each one
             $assignSubjectQuery = "SELECT public.fn_admin_saveteacherassignsubject_v1(?, ?, ?, ?, ?, ?, ?) as result";
 
             $successCount = 0;
             $failedSubjects = [];
+            Log::channel('daily')->info('🔄 STEP 2: Starting subject assignment loop', ['total_subjects' => count($subjectList)]);
 
             foreach ($subjectList as $index => $subject) {
                 try {
-                    Log::info("CALLING fn_admin_saveteacherassignsubject_v1 (Subject #{$index}):", [
+                    Log::channel('daily')->info("📥 Subject #{$index} - Calling fn_admin_saveteacherassignsubject_v1", [
                         'p_teacher_id' => $teacherId,
                         'p_dept_id' => $subject['dept_id'],
                         'p_semester_id' => $subject['semester_id'],
@@ -208,7 +211,7 @@ class AdminTeacherController extends Controller
                         $teacherInfo['inst_id']
                     ]);
 
-                    Log::info("OUTPUT from fn_admin_saveteacherassignsubject_v1 (Subject #{$index}):", [
+                    Log::channel('daily')->info("📤 Subject #{$index} - fn_admin_saveteacherassignsubject_v1 returned", [
                         'subject_id' => $subject['subject_id'],
                         'raw_result' => $subjectResult,
                         'result_json' => $subjectResult->result ?? null
@@ -217,28 +220,56 @@ class AdminTeacherController extends Controller
                     if ($subjectResult && $subjectResult->result) {
                         $subjectResultData = json_decode($subjectResult->result, true);
 
+                        Log::channel('daily')->info("🔍 Subject #{$index} - Parsed result", [
+                            'subject_id' => $subject['subject_id'],
+                            'p_errorcode' => $subjectResultData['p_errorcode'] ?? 'NOT_FOUND'
+                        ]);
+
                         if ($subjectResultData && isset($subjectResultData['p_errorcode']) && $subjectResultData['p_errorcode'] == 0) {
                             $successCount++;
+                            Log::channel('daily')->info("✅ Subject #{$index} assigned successfully", ['subject_id' => $subject['subject_id']]);
                         } else {
+                            $errorCode = $subjectResultData['p_errorcode'] ?? 'unknown';
+                            Log::channel('daily')->error("❌ Subject #{$index} failed", [
+                                'subject_id' => $subject['subject_id'],
+                                'error_code' => $errorCode
+                            ]);
                             $failedSubjects[] = [
                                 'subject_id' => $subject['subject_id'],
-                                'error_code' => $subjectResultData['p_errorcode'] ?? 'unknown'
+                                'dept_id' => $subject['dept_id'],
+                                'semester_id' => $subject['semester_id'],
+                                'subject_category_id' => $subject['subject_category_id'],
+                                'error_code' => $errorCode,
+                                'error_details' => $subjectResultData
                             ];
                         }
                     } else {
+                        Log::error("❌ Subject #{$index} NO RESULT RETURNED", [
+                            'subject_id' => $subject['subject_id'],
+                            'raw_result' => $subjectResult
+                        ]);
                         $failedSubjects[] = [
                             'subject_id' => $subject['subject_id'],
-                            'error' => 'No result returned'
+                            'error' => 'No result returned from database function'
                         ];
                     }
                 } catch (\Exception $subjectEx) {
-                    Log::error('AdminTeacherController::saveTeacherWithSubjects - Subject assignment error', [
+                    Log::error('❌ EXCEPTION during subject assignment', [
+                        'subject_index' => $index,
                         'subject_id' => $subject['subject_id'],
-                        'error' => $subjectEx->getMessage()
+                        'dept_id' => $subject['dept_id'],
+                        'semester_id' => $subject['semester_id'],
+                        'subject_category_id' => $subject['subject_category_id'],
+                        'error_message' => $subjectEx->getMessage(),
+                        'error_file' => $subjectEx->getFile(),
+                        'error_line' => $subjectEx->getLine()
                     ]);
 
                     $failedSubjects[] = [
                         'subject_id' => $subject['subject_id'],
+                        'dept_id' => $subject['dept_id'],
+                        'semester_id' => $subject['semester_id'],
+                        'subject_category_id' => $subject['subject_category_id'],
                         'error' => $subjectEx->getMessage()
                     ];
                 }
@@ -264,7 +295,15 @@ class AdminTeacherController extends Controller
                         'total_subjects' => count($subjectList)
                     ]
                 ];
-                Log::info('=== SAVE TEACHER API - RESPONSE (SUCCESS) ===', ['response' => $response]);
+                Log::info('═══════════════════════════════════════════════════════════');
+                Log::info('🟢 SAVE TEACHER API - FUNCTION OUTPUT (SUCCESS)');
+                Log::info('═══════════════════════════════════════════════════════════');
+                Log::info('📤 RESPONSE STATUS', ['status' => 1, 'message' => 'SUCCESS']);
+                Log::info('📤 RESPONSE MESSAGE', ['message' => $response['message']]);
+                Log::info('📤 TEACHER ID', ['teacher_id' => $teacherId]);
+                Log::info('📤 SUBJECTS ASSIGNED', ['assigned' => $successCount, 'total' => count($subjectList)]);
+                Log::info('📤 FULL RESPONSE JSON', ['response' => $response]);
+                Log::info('═══════════════════════════════════════════════════════════');
                 return response()->json($response, 200);
             } elseif ($successCount > 0) {
                 // Partial success
@@ -279,7 +318,16 @@ class AdminTeacherController extends Controller
                         'failed_subjects' => $failedSubjects
                     ]
                 ];
-                Log::warning('=== SAVE TEACHER API - RESPONSE (PARTIAL SUCCESS) ===', ['response' => $response]);
+                Log::warning('═══════════════════════════════════════════════════════════');
+                Log::warning('🟡 SAVE TEACHER API - FUNCTION OUTPUT (PARTIAL SUCCESS)');
+                Log::warning('═══════════════════════════════════════════════════════════');
+                Log::warning('📤 RESPONSE STATUS', ['status' => 1, 'message' => 'PARTIAL SUCCESS']);
+                Log::warning('📤 RESPONSE MESSAGE', ['message' => $response['message']]);
+                Log::warning('📤 TEACHER ID', ['teacher_id' => $teacherId]);
+                Log::warning('📤 SUBJECTS ASSIGNED', ['assigned' => $successCount, 'total' => count($subjectList)]);
+                Log::warning('📤 FAILED SUBJECTS', ['failed' => $failedSubjects]);
+                Log::warning('📤 FULL RESPONSE JSON', ['response' => $response]);
+                Log::warning('═══════════════════════════════════════════════════════════');
                 return response()->json($response, 200);
             } else {
                 // All subjects failed
@@ -292,15 +340,27 @@ class AdminTeacherController extends Controller
                         'failed_subjects' => $failedSubjects
                     ]
                 ];
-                Log::error('=== SAVE TEACHER API - RESPONSE (FAILURE) ===', ['response' => $response]);
+                Log::error('═══════════════════════════════════════════════════════════');
+                Log::error('🔴 SAVE TEACHER API - FUNCTION OUTPUT (FAILURE)');
+                Log::error('═══════════════════════════════════════════════════════════');
+                Log::error('📤 RESPONSE STATUS', ['status' => 0, 'message' => 'FAILURE']);
+                Log::error('📤 RESPONSE MESSAGE', ['message' => $response['message']]);
+                Log::error('📤 TEACHER ID', ['teacher_id' => $teacherId]);
+                Log::error('📤 ALL SUBJECTS FAILED TO ASSIGN');
+                Log::error('📤 FAILED SUBJECTS', ['failed' => $failedSubjects]);
+                Log::error('📤 FULL RESPONSE JSON', ['response' => $response]);
+                Log::error('═══════════════════════════════════════════════════════════');
                 return response()->json($response, 500);
             }
 
         } catch (\Exception $e) {
-            Log::error('AdminTeacherController::saveTeacherWithSubjects - Exception', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
+            Log::error('═══════════════════════════════════════════════════════════');
+            Log::error('🔴 SAVE TEACHER API - EXCEPTION OCCURRED');
+            Log::error('═══════════════════════════════════════════════════════════');
+            Log::error('❌ ERROR MESSAGE', ['error' => $e->getMessage()]);
+            Log::error('❌ ERROR FILE', ['file' => $e->getFile(), 'line' => $e->getLine()]);
+            Log::error('❌ STACK TRACE', ['trace' => $e->getTraceAsString()]);
+            Log::error('═══════════════════════════════════════════════════════════');
 
             return response()->json([
                 'version' => '1.0',

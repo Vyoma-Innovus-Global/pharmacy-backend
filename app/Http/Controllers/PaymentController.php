@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use App\Models\Registerstudent;
 use App\Models\PaymentTransaction;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Validator;
 
@@ -19,9 +20,9 @@ class PaymentController extends Controller
         $inst_code = $request->inst_code;
         $paying_for = $request->paying_for; // ENROLMENT
         $part_sem = $request->part_sem;     // Part_I
-        $form_num = $request->form_num; 
-        $reg_num = $request->reg_no; 
-        $type = $request->type; 
+        $form_num = $request->form_num;
+        $reg_num = $request->reg_no;
+        $type = $request->type;
         $late_fine = false;
         $totamount = 0;
         $pay_btn = false;
@@ -43,7 +44,7 @@ class PaymentController extends Controller
                             ->whereDate('start_date', '<=', now())
                             ->whereDate('end_date', '>=', now())
                             ->first();
-            
+
             $today = date('Y-m-d');
             if($checkLateFees){
                 $pay_btn = true;
@@ -57,7 +58,7 @@ class PaymentController extends Controller
             else{
                 $pay_btn = false;
             }
-            
+
             if($late_fine){
                 $fee = DB::table('pharmacy_fees')
                 ->where('fees_type', 'ENROLLMENT_LATE_FEES')
@@ -68,7 +69,7 @@ class PaymentController extends Controller
             }else{
                 $totamount = $amount;
             }
-            
+
             $enrl_data = Enrollment::where('enrl_reg_no', $reg_num)
                         ->where('is_enrollment', 1)
                         ->where('enrl_part_sem', $part_sem)
@@ -93,7 +94,7 @@ class PaymentController extends Controller
                                 'message' => $e->getMessage()
                             ]);
                         }
-        
+
     }
 
 
@@ -110,7 +111,7 @@ class PaymentController extends Controller
         $reg_no = array('250020365');//$request->s_appl_form_num;
         $latefine = false;//$request->latefine;
          */
-		 
+
 		 $s_inst_code = $request->s_inst_code;
         $paying_for = $request->paying_for; // ENROLMENT
         $part_sem = $request->part_sem;     // Part_I
@@ -118,8 +119,8 @@ class PaymentController extends Controller
         $exam_year = $request->exam_year;
         $reg_no = $request->s_appl_form_num;
         $latefine = $request->latefine;
-		
-		
+
+
         $fee = DB::table('pharmacy_fees')
             ->where('fees_type', $paying_for)
             ->where('anual', $part_sem)
@@ -132,7 +133,7 @@ class PaymentController extends Controller
             $regular_amount = 150;
         }
 
-        
+
 
         if ($latefine === true) {
             $fine_type = ($paying_for == "ENROLLMENT") ? 'ENROLLMENT_LATE_FEES' : null;
@@ -153,9 +154,9 @@ class PaymentController extends Controller
             $amount = $regular_amount;
         }
         // amount end
-     
+
         $count = count($reg_no);
-        
+
         $total_amount = $amount * $count;
 		#dd($total_amount);
 
@@ -171,13 +172,13 @@ class PaymentController extends Controller
                 $d = $d ? chr(rand(65, 90)) : chr(rand(48, 57));
                 $orderid .= $d;
             }
-            
+
             $merchant_order_num = $orderid;
 			#$total_amount	=	1;
 			#dd($amount);
 			#$other_data = "sachi_12345_test_X12345_2025_{$amount}";
 			$data_1	=	$this->getPaymentData($merchant_order_num, $total_amount, $other_data);
-            
+
             PaymentTransaction::create([
                 'order_id' => $orderid,
                 'initiated_by' => $s_inst_code,
@@ -189,7 +190,7 @@ class PaymentController extends Controller
                 'form_type' => $type
             ]);
 
-            
+
             //dd($requestParameter,$EncryptTrans);
             auditTrail($s_inst_code, "Payment initiated for students: {$reg_list} with order id : {$orderid} for {$paying_for}");
 			/*dd([
@@ -200,7 +201,7 @@ class PaymentController extends Controller
                 'merchIdVal' => $data_1['marchant_id'],
                 'actionUrl' => $data_1['payment_api']
             ]);
-			
+
 			$data = [
 			'EncryptTrans' => $data_1['transaction_id'],
 			'merchIdVal' => $data_1['marchant_id'],
@@ -210,11 +211,11 @@ class PaymentController extends Controller
 			foreach ($data as $key => $value) {
 				$inputs .= "<input type='hidden' name='$key' value='$value'>";
 			}
-		
+
 		 return "
         <form id='autoForm' method='POST' action='".$data_1['payment_api']."'>
             $inputs
-            
+
         </form>
         <script>
             document.getElementById('autoForm').submit();
@@ -230,7 +231,7 @@ class PaymentController extends Controller
                 'merchIdVal' => $data_1['marchant_id'],
                 'actionUrl' => $data_1['payment_api']
             ]);
-            
+
         } else {
             return response()->json([
                 'error' => true,
@@ -365,14 +366,17 @@ class PaymentController extends Controller
 
     public function enrollmentPaymentFail(Request $request)
     {
+        // Log the incoming request
+        Log::info('=== PAYMENT FAIL CALLBACK ===');
+        Log::info('Request Data: ' . json_encode($request->all()));
+
         // Merchant Order Number|SBIePayRefID/ATRN|Transaction Status|Amount|Currency|Pay Mode|Other Details|Reason/Message|Bank Code|Bank Reference Number|Transaction Date|Country|CIN|Merchant ID|Total Fee GST |Ref1|Ref2|Ref3|Ref4|Ref5|Ref6|Ref7|Ref8|Ref9
         // "C8YD3U722D|NA|FAIL|1|INR|NB|2025_ENROLLMENT_BMD_PHARMA01633,PHARMA12997_Part_I_REGULAR|User Cancel Transaction|NA|NA|2025-06-20 13:08:25|IN|00|1001954|0.00^0.00|||||||||
 
         $trans_details = sbiDecrypt($request->encData);
+        Log::info('Decrypted Transaction Details: ' . $trans_details);
+
         $data = explode('|', $trans_details);
-		
-		#print_r($trans_details);
-		#exit();
 
         $order_id = $data[0];
         $trans_id = $data[1];
@@ -385,22 +389,19 @@ class PaymentController extends Controller
         $country_code = $data[11];
         $marchnt_id = $data[13];
         $other_data = explode('_', $data[6]);
-		
-		#print_r($other_data); exit();
 
-        $exam_year = $other_data[0];
-        $paying_for = $other_data[1];
-        $s_inst_code = $other_data[2];
-        $s_appl_form_num = explode(',', $other_data[3]);
-        $form_num = $other_data[3];
-        $part_sem = str_replace("-","_",$other_data[4]) ;
-		#dd($part_sem);
-        $type = $other_data[5];
+        Log::info('Parsed Data:', [
+            'order_id' => $order_id,
+            'trans_id' => $trans_id,
+            'trans_status' => $trans_status,
+            'trans_amount' => $trans_amount,
+            'message' => $message
+        ]);
 
         $tranction = PaymentTransaction::where('order_id', $order_id)->first();
 
         if ($tranction) {
-            $tranction->update([
+            Log::info('Transaction found in database:', ['order_id' => $order_id, 'paying_for' => $tranction->paying_for]);            $tranction->update([
                 'trans_id' => $trans_id,
                 'trans_status' => $trans_status,
                 'trans_amount' => $trans_amount,
@@ -409,11 +410,38 @@ class PaymentController extends Controller
                 'country_code' => $country_code,
                 'marchnt_id' => $marchnt_id,
                 'trans_details' => $trans_details,
-                'is_verified' => 1,
+                'is_verified' => 0,
             ]);
 
-            auditTrail($form_num, "Payment {$trans_status}, FORM NO:{$form_num} ORDER ID: {$order_id}, TRANSACTION ID: {$trans_id} in {$exam_year}");
+            // Check if it's an institute payment
+            if ($tranction->paying_for === 'INSTITUTE_FEE') {
+                $inst_code = $other_data[0];
+                $admin_user_id = $other_data[1];
 
+                auditTrail($inst_code, "Institute payment FAILED - ORDER ID: {$order_id}, Status: {$trans_status}, Message: {$message}");
+
+                return view('redirect.payment', [
+                    'trans_id' => $trans_id,
+                    'order_id' => $order_id,
+                    'paying_for' => 'INSTITUTE_FEE',
+                    'message' => $message,
+                    'currency' => $currency,
+                    'trans_amount' => $trans_amount,
+                    'trans_time' => date('d-m-Y h:i a', strtotime($trans_time)),
+                    'trans_status' => $trans_status,
+                ]);
+            }
+
+            // Handle enrollment payment
+            $exam_year = $other_data[0];
+            $paying_for = $other_data[1];
+            $s_inst_code = $other_data[2];
+            $s_appl_form_num = explode(',', $other_data[3]);
+            $form_num = $other_data[3];
+            $part_sem = str_replace("-","_",$other_data[4]);
+            $type = $other_data[5];
+
+            auditTrail($form_num, "Payment {$trans_status}, FORM NO:{$form_num} ORDER ID: {$order_id}, TRANSACTION ID: {$trans_id} in {$exam_year}");
 
             return view('redirect.payment', [
                 'trans_id' => $trans_id,
@@ -425,6 +453,8 @@ class PaymentController extends Controller
                 'trans_time' => date('d-m-Y h:i a', strtotime($trans_time)),
                 'trans_status' => $trans_status,
             ]);
+        } else {
+            Log::error('Transaction not found in database:', ['order_id' => $order_id]);
         }
     }
 
@@ -472,7 +502,7 @@ class PaymentController extends Controller
             $orderid .= $d;
         }
         $trans_id = $demand_no;
-      
+
         $latefine = $request->latefine;
         //amount start
         $fee = DB::table('pharmacy_fees')
@@ -509,7 +539,7 @@ class PaymentController extends Controller
         // amount end
 
         $count = count($s_appl_form_num);
-        
+
         $total_amount = $amount * $count;
 
         $reg_list = implode(',', $s_appl_form_num);
@@ -586,12 +616,12 @@ class PaymentController extends Controller
 
         $regular_amount = $fee->fees_amount ?? 0;
 
-        
+
         $amount = $regular_amount;
         // amount end
-     
+
         $count = count($reg_no);
-        
+
         $total_amount = $amount * $count;
 
         $reg_list = implode(',', $reg_no);
@@ -652,7 +682,7 @@ class PaymentController extends Controller
             ]);
         }
     }
-	
+
 	function check_payment(){
 		$orderid	=	rand(1000, 99999999);
 		$amount		=	250;
@@ -672,20 +702,20 @@ class PaymentController extends Controller
 			foreach ($data as $key => $value) {
 				$inputs .= "<input type='hidden' name='$key' value='$value'>";
 			}
-		
+
 		 return "
         <form id='autoForm' method='POST' action='".$data_1['payment_api']."'>
             $inputs
-            
+
         </form>
         <script>
             document.getElementById('autoForm').submit();
         </script>
     ";
-	
+
 		#print_r($data);
 	}
-	
+
 	function getPaymentData($orderid, $pay_amount, $other_data)
 	{
     $marid = '5';
@@ -704,7 +734,7 @@ class PaymentController extends Controller
 			'payment_api' => $api_key
 		];
 	}
-	
+
 	function sbiEncrypt($data)
 {
     $key = "IlzvLopkj/XEopyGTmrJPvNGu2v/NwWFX0qo2F2U1uA=";
@@ -718,6 +748,174 @@ class PaymentController extends Controller
     );
 
     return base64_encode($cipherText);
+}
+
+// Institute Payment API
+public function institutePayment(Request $request)
+{
+    $validator = Validator::make($request->all(), [
+        'admin_user_id' => 'required',
+        'amount' => 'required|numeric|min:1',
+        'inst_code' => 'required',
+        'payment_purpose' => 'nullable|string'
+    ]);
+
+    if ($validator->fails()) {
+        return response()->json([
+            'error' => true,
+            'message' => $validator->errors()->first()
+        ], 400);
+    }
+
+    try {
+        $trans_time = date('Y-m-d H:i:s');
+        $admin_user_id = $request->admin_user_id;
+        $inst_code = $request->inst_code;
+        $amount = $request->amount;
+        $payment_purpose = $request->payment_purpose ?? 'Institute Fee';
+
+        // Generate order ID
+        $orderid = '';
+        for ($i = 0; $i < 10; $i++) {
+            $d = rand(1, 30) % 2;
+            $d = $d ? chr(rand(65, 90)) : chr(rand(48, 57));
+            $orderid .= $d;
+        }
+
+        $other_data = "{$inst_code}_{$admin_user_id}_{$payment_purpose}";
+        $data_1 = $this->getPaymentData($orderid, $amount, $other_data);
+
+        // Save transaction record
+        PaymentTransaction::create([
+            'order_id' => $orderid,
+            'initiated_by' => $inst_code,
+            'initiated_at' => now(),
+            'paying_for' => 'INSTITUTE_FEE',
+            'trans_amount' => $amount,
+            'semester' => NULL,
+            'form_no' => $admin_user_id,
+            'form_type' => 'INSTITUTE'
+        ]);
+
+        auditTrail($inst_code, "Institute payment initiated by admin_user_id: {$admin_user_id} with order id: {$orderid} for amount: {$amount}");
+
+        return response()->json([
+            'error' => false,
+            'message' => 'Payment initiated successfully',
+            'order_id' => $orderid,
+            'encryptTrans' => $data_1['transaction_id'],
+            'merchIdVal' => $data_1['marchant_id'],
+            'actionUrl' => $data_1['payment_api'],
+            'amount' => $amount
+        ], 200);
+
+    } catch (\Exception $e) {
+        return response()->json([
+            'error' => true,
+            'message' => 'Payment initiation failed: ' . $e->getMessage()
+        ], 500);
+    }
+}
+
+// Institute Payment Success Handler
+public function institutePaymentSuccess(Request $request)
+{
+    $trans_details = sbiDecrypt($request->encData);
+    $data = explode('|', $trans_details);
+
+    $order_id = $data[0];
+    $trans_id = $data[1];
+    $trans_status = $data[2];
+    $trans_amount = $data[3];
+    $currency = $data[4];
+    $trans_mode = $data[5];
+    $message = $data[7];
+    $trans_time = $data[10];
+    $country_code = $data[11];
+    $marchnt_id = $data[13];
+    $other_data = explode('_', $data[6]);
+
+    $inst_code = $other_data[0];
+    $admin_user_id = $other_data[1];
+    $payment_purpose = $other_data[2] ?? 'Institute Fee';
+
+    $tranction = PaymentTransaction::where('order_id', $order_id)->first();
+
+    if ($tranction) {
+        $tranction->update([
+            'trans_id' => $trans_id,
+            'trans_status' => $trans_status,
+            'trans_amount' => $trans_amount,
+            'trans_mode' => $trans_mode,
+            'trans_time' => $trans_time,
+            'country_code' => $country_code,
+            'marchnt_id' => $marchnt_id,
+            'trans_details' => $trans_details,
+            'is_verified' => 1,
+        ]);
+
+        Payment::create([
+            'order_id' => $order_id,
+            'trans_id' => $trans_id,
+            'form_id' => $admin_user_id,
+            'inst_code' => $inst_code,
+            'paid_type' => 'INSTITUTE_FEE',
+            'paid_amount' => $trans_amount,
+            'paid_at' => $trans_time,
+            'payment_mode' => $trans_mode,
+            'detail' => $trans_details,
+            'exam_year' => date('Y'),
+        ]);
+
+        auditTrail($inst_code, "Institute payment successful - ORDER ID: {$order_id}, TRANSACTION ID: {$trans_id}, Amount: {$trans_amount}");
+
+        return response()->json([
+            'error' => false,
+            'message' => 'Payment successful',
+            'trans_id' => $trans_id,
+            'order_id' => $order_id,
+            'trans_amount' => $trans_amount,
+            'trans_status' => $trans_status,
+            'trans_time' => date('d-m-Y h:i a', strtotime($trans_time))
+        ], 200);
+    }
+
+    return response()->json([
+        'error' => true,
+        'message' => 'Transaction not found'
+    ], 404);
+}
+
+// Institute Payment Failure Handler
+public function institutePaymentFail(Request $request)
+{
+    $trans_details = sbiDecrypt($request->encData);
+    $data = explode('|', $trans_details);
+
+    $order_id = $data[0];
+    $trans_id = $data[1];
+    $trans_status = $data[2];
+    $message = $data[7];
+
+    $tranction = PaymentTransaction::where('order_id', $order_id)->first();
+
+    if ($tranction) {
+        $tranction->update([
+            'trans_id' => $trans_id,
+            'trans_status' => $trans_status,
+            'trans_details' => $trans_details,
+            'is_verified' => 0,
+        ]);
+
+        auditTrail($tranction->initiated_by, "Institute payment failed - ORDER ID: {$order_id}, Status: {$trans_status}");
+    }
+
+    return response()->json([
+        'error' => true,
+        'message' => 'Payment failed: ' . $message,
+        'order_id' => $order_id,
+        'trans_status' => $trans_status
+    ], 400);
 }
 
 }
