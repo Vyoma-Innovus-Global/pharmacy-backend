@@ -722,7 +722,7 @@ class PaymentController extends Controller
     $marchent_id = '1001954';
     $api_key = "https://www.sbiepay.sbi/secure/AggregatorHostedListener";
 
-    $base_url = rtrim(env('APP_URL'), '/') . "/payment/";
+    $base_url = env('APP_URL') . "/payment/";
     $success_url = "{$base_url}success";
     $fail_url =  "{$base_url}fail";
 	#dd('x'.$pay_amount);
