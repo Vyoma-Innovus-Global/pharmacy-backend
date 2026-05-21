@@ -12,22 +12,47 @@ class StudentMarksController extends Controller
     /**
      * POST /api/marks/student-marks-info-v1
      *
-     * Get student marks information using fn_admin_getstudentmarksinfo_v1
+     * Get student marks information using fn_admin_getstudentmarksinfo_v2
      *
      * Body: {
      *   "admin_user_id": 5,
-     *   "student_id":    10677,       // 0 = all students, non-zero = specific student
+     *   "student_id":    11452,       // 0 = all students, non-zero = specific student
      *   "inst_code":     "JCG",
      *   "dept_code":     "PHARM",
      *   "subject_code":  "PHCE",
      *   "exam_year":     2025,
      *   "semester":      1
      * }
+     *
+     * Response Fields:
+     * - marksId: Unique marks record ID
+     * - semester: Semester number
+     * - studentId: Student ID
+     * - studentNo: Student number
+     * - department: Department code
+     * - examStatus: Exam status code (INC, PASS, etc.)
+     * - isEditable: Whether marks can be edited (0/1)
+     * - marksStatus: Status of marks (DRAFT, SUBMITTED, etc.)
+     * - studentName: Student's full name
+     * - studentRoll: Roll number
+     * - subjectCode: Subject code
+     * - studentRegNo: Registration number
+     * - externalMarks: External marks obtained
+     * - internalMarks: Internal marks obtained
+     * - studentEnrlType: Enrollment type (READMISSION, etc.)
+     * - subjectCategory: Category (THEORY/PRACTICAL)
+     * - externalMaxMarks: Maximum external marks
+     * - internalMaxMarks: Maximum internal marks
+     * - subjectCategoryId: Category ID
      */
     public function getStudentMarksInfoV1(Request $request)
     {
-        Log::info('=== GET STUDENT MARKS INFO V1 API - REQUEST START ===');
-        Log::info('Request Data:', $request->all());
+        Log::channel('daily')->info('🚀 === GET STUDENT MARKS INFO V1 API - REQUEST START ===');
+        Log::channel('daily')->info('📥 REQUEST INPUT:', [
+            'full_request' => $request->all(),
+            'method' => $request->method(),
+            'url' => $request->fullUrl()
+        ]);
 
         $validator = Validator::make($request->all(), [
             'admin_user_id' => 'required|integer',
@@ -40,7 +65,10 @@ class StudentMarksController extends Controller
         ]);
 
         if ($validator->fails()) {
-            Log::error('Validation Failed:', ['errors' => $validator->errors()->all()]);
+            Log::channel('daily')->error('❌ VALIDATION FAILED:', [
+                'errors' => $validator->errors()->all(),
+                'input' => $request->all()
+            ]);
             return response()->json([
                 'version' => '1.0',
                 'status'  => 0,
@@ -57,19 +85,19 @@ class StudentMarksController extends Controller
         $examYear    = $request->input('exam_year');
         $semester    = $request->input('semester');
 
-        Log::info('Calling fn_admin_getstudentmarksinfo_v1 with parameters:', [
-            'admin_user_id' => $adminUserId,
-            'student_id'    => $studentId,
-            'inst_code'     => $instCode,
-            'dept_code'     => $deptCode,
-            'subject_code'  => $subjectCode,
-            'exam_year'     => $examYear,
-            'semester'      => $semester,
+        Log::channel('daily')->info('📤 Calling fn_admin_getstudentmarksinfo_v2 with parameters:', [
+            'p_admin_user_id' => $adminUserId,
+            'p_student_id'    => $studentId,
+            'p_inst_code'     => $instCode,
+            'p_dept_code'     => $deptCode,
+            'p_subject_code'  => $subjectCode,
+            'p_exam_year'     => $examYear,
+            'p_semester'      => $semester,
         ]);
 
         try {
-            // Call the stored procedure
-            $sql = "SELECT public.fn_admin_getstudentmarksinfo_v1(?, ?, ?, ?, ?, ?, ?) as result";
+            // Call the stored procedure v2
+            $sql = "SELECT public.fn_admin_getstudentmarksinfo_v2(?, ?, ?, ?, ?, ?, ?) as result";
 
             $result = DB::selectOne($sql, [
                 $adminUserId,
@@ -81,12 +109,12 @@ class StudentMarksController extends Controller
                 $semester
             ]);
 
-            Log::info('Function fn_admin_getstudentmarksinfo_v1 returned:', [
+            Log::channel('daily')->info('📥 Function fn_admin_getstudentmarksinfo_v2 returned:', [
                 'raw_result' => $result
             ]);
 
             if (!$result || !isset($result->result)) {
-                Log::warning('No result returned from database function');
+                Log::channel('daily')->warning('⚠️ No result returned from database function');
                 return response()->json([
                     'version' => '1.0',
                     'status'  => 0,
@@ -99,7 +127,10 @@ class StudentMarksController extends Controller
             $data = json_decode($result->result, true);
 
             if (json_last_error() !== JSON_ERROR_NONE) {
-                Log::error('JSON parsing error:', ['error' => json_last_error_msg()]);
+                Log::channel('daily')->error('❌ JSON parsing error:', [
+                    'error' => json_last_error_msg(),
+                    'raw_result' => $result->result
+                ]);
                 return response()->json([
                     'version' => '1.0',
                     'status'  => 0,
@@ -108,17 +139,24 @@ class StudentMarksController extends Controller
                 ], 500);
             }
 
-            Log::info('Parsed data:', ['count' => count($data ?? [])]);
+            Log::channel('daily')->info('✅ Data parsed successfully:', [
+                'count' => is_array($data) ? count($data) : 1,
+                'data' => $data
+            ]);
 
-            return response()->json([
+            $responseData = [
                 'version' => '1.0',
                 'status'  => 1,
                 'message' => 'Data fetched successfully',
                 'data'    => $data ?? []
-            ], 200);
+            ];
+
+            Log::channel('daily')->info('📤 FINAL RESPONSE:', $responseData);
+
+            return response()->json($responseData, 200);
 
         } catch (\Exception $e) {
-            Log::error('Exception in getStudentMarksInfoV1:', [
+            Log::channel('daily')->error('🔥 EXCEPTION in getStudentMarksInfoV1:', [
                 'message' => $e->getMessage(),
                 'file'    => $e->getFile(),
                 'line'    => $e->getLine(),
