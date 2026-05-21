@@ -912,22 +912,15 @@ public function institutePaymentSuccess(Request $request)
 
         auditTrail($inst_code, "Institute payment successful - ORDER ID: {$order_id}, TRANSACTION ID: {$trans_id}, Amount: {$trans_amount}");
 
-        // Get institute details
-        $institute = DB::table('institute_master')
-            ->where('inst_code', $inst_code)
-            ->first();
-
-        // Use redirect page that will pass data to React app
-        return view('institute-payment-success-redirect', [
+        return response()->json([
+            'error' => false,
+            'message' => 'Payment successful',
             'trans_id' => $trans_id,
             'order_id' => $order_id,
             'trans_amount' => $trans_amount,
             'trans_status' => $trans_status,
-            'trans_time' => date('d-m-Y h:i a', strtotime($trans_time)),
-            'inst_code' => $inst_code,
-            'inst_name' => $institute->inst_name ?? 'N/A',
-            'payment_purpose' => $payment_purpose
-        ]);
+            'trans_time' => date('d-m-Y h:i a', strtotime($trans_time))
+        ], 200);
     }
 
     return response()->json([
@@ -966,79 +959,6 @@ public function institutePaymentFail(Request $request)
         'order_id' => $order_id,
         'trans_status' => $trans_status
     ], 400);
-}
-
-// Download Institute Payment Receipt as PDF
-public function downloadInstitutePaymentReceipt($order_id)
-{
-    $transaction = PaymentTransaction::where('order_id', $order_id)
-        ->where('trans_status', 'SUCCESS')
-        ->first();
-
-    if (!$transaction) {
-        abort(404, 'Transaction not found or payment not successful');
-    }
-
-    // Extract institute code from other_details
-    $other_data = explode('_', explode('|', $transaction->trans_details)[6] ?? '');
-    $inst_code = $other_data[0] ?? null;
-
-    // Get institute details
-    $institute = DB::table('institute_master')
-        ->where('inst_code', $inst_code)
-        ->first();
-
-    $data = [
-        'trans_id' => $transaction->trans_id,
-        'order_id' => $transaction->order_id,
-        'trans_amount' => $transaction->trans_amount,
-        'trans_status' => $transaction->trans_status,
-        'trans_time' => date('d-m-Y h:i a', strtotime($transaction->trans_time)),
-        'inst_code' => $inst_code,
-        'inst_name' => $institute->inst_name ?? 'N/A',
-        'payment_purpose' => 'Institute Registration Fee'
-    ];
-
-    $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('institute-payment-receipt', $data);
-    return $pdf->download('institute-payment-receipt-' . $order_id . '.pdf');
-}
-
-// Get Institute Payment Receipt Data (API for React)
-public function getInstitutePaymentReceiptData($order_id)
-{
-    $transaction = PaymentTransaction::where('order_id', $order_id)
-        ->where('trans_status', 'SUCCESS')
-        ->first();
-
-    if (!$transaction) {
-        return response()->json([
-            'error' => true,
-            'message' => 'Transaction not found or payment not successful'
-        ], 404);
-    }
-
-    // Extract institute code from other_details
-    $other_data = explode('_', explode('|', $transaction->trans_details)[6] ?? '');
-    $inst_code = $other_data[0] ?? null;
-
-    // Get institute details
-    $institute = DB::table('institute_master')
-        ->where('inst_code', $inst_code)
-        ->first();
-
-    return response()->json([
-        'error' => false,
-        'data' => [
-            'trans_id' => $transaction->trans_id,
-            'order_id' => $transaction->order_id,
-            'trans_amount' => $transaction->trans_amount,
-            'trans_status' => $transaction->trans_status,
-            'trans_time' => date('d-m-Y h:i a', strtotime($transaction->trans_time)),
-            'inst_code' => $inst_code,
-            'inst_name' => $institute->inst_name ?? 'N/A',
-            'payment_purpose' => 'Institute Registration Fee'
-        ]
-    ], 200);
 }
 
 }

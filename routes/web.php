@@ -19,9 +19,10 @@ Route::get('/', function () {
 });
 
 Route::prefix('payment')->group(function () {
-    Route::post('/success', [PaymentController::class, 'enrollmentPaymentSuccess']);
-    Route::post('/fail', [PaymentController::class, 'enrollmentPaymentFail']);
+    Route::post('/success', [PaymentController::class, 'institutePaymentSuccess']);
+    Route::post('/fail', [PaymentController::class, 'institutePaymentFail']);
     Route::post('/push', [PaymentController::class, 'paymentPush']);
+    Route::get('/receipt/{order_id}', [PaymentController::class, 'downloadInstitutePaymentReceipt']);
 });
 
 Route::get('/paynow',[PaymentController::class, 'payment']);

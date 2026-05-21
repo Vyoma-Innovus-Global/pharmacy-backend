@@ -83,6 +83,7 @@ Route::prefix('enrollment')->middleware('authenticate')->group(function () {
     Route::post('/institute-payment', [PaymentController::class, 'institutePayment'])->withoutMiddleware('authenticate');
     Route::post('/institute-payment-success', [PaymentController::class, 'institutePaymentSuccess'])->withoutMiddleware('authenticate');
     Route::post('/institute-payment-fail', [PaymentController::class, 'institutePaymentFail'])->withoutMiddleware('authenticate');
+    Route::get('/institute-payment-receipt/{order_id}', [PaymentController::class, 'getInstitutePaymentReceiptData'])->withoutMiddleware('authenticate');
 
     Route::post('/enroll-payment-offline', [PaymentController::class, 'paymentOffline']);
     Route::get('/enrollment-receipt', [EnrollmentController::class, 'enrollmentReceipt'])->withoutMiddleware('authenticate');
