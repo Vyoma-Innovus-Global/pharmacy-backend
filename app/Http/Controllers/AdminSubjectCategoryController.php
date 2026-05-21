@@ -10,6 +10,49 @@ use Illuminate\Support\Facades\Validator;
 class AdminSubjectCategoryController extends Controller
 {
     /**
+     * @OA\Post(
+     *     path="/api/admin/subject-categories",
+     *     tags={"Admin - Master Data"},
+     *     summary="Get all subject categories",
+     *     description="Retrieves all subject categories for a given semester. Calls: fn_admin_getallsubjectcategory(p_admin_user_id, p_semester)",
+     *     security={{"token": {}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"admin_user_id", "semester"},
+     *             @OA\Property(property="admin_user_id", type="integer", example=668, description="Admin user ID"),
+     *             @OA\Property(property="semester", type="integer", example=1, description="Semester number (1-6)")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Subject categories retrieved successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="version", type="string", example="1.0"),
+     *             @OA\Property(property="status", type="integer", example=0),
+     *             @OA\Property(property="message", type="string", example="Successfully retrieved subject categories."),
+     *             @OA\Property(
+     *                 property="data",
+     *                 type="array",
+     *                 @OA\Items(
+     *                     @OA\Property(property="subjectCategoryId", type="integer", example=1),
+     *                     @OA\Property(property="subjectCategoryName", type="string", example="Theory"),
+     *                     @OA\Property(property="semester", type="integer", example=1)
+     *                 )
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=422,
+     *         description="Validation failed",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="version", type="string", example="1.0"),
+     *             @OA\Property(property="status", type="integer", example=1),
+     *             @OA\Property(property="message", type="string", example="Validation failed.")
+     *         )
+     *     )
+     * )
+     *
      * POST /api/admin/subject-categories
      *
      * Get all subject categories for a given semester.

@@ -59,6 +59,75 @@ class AdminStudentMarksController extends Controller
      * 1   - Exception
      * 200 - Invalid User
      * 800 - Invalid Marks Info
+     *
+     * @OA\Post(
+     *     path="/api/admin/save-student-marks",
+     *     tags={"Admin - Student Marks"},
+     *     summary="Save student marks (bulk)",
+     *     description="Save marks for one or multiple students using fn_admin_savestudentmarks_v3 stored procedure",
+     *     security={{"token": {}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"marks"},
+     *             @OA\Property(
+     *                 property="marks",
+     *                 type="array",
+     *                 @OA\Items(
+     *                     type="object",
+     *                     required={"p_marks_id", "p_exam_status_code", "p_submit_type_id", "p_evaluator_type_id", "p_admin_user_id"},
+     *                     @OA\Property(property="p_marks_id", type="integer", example=1),
+     *                     @OA\Property(property="p_external_marks", type="number", format="double", example=75, nullable=true),
+     *                     @OA\Property(property="p_internal_marks", type="number", format="double", example=28, nullable=true),
+     *                     @OA\Property(property="p_doc", type="string", example="marksheet.pdf", nullable=true),
+     *                     @OA\Property(property="p_exam_status_code", type="string", example="PASS"),
+     *                     @OA\Property(property="p_submit_type_id", type="integer", example=5),
+     *                     @OA\Property(property="p_evaluator_type_id", type="integer", example=1),
+     *                     @OA\Property(property="p_admin_user_id", type="integer", example=5),
+     *                     @OA\Property(property="p_remarks", type="string", example="Marks updated successfully", nullable=true)
+     *                 )
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Marks saved successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="version", type="string", example="1.0"),
+     *             @OA\Property(property="status", type="integer", example=1),
+     *             @OA\Property(property="message", type="string", example="All 1 marks saved successfully"),
+     *             @OA\Property(
+     *                 property="data",
+     *                 type="object",
+     *                 @OA\Property(property="total", type="integer", example=1),
+     *                 @OA\Property(property="success", type="integer", example=1),
+     *                 @OA\Property(property="failed", type="integer", example=0),
+     *                 @OA\Property(
+     *                     property="results",
+     *                     type="array",
+     *                     @OA\Items(
+     *                         @OA\Property(property="marks_id", type="integer", example=1),
+     *                         @OA\Property(property="status", type="string", example="success"),
+     *                         @OA\Property(property="result_code", type="integer", example=0),
+     *                         @OA\Property(property="message", type="string", example="Marks saved successfully")
+     *                     )
+     *                 )
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=400,
+     *         description="Validation error"
+     *     ),
+     *     @OA\Response(
+     *         response=401,
+     *         description="Unauthorized - Token missing or invalid"
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Internal server error"
+     *     )
+     * )
      */
     public function saveStudentMarks(Request $request)
     {

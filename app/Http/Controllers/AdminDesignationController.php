@@ -19,6 +19,34 @@ class AdminDesignationController extends Controller
      * }
      *
      * Calls: fn_admin_getalldesignation(p_admin_user_id)
+     *
+     * @OA\Post(
+     *     path="/api/admin/designations",
+     *     tags={"Admin - Master Data"},
+     *     summary="Get all designations",
+     *     description="Retrieve all available designations using fn_admin_getalldesignation stored procedure",
+     *     security={{"token": {}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"admin_user_id"},
+     *             @OA\Property(property="admin_user_id", type="integer", example=668)
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Designations fetched successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="version", type="string", example="1.0"),
+     *             @OA\Property(property="status", type="integer", example=1),
+     *             @OA\Property(property="message", type="string", example="Designations retrieved successfully"),
+     *             @OA\Property(property="data", type="array", @OA\Items(type="object"))
+     *         )
+     *     ),
+     *     @OA\Response(response=422, description="Validation error"),
+     *     @OA\Response(response=401, description="Unauthorized"),
+     *     @OA\Response(response=500, description="Internal server error")
+     * )
      */
     public function getAllDesignations(Request $request)
     {

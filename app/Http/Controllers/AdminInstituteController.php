@@ -19,6 +19,24 @@ class AdminInstituteController extends Controller
      * }
      *
      * Calls: fn_admin_getallinstitutes_v1(p_admin_user_id)
+     *
+     * @OA\Post(
+     *     path="/api/admin/institutes",
+     *     tags={"Admin - Master Data"},
+     *     summary="Get all institutes",
+     *     description="Retrieve all institutes using fn_admin_getallinstitutes_v1",
+     *     security={{"token": {}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"admin_user_id"},
+     *             @OA\Property(property="admin_user_id", type="integer", example=668)
+     *         )
+     *     ),
+     *     @OA\Response(response=200, description="Success"),
+     *     @OA\Response(response=422, description="Validation error"),
+     *     @OA\Response(response=401, description="Unauthorized")
+     * )
      */
     public function getAllInstitutes(Request $request)
     {

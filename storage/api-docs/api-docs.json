@@ -1,0 +1,1715 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "Pharmacy Management System API",
+        "description": "Complete API documentation for Pharmacy Management System including admin, student, teacher, and payment modules",
+        "contact": {
+            "email": "support@pharmacy.edu"
+        },
+        "version": "1.0.0"
+    },
+    "servers": [
+        {
+            "url": "http://127.0.0.1:8000",
+            "description": "Local Development Server"
+        },
+        {
+            "url": "https://api.pharmacy.edu",
+            "description": "Production Server"
+        }
+    ],
+    "paths": {
+        "/api/admin/departments": {
+            "post": {
+                "tags": [
+                    "Admin - Master Data"
+                ],
+                "summary": "Get departments by institute and semester",
+                "description": "Retrieve departments using fn_admin_getdepartmentsbyinst",
+                "operationId": "6bfe7e02e905000ce2fe8f56b007a1f5",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "admin_user_id",
+                                    "inst_code",
+                                    "semester_id"
+                                ],
+                                "properties": {
+                                    "admin_user_id": {
+                                        "type": "integer",
+                                        "example": 1
+                                    },
+                                    "inst_code": {
+                                        "type": "string",
+                                        "example": "JCG"
+                                    },
+                                    "semester_id": {
+                                        "type": "integer",
+                                        "example": 1
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Success"
+                    },
+                    "422": {
+                        "description": "Validation error"
+                    }
+                },
+                "security": [
+                    {
+                        "token": []
+                    }
+                ]
+            }
+        },
+        "/api/admin/designations": {
+            "post": {
+                "tags": [
+                    "Admin - Master Data"
+                ],
+                "summary": "Get all designations",
+                "description": "Retrieve all available designations using fn_admin_getalldesignation stored procedure",
+                "operationId": "e9694c8a1e8e36ef0ff44a80d69b1183",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "admin_user_id"
+                                ],
+                                "properties": {
+                                    "admin_user_id": {
+                                        "type": "integer",
+                                        "example": 668
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Designations fetched successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "version": {
+                                            "type": "string",
+                                            "example": "1.0"
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "example": 1
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Designations retrieved successfully"
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                },
+                "security": [
+                    {
+                        "token": []
+                    }
+                ]
+            }
+        },
+        "/api/admin/institutes": {
+            "post": {
+                "tags": [
+                    "Admin - Master Data"
+                ],
+                "summary": "Get all institutes",
+                "description": "Retrieve all institutes using fn_admin_getallinstitutes_v1",
+                "operationId": "57862ffe96cdba77fcf5010b6f724685",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "admin_user_id"
+                                ],
+                                "properties": {
+                                    "admin_user_id": {
+                                        "type": "integer",
+                                        "example": 668
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Success"
+                    },
+                    "422": {
+                        "description": "Validation error"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    }
+                },
+                "security": [
+                    {
+                        "token": []
+                    }
+                ]
+            }
+        },
+        "/api/admin/semesters": {
+            "post": {
+                "tags": [
+                    "Admin - Master Data"
+                ],
+                "summary": "Get all semesters",
+                "description": "Retrieves all semesters list filtered by semester type. Calls: fn_admin_getallsemesters(p_admin_user_id, p_semester_type)",
+                "operationId": "3574bf5af47544e5307b18bd6929989f",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "admin_user_id",
+                                    "semester_type"
+                                ],
+                                "properties": {
+                                    "admin_user_id": {
+                                        "description": "Admin user ID",
+                                        "type": "integer",
+                                        "example": 668
+                                    },
+                                    "semester_type": {
+                                        "description": "Semester type filter (1=Odd, 2=Even, etc.)",
+                                        "type": "integer",
+                                        "example": 1
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Semesters list retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "version": {
+                                            "type": "string",
+                                            "example": "1.0"
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "example": 0
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Successfully retrieved semesters."
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "semesterId": {
+                                                        "type": "string",
+                                                        "example": "1"
+                                                    },
+                                                    "semesterName": {
+                                                        "type": "string",
+                                                        "example": "First Semester"
+                                                    },
+                                                    "semesterType": {
+                                                        "type": "integer",
+                                                        "example": 1
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation failed",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "version": {
+                                            "type": "string",
+                                            "example": "1.0"
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "example": 1
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Validation failed."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "token": []
+                    }
+                ]
+            }
+        },
+        "/api/admin/save-student-marks": {
+            "post": {
+                "tags": [
+                    "Admin - Student Marks"
+                ],
+                "summary": "Save student marks (bulk)",
+                "description": "Save marks for one or multiple students using fn_admin_savestudentmarks_v3 stored procedure",
+                "operationId": "c17c1524c8b661b87af7679fb065e110",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "marks"
+                                ],
+                                "properties": {
+                                    "marks": {
+                                        "type": "array",
+                                        "items": {
+                                            "required": [
+                                                "p_marks_id",
+                                                "p_exam_status_code",
+                                                "p_submit_type_id",
+                                                "p_evaluator_type_id",
+                                                "p_admin_user_id"
+                                            ],
+                                            "properties": {
+                                                "p_marks_id": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "p_external_marks": {
+                                                    "type": "number",
+                                                    "format": "double",
+                                                    "example": 75,
+                                                    "nullable": true
+                                                },
+                                                "p_internal_marks": {
+                                                    "type": "number",
+                                                    "format": "double",
+                                                    "example": 28,
+                                                    "nullable": true
+                                                },
+                                                "p_doc": {
+                                                    "type": "string",
+                                                    "example": "marksheet.pdf",
+                                                    "nullable": true
+                                                },
+                                                "p_exam_status_code": {
+                                                    "type": "string",
+                                                    "example": "PASS"
+                                                },
+                                                "p_submit_type_id": {
+                                                    "type": "integer",
+                                                    "example": 5
+                                                },
+                                                "p_evaluator_type_id": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "p_admin_user_id": {
+                                                    "type": "integer",
+                                                    "example": 5
+                                                },
+                                                "p_remarks": {
+                                                    "type": "string",
+                                                    "example": "Marks updated successfully",
+                                                    "nullable": true
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Marks saved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "version": {
+                                            "type": "string",
+                                            "example": "1.0"
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "example": 1
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "All 1 marks saved successfully"
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "total": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "success": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "failed": {
+                                                    "type": "integer",
+                                                    "example": 0
+                                                },
+                                                "results": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "properties": {
+                                                            "marks_id": {
+                                                                "type": "integer",
+                                                                "example": 1
+                                                            },
+                                                            "status": {
+                                                                "type": "string",
+                                                                "example": "success"
+                                                            },
+                                                            "result_code": {
+                                                                "type": "integer",
+                                                                "example": 0
+                                                            },
+                                                            "message": {
+                                                                "type": "string",
+                                                                "example": "Marks saved successfully"
+                                                            }
+                                                        },
+                                                        "type": "object"
+                                                    }
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error"
+                    },
+                    "401": {
+                        "description": "Unauthorized - Token missing or invalid"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                },
+                "security": [
+                    {
+                        "token": []
+                    }
+                ]
+            }
+        },
+        "/api/admin/subject-categories": {
+            "post": {
+                "tags": [
+                    "Admin - Master Data"
+                ],
+                "summary": "Get all subject categories",
+                "description": "Retrieves all subject categories for a given semester. Calls: fn_admin_getallsubjectcategory(p_admin_user_id, p_semester)",
+                "operationId": "abf35f8f2c424e7339cbdbb20df1f9a3",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "admin_user_id",
+                                    "semester"
+                                ],
+                                "properties": {
+                                    "admin_user_id": {
+                                        "description": "Admin user ID",
+                                        "type": "integer",
+                                        "example": 668
+                                    },
+                                    "semester": {
+                                        "description": "Semester number (1-6)",
+                                        "type": "integer",
+                                        "example": 1
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Subject categories retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "version": {
+                                            "type": "string",
+                                            "example": "1.0"
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "example": 0
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Successfully retrieved subject categories."
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "subjectCategoryId": {
+                                                        "type": "integer",
+                                                        "example": 1
+                                                    },
+                                                    "subjectCategoryName": {
+                                                        "type": "string",
+                                                        "example": "Theory"
+                                                    },
+                                                    "semester": {
+                                                        "type": "integer",
+                                                        "example": 1
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation failed",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "version": {
+                                            "type": "string",
+                                            "example": "1.0"
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "example": 1
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Validation failed."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "token": []
+                    }
+                ]
+            }
+        },
+        "/api/admin/subjects": {
+            "post": {
+                "tags": [
+                    "Admin - Master Data"
+                ],
+                "summary": "Get all subjects for a department",
+                "description": "Retrieves all subjects for a specific department, semester, and subject category. Note: semester_id should be numeric string (1, 2, 3) from semester dropdown's semesterId field. Calls: fn_admin_getdeptallsubjects_v1",
+                "operationId": "0f3fd6e83a2378a7d1827cdc9b933744",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "admin_user_id",
+                                    "dept_code",
+                                    "semester_id",
+                                    "subject_category_id"
+                                ],
+                                "properties": {
+                                    "admin_user_id": {
+                                        "description": "Admin user ID",
+                                        "type": "integer",
+                                        "example": 1
+                                    },
+                                    "dept_code": {
+                                        "description": "Department code (e.g., PHARM, BIO)",
+                                        "type": "string",
+                                        "example": "PHARM"
+                                    },
+                                    "semester_id": {
+                                        "description": "Semester ID as numeric string (1-6)",
+                                        "type": "string",
+                                        "example": "1"
+                                    },
+                                    "subject_category_id": {
+                                        "description": "Subject category ID (1=Theory, 2=Practical, etc.)",
+                                        "type": "integer",
+                                        "example": 1
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Subjects retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "version": {
+                                            "type": "string",
+                                            "example": "1.0"
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "example": 0
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Successfully retrieved subjects."
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "subjectId": {
+                                                        "type": "integer",
+                                                        "example": 101
+                                                    },
+                                                    "subjectCode": {
+                                                        "type": "string",
+                                                        "example": "PHARM101"
+                                                    },
+                                                    "subjectName": {
+                                                        "type": "string",
+                                                        "example": "Pharmaceutical Chemistry I"
+                                                    },
+                                                    "deptCode": {
+                                                        "type": "string",
+                                                        "example": "PHARM"
+                                                    },
+                                                    "semesterId": {
+                                                        "type": "string",
+                                                        "example": "1"
+                                                    },
+                                                    "subjectCategoryId": {
+                                                        "type": "integer",
+                                                        "example": 1
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation failed",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "version": {
+                                            "type": "string",
+                                            "example": "1.0"
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "example": 1
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Validation failed."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "token": []
+                    }
+                ]
+            }
+        },
+        "/api/admin/save-teacher": {
+            "post": {
+                "tags": [
+                    "Admin - Teacher"
+                ],
+                "summary": "Save teacher with subject assignments",
+                "description": "Save teacher information and assign multiple subjects using fn_admin_saveteacherinfo and fn_admin_saveteacherassignsubject_v1",
+                "operationId": "776c910d636336df8f1b2447b9a13104",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "admin_user_id",
+                                    "teacherInfo",
+                                    "subjectList"
+                                ],
+                                "properties": {
+                                    "admin_user_id": {
+                                        "type": "integer",
+                                        "example": 1001
+                                    },
+                                    "teacherInfo": {
+                                        "properties": {
+                                            "in_teacher_id": {
+                                                "description": "0 for new, ID for update",
+                                                "type": "integer",
+                                                "example": 0
+                                            },
+                                            "full_name": {
+                                                "type": "string",
+                                                "example": "Souvik Nag"
+                                            },
+                                            "contact_no": {
+                                                "type": "string",
+                                                "example": "9876543219"
+                                            },
+                                            "email": {
+                                                "type": "string",
+                                                "example": "souvik@example.com"
+                                            },
+                                            "highest_qualification": {
+                                                "type": "string",
+                                                "example": "M.Tech"
+                                            },
+                                            "aadhar_no": {
+                                                "type": "string",
+                                                "example": "123456789012"
+                                            },
+                                            "inst_id": {
+                                                "type": "integer",
+                                                "example": 1
+                                            },
+                                            "designation_id": {
+                                                "type": "string",
+                                                "example": "1"
+                                            }
+                                        },
+                                        "type": "object"
+                                    },
+                                    "subjectList": {
+                                        "type": "array",
+                                        "items": {
+                                            "properties": {
+                                                "dept_id": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "semester_id": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "subject_category_id": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "subject_id": {
+                                                    "type": "integer",
+                                                    "example": 101
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Teacher saved successfully"
+                    },
+                    "400": {
+                        "description": "Validation error"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    }
+                },
+                "security": [
+                    {
+                        "token": []
+                    }
+                ]
+            }
+        },
+        "/api/admin/get-assigned-teachers": {
+            "post": {
+                "tags": [
+                    "Admin - Teacher"
+                ],
+                "summary": "Get assigned teacher information",
+                "description": "Retrieves teachers assigned to subjects with filters by institute, department, subject, and semester. Use '0' or 0 for department_code, subject_code, semester_id to get all. Calls: fn_admin_getassignedteacherinfo",
+                "operationId": "0b092b64b6ef013ab04f1434d38891a1",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "admin_user_id",
+                                    "inst_code"
+                                ],
+                                "properties": {
+                                    "admin_user_id": {
+                                        "description": "Admin user ID",
+                                        "type": "integer",
+                                        "example": 1001
+                                    },
+                                    "inst_code": {
+                                        "description": "Institute code (e.g., JCG, INST001)",
+                                        "type": "string",
+                                        "example": "INST001"
+                                    },
+                                    "department_code": {
+                                        "description": "Department code filter ('0' for all departments)",
+                                        "type": "string",
+                                        "example": "0"
+                                    },
+                                    "subject_code": {
+                                        "description": "Subject code filter ('0' for all subjects)",
+                                        "type": "string",
+                                        "example": "0"
+                                    },
+                                    "semester_id": {
+                                        "description": "Semester ID filter (0 for all semesters)",
+                                        "type": "integer",
+                                        "example": 0
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Assigned teacher information retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "version": {
+                                            "type": "string",
+                                            "example": "1.0"
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "example": 0
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Data retrieved successfully"
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "teacherId": {
+                                                        "type": "integer",
+                                                        "example": 5001
+                                                    },
+                                                    "teacherName": {
+                                                        "type": "string",
+                                                        "example": "Dr. John Smith"
+                                                    },
+                                                    "subjectCode": {
+                                                        "type": "string",
+                                                        "example": "PHCE"
+                                                    },
+                                                    "subjectName": {
+                                                        "type": "string",
+                                                        "example": "Pharmaceutics"
+                                                    },
+                                                    "departmentCode": {
+                                                        "type": "string",
+                                                        "example": "PHARM"
+                                                    },
+                                                    "semesterId": {
+                                                        "type": "integer",
+                                                        "example": 1
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Validation failed",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "version": {
+                                            "type": "string",
+                                            "example": "1.0"
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "example": 0
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Validation failed"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "token": []
+                    }
+                ]
+            }
+        },
+        "/api/admin/get-evaluator-subject-allocation-summary": {
+            "post": {
+                "tags": [
+                    "Admin - Teacher"
+                ],
+                "summary": "Get evaluator subject allocation summary",
+                "description": "Retrieves subject allocation summary for evaluators (internal/external examiners). Shows which evaluators are assigned to which subjects for marking. Calls: fn_admin_getevaluatorsubjectallocationsummary",
+                "operationId": "b8a7150af84f3049725d93e9bc2fe0c3",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "admin_user_id",
+                                    "user_type_id",
+                                    "inst_id",
+                                    "evaluator_type_id",
+                                    "department_id",
+                                    "exam_year",
+                                    "semester"
+                                ],
+                                "properties": {
+                                    "admin_user_id": {
+                                        "description": "Admin user ID",
+                                        "type": "integer",
+                                        "example": 5
+                                    },
+                                    "user_type_id": {
+                                        "description": "User type ID (9=Evaluator, etc.)",
+                                        "type": "integer",
+                                        "example": 9
+                                    },
+                                    "inst_id": {
+                                        "description": "Institute ID",
+                                        "type": "integer",
+                                        "example": 1
+                                    },
+                                    "evaluator_type_id": {
+                                        "description": "Evaluator type (1=Internal, 2=External)",
+                                        "type": "integer",
+                                        "example": 1
+                                    },
+                                    "department_id": {
+                                        "description": "Department ID",
+                                        "type": "integer",
+                                        "example": 1
+                                    },
+                                    "exam_year": {
+                                        "description": "Examination year",
+                                        "type": "integer",
+                                        "example": 2025
+                                    },
+                                    "semester": {
+                                        "description": "Semester number (1-6)",
+                                        "type": "integer",
+                                        "example": 1
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Evaluator allocation summary retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "version": {
+                                            "type": "string",
+                                            "example": "1.0"
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "example": 1
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Evaluator subject allocation summary retrieved successfully"
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "adminUserId": {
+                                                        "type": "integer",
+                                                        "example": 5
+                                                    },
+                                                    "totalStudents": {
+                                                        "type": "integer",
+                                                        "example": 0
+                                                    },
+                                                    "pendingSubject": {
+                                                        "type": "integer",
+                                                        "example": 0
+                                                    },
+                                                    "assignedInstCode": {
+                                                        "type": "string",
+                                                        "example": "JCG"
+                                                    },
+                                                    "assignedInstName": {
+                                                        "type": "string",
+                                                        "example": "JNAN CHANDRA GHOSH POLYTECHNIC"
+                                                    },
+                                                    "assignedSubjectId": {
+                                                        "type": "integer",
+                                                        "example": 1
+                                                    },
+                                                    "assignedSubjectCode": {
+                                                        "type": "string",
+                                                        "example": "PHCE"
+                                                    },
+                                                    "assignedSubjectName": {
+                                                        "type": "string",
+                                                        "example": "PHARMACEUTICS"
+                                                    },
+                                                    "assignedDepartmentCode": {
+                                                        "type": "string",
+                                                        "example": "PHARM"
+                                                    },
+                                                    "assignedDepartmentName": {
+                                                        "type": "string",
+                                                        "example": "Pharmacy"
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Validation failed",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "version": {
+                                            "type": "string",
+                                            "example": "1.0"
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "example": 0
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Validation failed"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "token": []
+                    }
+                ]
+            }
+        },
+        "/api/generate-otp/send": {
+            "post": {
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Generate and send OTP",
+                "description": "Generates OTP for admin users. Calls fn_generateotp to create OTP, then sends via SMS/Email based on user_type_id. Type 8→Email, Types 9/10/11→SMS, Type 12→Both. OTP expires in 2 minutes.",
+                "operationId": "0008b5f83cf31135ebaac3ca99f6b1d5",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "username",
+                                    "user_type_id"
+                                ],
+                                "properties": {
+                                    "username": {
+                                        "description": "Admin username",
+                                        "type": "string",
+                                        "example": "AIE"
+                                    },
+                                    "user_type_id": {
+                                        "description": "User type: 8=Email, 9/10/11=SMS, 12=Both",
+                                        "type": "integer",
+                                        "example": 8
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OTP sent successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "error": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "OTP Sent Successfully."
+                                        },
+                                        "otp_expire_time": {
+                                            "description": "OTP valid for 2 minutes",
+                                            "type": "string",
+                                            "example": "2026-05-21 16:00:00"
+                                        },
+                                        "sent_via": {
+                                            "properties": {
+                                                "sms": {
+                                                    "type": "boolean",
+                                                    "example": false
+                                                },
+                                                "email": {
+                                                    "type": "boolean",
+                                                    "example": false
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "OTP generation failed",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "error": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Invalid username or user type"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation failed"
+                    },
+                    "500": {
+                        "description": "Server error"
+                    }
+                }
+            }
+        },
+        "/api/generate-otp/verify": {
+            "post": {
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Verify OTP and get authentication token",
+                "description": "Validates OTP and generates authentication token. Calls fn_getlatestotpbyusername for validation, generates MD5 token (valid 4 hours), marks OTP as used via fn_updateuserotpbycontactno, and returns user details with token.",
+                "operationId": "39016248f2f5ef87a49a3ebed7b89e47",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "username",
+                                    "user_type_id",
+                                    "otp"
+                                ],
+                                "properties": {
+                                    "username": {
+                                        "description": "Admin username",
+                                        "type": "string",
+                                        "example": "AIE"
+                                    },
+                                    "user_type_id": {
+                                        "description": "User type ID",
+                                        "type": "integer",
+                                        "example": 8
+                                    },
+                                    "otp": {
+                                        "description": "4-digit OTP received via SMS/Email",
+                                        "type": "string",
+                                        "example": "1234"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "OTP verified successfully and token generated",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "error": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "OTP Used Successfully."
+                                        },
+                                        "token": {
+                                            "description": "Authentication token - valid for 4 hours",
+                                            "type": "string",
+                                            "example": "a1b2c3d4e5f6g7h8i9j0"
+                                        },
+                                        "token_expired_on": {
+                                            "description": "Token expiry timestamp",
+                                            "type": "string",
+                                            "example": "2026-05-21 20:00:00"
+                                        },
+                                        "user": {
+                                            "properties": {
+                                                "adminUserId": {
+                                                    "type": "integer",
+                                                    "example": 668
+                                                },
+                                                "fullName": {
+                                                    "type": "string",
+                                                    "example": "Admin Name"
+                                                },
+                                                "email": {
+                                                    "type": "string",
+                                                    "example": "admin@example.com"
+                                                },
+                                                "contactNo": {
+                                                    "type": "string",
+                                                    "example": "9876543210"
+                                                },
+                                                "instCode": {
+                                                    "type": "string",
+                                                    "example": "JCG"
+                                                },
+                                                "instName": {
+                                                    "type": "string",
+                                                    "example": "JNAN CHANDRA GHOSH POLYTECHNIC"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Incorrect OTP or could not resolve contact",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "error": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Incorrect OTP. Please try again."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No OTP found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "error": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "No OTP found. Please request a new OTP."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation failed"
+                    },
+                    "500": {
+                        "description": "Server error"
+                    }
+                }
+            }
+        },
+        "/api/institute-payment": {
+            "post": {
+                "tags": [
+                    "Payment"
+                ],
+                "summary": "Initiate institute payment",
+                "description": "Initiate SBI ePay payment for institute admin (₹5 payment)",
+                "operationId": "f57a34d33b0d492a9e20539e5e4a42c7",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "admin_user_id",
+                                    "amount",
+                                    "inst_code"
+                                ],
+                                "properties": {
+                                    "admin_user_id": {
+                                        "description": "Admin user ID",
+                                        "type": "integer",
+                                        "example": 1
+                                    },
+                                    "amount": {
+                                        "description": "Payment amount",
+                                        "type": "number",
+                                        "format": "double",
+                                        "example": 5
+                                    },
+                                    "inst_code": {
+                                        "description": "Institute code",
+                                        "type": "string",
+                                        "example": "JCG"
+                                    },
+                                    "payment_purpose": {
+                                        "description": "Purpose of payment",
+                                        "type": "string",
+                                        "example": "Institute Fee",
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Payment initiated successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "error": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Payment initiated successfully"
+                                        },
+                                        "order_id": {
+                                            "type": "string",
+                                            "example": "A3B5C7D9E1"
+                                        },
+                                        "encryptTrans": {
+                                            "type": "string",
+                                            "example": "encrypted_transaction_string_here"
+                                        },
+                                        "merchIdVal": {
+                                            "type": "string",
+                                            "example": "1001954"
+                                        },
+                                        "actionUrl": {
+                                            "type": "string",
+                                            "example": "https://www.sbiepay.sbi/secure/AggregatorHostedListener"
+                                        },
+                                        "amount": {
+                                            "type": "number",
+                                            "format": "double",
+                                            "example": 5
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error"
+                    },
+                    "401": {
+                        "description": "Unauthorized - Token missing or invalid"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                },
+                "security": [
+                    {
+                        "token": []
+                    }
+                ]
+            }
+        },
+        "/api/marks/student-marks-info-v1": {
+            "post": {
+                "tags": [
+                    "Student Marks"
+                ],
+                "summary": "Get student marks information",
+                "description": "Retrieve student marks information using fn_admin_getstudentmarksinfo_v2 stored procedure. Use student_id=0 for all students or specific student_id for individual student.",
+                "operationId": "cd04f8906d56714127f8369202292a93",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "admin_user_id",
+                                    "student_id",
+                                    "inst_code",
+                                    "dept_code",
+                                    "subject_code",
+                                    "exam_year",
+                                    "semester"
+                                ],
+                                "properties": {
+                                    "admin_user_id": {
+                                        "type": "integer",
+                                        "example": 5
+                                    },
+                                    "student_id": {
+                                        "description": "0 for all students, non-zero for specific student",
+                                        "type": "integer",
+                                        "example": 11452
+                                    },
+                                    "inst_code": {
+                                        "type": "string",
+                                        "example": "JCG"
+                                    },
+                                    "dept_code": {
+                                        "type": "string",
+                                        "example": "PHARM"
+                                    },
+                                    "subject_code": {
+                                        "type": "string",
+                                        "example": "PHCE"
+                                    },
+                                    "exam_year": {
+                                        "type": "integer",
+                                        "example": 2025
+                                    },
+                                    "semester": {
+                                        "type": "integer",
+                                        "example": 1
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Data fetched successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "version": {
+                                            "type": "string",
+                                            "example": "1.0"
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "example": 1
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Data fetched successfully"
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "marksId": {
+                                                    "type": "integer",
+                                                    "example": 100480
+                                                },
+                                                "semester": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "studentId": {
+                                                    "type": "integer",
+                                                    "example": 11452
+                                                },
+                                                "studentNo": {
+                                                    "type": "string",
+                                                    "example": ""
+                                                },
+                                                "department": {
+                                                    "type": "string",
+                                                    "example": "PHARM"
+                                                },
+                                                "examStatus": {
+                                                    "type": "string",
+                                                    "example": "INC"
+                                                },
+                                                "isEditable": {
+                                                    "type": "integer",
+                                                    "example": 0
+                                                },
+                                                "marksStatus": {
+                                                    "type": "string",
+                                                    "example": "DRAFT"
+                                                },
+                                                "studentName": {
+                                                    "type": "string",
+                                                    "example": "MOSRAF HOSSAIN"
+                                                },
+                                                "studentRoll": {
+                                                    "type": "string",
+                                                    "nullable": true
+                                                },
+                                                "subjectCode": {
+                                                    "type": "string",
+                                                    "example": "PHCE"
+                                                },
+                                                "studentRegNo": {
+                                                    "type": "string",
+                                                    "example": "PHARM232408597"
+                                                },
+                                                "externalMarks": {
+                                                    "type": "number",
+                                                    "format": "double",
+                                                    "nullable": true
+                                                },
+                                                "internalMarks": {
+                                                    "type": "number",
+                                                    "format": "double",
+                                                    "nullable": true
+                                                },
+                                                "studentEnrlType": {
+                                                    "type": "string",
+                                                    "example": "READMISSION"
+                                                },
+                                                "subjectCategory": {
+                                                    "type": "string",
+                                                    "example": "THEORY"
+                                                },
+                                                "externalMaxMarks": {
+                                                    "type": "number",
+                                                    "format": "double",
+                                                    "example": 80
+                                                },
+                                                "internalMaxMarks": {
+                                                    "type": "number",
+                                                    "format": "double",
+                                                    "example": 20
+                                                },
+                                                "subjectCategoryId": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error"
+                    },
+                    "401": {
+                        "description": "Unauthorized - Token missing or invalid"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                },
+                "security": [
+                    {
+                        "token": []
+                    }
+                ]
+            }
+        }
+    },
+    "components": {
+        "securitySchemes": {
+            "token": {
+                "type": "apiKey",
+                "description": "Enter your authentication token",
+                "name": "token",
+                "in": "header"
+            },
+            "bearerAuth": {
+                "type": "http",
+                "description": "Enter your bearer token",
+                "bearerFormat": "JWT",
+                "scheme": "bearer"
+            }
+        }
+    },
+    "tags": [
+        {
+            "name": "Authentication",
+            "description": "User authentication and authorization endpoints"
+        },
+        {
+            "name": "Admin - Teacher",
+            "description": "Teacher management operations"
+        },
+        {
+            "name": "Admin - Student Marks",
+            "description": "Student marks management operations"
+        },
+        {
+            "name": "Student Marks",
+            "description": "Student marks information retrieval"
+        },
+        {
+            "name": "Payment",
+            "description": "Payment gateway integration endpoints"
+        },
+        {
+            "name": "Admin - Master Data",
+            "description": "Master data endpoints (departments, subjects, semesters, etc.)"
+        }
+    ]
+}

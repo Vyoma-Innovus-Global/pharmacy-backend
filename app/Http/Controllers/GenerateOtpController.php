@@ -25,6 +25,46 @@ class GenerateOtpController extends Controller
     */
 
     /**
+     * @OA\Post(
+     *     path="/api/generate-otp/send",
+     *     tags={"Authentication"},
+     *     summary="Generate and send OTP",
+     *     description="Generates OTP for admin users. Calls fn_generateotp to create OTP, then sends via SMS/Email based on user_type_id. Type 8→Email, Types 9/10/11→SMS, Type 12→Both. OTP expires in 2 minutes.",
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"username", "user_type_id"},
+     *             @OA\Property(property="username", type="string", example="AIE", description="Admin username"),
+     *             @OA\Property(property="user_type_id", type="integer", example=8, description="User type: 8=Email, 9/10/11=SMS, 12=Both")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="OTP sent successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="error", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="OTP Sent Successfully."),
+     *             @OA\Property(property="otp_expire_time", type="string", example="2026-05-21 16:00:00", description="OTP valid for 2 minutes"),
+     *             @OA\Property(
+     *                 property="sent_via",
+     *                 type="object",
+     *                 @OA\Property(property="sms", type="boolean", example=false),
+     *                 @OA\Property(property="email", type="boolean", example=false)
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=400,
+     *         description="OTP generation failed",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="error", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Invalid username or user type")
+     *         )
+     *     ),
+     *     @OA\Response(response=422, description="Validation failed"),
+     *     @OA\Response(response=500, description="Server error")
+     * )
+     *
      * POST /api/generate-otp/send
      * Body: { "username": "AIE", "user_type_id": 8 }
      *
@@ -122,6 +162,60 @@ class GenerateOtpController extends Controller
     }
 
     /**
+     * @OA\Post(
+     *     path="/api/generate-otp/verify",
+     *     tags={"Authentication"},
+     *     summary="Verify OTP and get authentication token",
+     *     description="Validates OTP and generates authentication token. Calls fn_getlatestotpbyusername for validation, generates MD5 token (valid 4 hours), marks OTP as used via fn_updateuserotpbycontactno, and returns user details with token.",
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"username", "user_type_id", "otp"},
+     *             @OA\Property(property="username", type="string", example="AIE", description="Admin username"),
+     *             @OA\Property(property="user_type_id", type="integer", example=8, description="User type ID"),
+     *             @OA\Property(property="otp", type="string", example="1234", description="4-digit OTP received via SMS/Email")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="OTP verified successfully and token generated",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="error", type="boolean", example=false),
+     *             @OA\Property(property="message", type="string", example="OTP Used Successfully."),
+     *             @OA\Property(property="token", type="string", example="a1b2c3d4e5f6g7h8i9j0", description="Authentication token - valid for 4 hours"),
+     *             @OA\Property(property="token_expired_on", type="string", example="2026-05-21 20:00:00", description="Token expiry timestamp"),
+     *             @OA\Property(
+     *                 property="user",
+     *                 type="object",
+     *                 @OA\Property(property="adminUserId", type="integer", example=668),
+     *                 @OA\Property(property="fullName", type="string", example="Admin Name"),
+     *                 @OA\Property(property="email", type="string", example="admin@example.com"),
+     *                 @OA\Property(property="contactNo", type="string", example="9876543210"),
+     *                 @OA\Property(property="instCode", type="string", example="JCG"),
+     *                 @OA\Property(property="instName", type="string", example="JNAN CHANDRA GHOSH POLYTECHNIC")
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=400,
+     *         description="Incorrect OTP or could not resolve contact",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="error", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="Incorrect OTP. Please try again.")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=404,
+     *         description="No OTP found",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="error", type="boolean", example=true),
+     *             @OA\Property(property="message", type="string", example="No OTP found. Please request a new OTP.")
+     *         )
+     *     ),
+     *     @OA\Response(response=422, description="Validation failed"),
+     *     @OA\Response(response=500, description="Server error")
+     * )
+     *
      * POST /api/generate-otp/verify
      * Body: { "username": "AIE", "user_type_id": 8, "otp": "7777" }
      *

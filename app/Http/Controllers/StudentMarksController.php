@@ -44,6 +44,71 @@ class StudentMarksController extends Controller
      * - externalMaxMarks: Maximum external marks
      * - internalMaxMarks: Maximum internal marks
      * - subjectCategoryId: Category ID
+     *
+     * @OA\Post(
+     *     path="/api/marks/student-marks-info-v1",
+     *     tags={"Student Marks"},
+     *     summary="Get student marks information",
+     *     description="Retrieve student marks information using fn_admin_getstudentmarksinfo_v2 stored procedure. Use student_id=0 for all students or specific student_id for individual student.",
+     *     security={{"token": {}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"admin_user_id", "student_id", "inst_code", "dept_code", "subject_code", "exam_year", "semester"},
+     *             @OA\Property(property="admin_user_id", type="integer", example=5),
+     *             @OA\Property(property="student_id", type="integer", example=11452, description="0 for all students, non-zero for specific student"),
+     *             @OA\Property(property="inst_code", type="string", example="JCG"),
+     *             @OA\Property(property="dept_code", type="string", example="PHARM"),
+     *             @OA\Property(property="subject_code", type="string", example="PHCE"),
+     *             @OA\Property(property="exam_year", type="integer", example=2025),
+     *             @OA\Property(property="semester", type="integer", example=1)
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Data fetched successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="version", type="string", example="1.0"),
+     *             @OA\Property(property="status", type="integer", example=1),
+     *             @OA\Property(property="message", type="string", example="Data fetched successfully"),
+     *             @OA\Property(
+     *                 property="data",
+     *                 type="object",
+     *                 @OA\Property(property="marksId", type="integer", example=100480),
+     *                 @OA\Property(property="semester", type="integer", example=1),
+     *                 @OA\Property(property="studentId", type="integer", example=11452),
+     *                 @OA\Property(property="studentNo", type="string", example=""),
+     *                 @OA\Property(property="department", type="string", example="PHARM"),
+     *                 @OA\Property(property="examStatus", type="string", example="INC"),
+     *                 @OA\Property(property="isEditable", type="integer", example=0),
+     *                 @OA\Property(property="marksStatus", type="string", example="DRAFT"),
+     *                 @OA\Property(property="studentName", type="string", example="MOSRAF HOSSAIN"),
+     *                 @OA\Property(property="studentRoll", type="string", nullable=true),
+     *                 @OA\Property(property="subjectCode", type="string", example="PHCE"),
+     *                 @OA\Property(property="studentRegNo", type="string", example="PHARM232408597"),
+     *                 @OA\Property(property="externalMarks", type="number", format="double", nullable=true),
+     *                 @OA\Property(property="internalMarks", type="number", format="double", nullable=true),
+     *                 @OA\Property(property="studentEnrlType", type="string", example="READMISSION"),
+     *                 @OA\Property(property="subjectCategory", type="string", example="THEORY"),
+     *                 @OA\Property(property="externalMaxMarks", type="number", format="double", example=80.00),
+     *                 @OA\Property(property="internalMaxMarks", type="number", format="double", example=20.00),
+     *                 @OA\Property(property="subjectCategoryId", type="integer", example=1)
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=400,
+     *         description="Validation error"
+     *     ),
+     *     @OA\Response(
+     *         response=401,
+     *         description="Unauthorized - Token missing or invalid"
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Internal server error"
+     *     )
+     * )
      */
     public function getStudentMarksInfoV1(Request $request)
     {

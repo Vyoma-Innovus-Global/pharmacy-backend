@@ -21,6 +21,25 @@ class AdminDepartmentController extends Controller
      * }
      *
      * Calls: fn_admin_getdepartmentsbyinst(p_inst_code, p_semester_id)
+     *
+     * @OA\Post(
+     *     path="/api/admin/departments",
+     *     tags={"Admin - Master Data"},
+     *     summary="Get departments by institute and semester",
+     *     description="Retrieve departments using fn_admin_getdepartmentsbyinst",
+     *     security={{"token": {}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"admin_user_id", "inst_code", "semester_id"},
+     *             @OA\Property(property="admin_user_id", type="integer", example=1),
+     *             @OA\Property(property="inst_code", type="string", example="JCG"),
+     *             @OA\Property(property="semester_id", type="integer", example=1)
+     *         )
+     *     ),
+     *     @OA\Response(response=200, description="Success"),
+     *     @OA\Response(response=422, description="Validation error")
+     * )
      */
     public function getDepartmentsByInst(Request $request)
     {

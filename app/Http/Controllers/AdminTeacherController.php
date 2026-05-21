@@ -51,6 +51,46 @@ class AdminTeacherController extends Controller
      *     }
      *   ]
      * }
+     *
+     * @OA\Post(
+     *     path="/api/admin/save-teacher",
+     *     tags={"Admin - Teacher"},
+     *     summary="Save teacher with subject assignments",
+     *     description="Save teacher information and assign multiple subjects using fn_admin_saveteacherinfo and fn_admin_saveteacherassignsubject_v1",
+     *     security={{"token": {}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"admin_user_id", "teacherInfo", "subjectList"},
+     *             @OA\Property(property="admin_user_id", type="integer", example=1001),
+     *             @OA\Property(
+     *                 property="teacherInfo",
+     *                 type="object",
+     *                 @OA\Property(property="in_teacher_id", type="integer", example=0, description="0 for new, ID for update"),
+     *                 @OA\Property(property="full_name", type="string", example="Souvik Nag"),
+     *                 @OA\Property(property="contact_no", type="string", example="9876543219"),
+     *                 @OA\Property(property="email", type="string", example="souvik@example.com"),
+     *                 @OA\Property(property="highest_qualification", type="string", example="M.Tech"),
+     *                 @OA\Property(property="aadhar_no", type="string", example="123456789012"),
+     *                 @OA\Property(property="inst_id", type="integer", example=1),
+     *                 @OA\Property(property="designation_id", type="string", example="1")
+     *             ),
+     *             @OA\Property(
+     *                 property="subjectList",
+     *                 type="array",
+     *                 @OA\Items(
+     *                     @OA\Property(property="dept_id", type="integer", example=1),
+     *                     @OA\Property(property="semester_id", type="integer", example=1),
+     *                     @OA\Property(property="subject_category_id", type="integer", example=1),
+     *                     @OA\Property(property="subject_id", type="integer", example=101)
+     *                 )
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(response=200, description="Teacher saved successfully"),
+     *     @OA\Response(response=400, description="Validation error"),
+     *     @OA\Response(response=401, description="Unauthorized")
+     * )
      */
     public function saveTeacherWithSubjects(Request $request)
     {
@@ -372,6 +412,55 @@ class AdminTeacherController extends Controller
     }
 
     /**
+     * @OA\Post(
+     *     path="/api/admin/get-assigned-teachers",
+     *     tags={"Admin - Teacher"},
+     *     summary="Get assigned teacher information",
+     *     description="Retrieves teachers assigned to subjects with filters by institute, department, subject, and semester. Use '0' or 0 for department_code, subject_code, semester_id to get all. Calls: fn_admin_getassignedteacherinfo",
+     *     security={{"token": {}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"admin_user_id", "inst_code"},
+     *             @OA\Property(property="admin_user_id", type="integer", example=1001, description="Admin user ID"),
+     *             @OA\Property(property="inst_code", type="string", example="INST001", description="Institute code (e.g., JCG, INST001)"),
+     *             @OA\Property(property="department_code", type="string", example="0", description="Department code filter ('0' for all departments)"),
+     *             @OA\Property(property="subject_code", type="string", example="0", description="Subject code filter ('0' for all subjects)"),
+     *             @OA\Property(property="semester_id", type="integer", example=0, description="Semester ID filter (0 for all semesters)")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Assigned teacher information retrieved successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="version", type="string", example="1.0"),
+     *             @OA\Property(property="status", type="integer", example=0),
+     *             @OA\Property(property="message", type="string", example="Data retrieved successfully"),
+     *             @OA\Property(
+     *                 property="data",
+     *                 type="array",
+     *                 @OA\Items(
+     *                     @OA\Property(property="teacherId", type="integer", example=5001),
+     *                     @OA\Property(property="teacherName", type="string", example="Dr. John Smith"),
+     *                     @OA\Property(property="subjectCode", type="string", example="PHCE"),
+     *                     @OA\Property(property="subjectName", type="string", example="Pharmaceutics"),
+     *                     @OA\Property(property="departmentCode", type="string", example="PHARM"),
+     *                     @OA\Property(property="semesterId", type="integer", example=1)
+     *                 )
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=400,
+     *         description="Validation failed",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="version", type="string", example="1.0"),
+     *             @OA\Property(property="status", type="integer", example=0),
+     *             @OA\Property(property="message", type="string", example="Validation failed")
+     *         )
+     *     )
+     * )
+     *
      * Get Assigned Teacher Information
      *
      * Calls fn_admin_getassignedteacherinfo to retrieve teacher details with their assignments
@@ -569,6 +658,61 @@ class AdminTeacherController extends Controller
     }
 
     /**
+     * @OA\Post(
+     *     path="/api/admin/get-evaluator-subject-allocation-summary",
+     *     tags={"Admin - Teacher"},
+     *     summary="Get evaluator subject allocation summary",
+     *     description="Retrieves subject allocation summary for evaluators (internal/external examiners). Shows which evaluators are assigned to which subjects for marking. Calls: fn_admin_getevaluatorsubjectallocationsummary",
+     *     security={{"token": {}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"admin_user_id", "user_type_id", "inst_id", "evaluator_type_id", "department_id", "exam_year", "semester"},
+     *             @OA\Property(property="admin_user_id", type="integer", example=5, description="Admin user ID"),
+     *             @OA\Property(property="user_type_id", type="integer", example=9, description="User type ID (9=Evaluator, etc.)"),
+     *             @OA\Property(property="inst_id", type="integer", example=1, description="Institute ID"),
+     *             @OA\Property(property="evaluator_type_id", type="integer", example=1, description="Evaluator type (1=Internal, 2=External)"),
+     *             @OA\Property(property="department_id", type="integer", example=1, description="Department ID"),
+     *             @OA\Property(property="exam_year", type="integer", example=2025, description="Examination year"),
+     *             @OA\Property(property="semester", type="integer", example=1, description="Semester number (1-6)")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Evaluator allocation summary retrieved successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="version", type="string", example="1.0"),
+     *             @OA\Property(property="status", type="integer", example=1),
+     *             @OA\Property(property="message", type="string", example="Evaluator subject allocation summary retrieved successfully"),
+     *             @OA\Property(
+     *                 property="data",
+     *                 type="array",
+     *                 @OA\Items(
+     *                     @OA\Property(property="adminUserId", type="integer", example=5),
+     *                     @OA\Property(property="totalStudents", type="integer", example=0),
+     *                     @OA\Property(property="pendingSubject", type="integer", example=0),
+     *                     @OA\Property(property="assignedInstCode", type="string", example="JCG"),
+     *                     @OA\Property(property="assignedInstName", type="string", example="JNAN CHANDRA GHOSH POLYTECHNIC"),
+     *                     @OA\Property(property="assignedSubjectId", type="integer", example=1),
+     *                     @OA\Property(property="assignedSubjectCode", type="string", example="PHCE"),
+     *                     @OA\Property(property="assignedSubjectName", type="string", example="PHARMACEUTICS"),
+     *                     @OA\Property(property="assignedDepartmentCode", type="string", example="PHARM"),
+     *                     @OA\Property(property="assignedDepartmentName", type="string", example="Pharmacy")
+     *                 )
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=400,
+     *         description="Validation failed",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="version", type="string", example="1.0"),
+     *             @OA\Property(property="status", type="integer", example=0),
+     *             @OA\Property(property="message", type="string", example="Validation failed")
+     *         )
+     *     )
+     * )
+     *
      * Get Evaluator Subject Allocation Summary
      *
      * Calls fn_admin_getevaluatorsubjectallocationsummary stored procedure

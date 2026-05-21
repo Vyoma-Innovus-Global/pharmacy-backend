@@ -10,6 +10,49 @@ use Illuminate\Support\Facades\Validator;
 class AdminSemesterController extends Controller
 {
     /**
+     * @OA\Post(
+     *     path="/api/admin/semesters",
+     *     tags={"Admin - Master Data"},
+     *     summary="Get all semesters",
+     *     description="Retrieves all semesters list filtered by semester type. Calls: fn_admin_getallsemesters(p_admin_user_id, p_semester_type)",
+     *     security={{"token": {}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"admin_user_id", "semester_type"},
+     *             @OA\Property(property="admin_user_id", type="integer", example=668, description="Admin user ID"),
+     *             @OA\Property(property="semester_type", type="integer", example=1, description="Semester type filter (1=Odd, 2=Even, etc.)")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Semesters list retrieved successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="version", type="string", example="1.0"),
+     *             @OA\Property(property="status", type="integer", example=0),
+     *             @OA\Property(property="message", type="string", example="Successfully retrieved semesters."),
+     *             @OA\Property(
+     *                 property="data",
+     *                 type="array",
+     *                 @OA\Items(
+     *                     @OA\Property(property="semesterId", type="string", example="1"),
+     *                     @OA\Property(property="semesterName", type="string", example="First Semester"),
+     *                     @OA\Property(property="semesterType", type="integer", example=1)
+     *                 )
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=422,
+     *         description="Validation failed",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="version", type="string", example="1.0"),
+     *             @OA\Property(property="status", type="integer", example=1),
+     *             @OA\Property(property="message", type="string", example="Validation failed.")
+     *         )
+     *     )
+     * )
+     *
      * POST /api/admin/semesters
      *
      * Get all semesters list filtered by semester type.

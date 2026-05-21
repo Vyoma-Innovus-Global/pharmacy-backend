@@ -10,6 +10,54 @@ use Illuminate\Support\Facades\Validator;
 class AdminSubjectController extends Controller
 {
     /**
+     * @OA\Post(
+     *     path="/api/admin/subjects",
+     *     tags={"Admin - Master Data"},
+     *     summary="Get all subjects for a department",
+     *     description="Retrieves all subjects for a specific department, semester, and subject category. Note: semester_id should be numeric string (1, 2, 3) from semester dropdown's semesterId field. Calls: fn_admin_getdeptallsubjects_v1",
+     *     security={{"token": {}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"admin_user_id", "dept_code", "semester_id", "subject_category_id"},
+     *             @OA\Property(property="admin_user_id", type="integer", example=1, description="Admin user ID"),
+     *             @OA\Property(property="dept_code", type="string", example="PHARM", description="Department code (e.g., PHARM, BIO)"),
+     *             @OA\Property(property="semester_id", type="string", example="1", description="Semester ID as numeric string (1-6)"),
+     *             @OA\Property(property="subject_category_id", type="integer", example=1, description="Subject category ID (1=Theory, 2=Practical, etc.)")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Subjects retrieved successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="version", type="string", example="1.0"),
+     *             @OA\Property(property="status", type="integer", example=0),
+     *             @OA\Property(property="message", type="string", example="Successfully retrieved subjects."),
+     *             @OA\Property(
+     *                 property="data",
+     *                 type="array",
+     *                 @OA\Items(
+     *                     @OA\Property(property="subjectId", type="integer", example=101),
+     *                     @OA\Property(property="subjectCode", type="string", example="PHARM101"),
+     *                     @OA\Property(property="subjectName", type="string", example="Pharmaceutical Chemistry I"),
+     *                     @OA\Property(property="deptCode", type="string", example="PHARM"),
+     *                     @OA\Property(property="semesterId", type="string", example="1"),
+     *                     @OA\Property(property="subjectCategoryId", type="integer", example=1)
+     *                 )
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=422,
+     *         description="Validation failed",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="version", type="string", example="1.0"),
+     *             @OA\Property(property="status", type="integer", example=1),
+     *             @OA\Property(property="message", type="string", example="Validation failed.")
+     *         )
+     *     )
+     * )
+     *
      * POST /api/admin/subjects
      *
      * Get all subjects for a department, semester, and subject category.

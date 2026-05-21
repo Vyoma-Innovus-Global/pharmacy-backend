@@ -750,7 +750,50 @@ class PaymentController extends Controller
     return base64_encode($cipherText);
 }
 
-// Institute Payment API
+/**
+ * @OA\Post(
+ *     path="/api/institute-payment",
+ *     tags={"Payment"},
+ *     summary="Initiate institute payment",
+ *     description="Initiate SBI ePay payment for institute admin (₹5 payment)",
+ *     security={{"token": {}}},
+ *     @OA\RequestBody(
+ *         required=true,
+ *         @OA\JsonContent(
+ *             required={"admin_user_id", "amount", "inst_code"},
+ *             @OA\Property(property="admin_user_id", type="integer", example=1, description="Admin user ID"),
+ *             @OA\Property(property="amount", type="number", format="double", example=5, description="Payment amount"),
+ *             @OA\Property(property="inst_code", type="string", example="JCG", description="Institute code"),
+ *             @OA\Property(property="payment_purpose", type="string", example="Institute Fee", nullable=true, description="Purpose of payment")
+ *         )
+ *     ),
+ *     @OA\Response(
+ *         response=200,
+ *         description="Payment initiated successfully",
+ *         @OA\JsonContent(
+ *             @OA\Property(property="error", type="boolean", example=false),
+ *             @OA\Property(property="message", type="string", example="Payment initiated successfully"),
+ *             @OA\Property(property="order_id", type="string", example="A3B5C7D9E1"),
+ *             @OA\Property(property="encryptTrans", type="string", example="encrypted_transaction_string_here"),
+ *             @OA\Property(property="merchIdVal", type="string", example="1001954"),
+ *             @OA\Property(property="actionUrl", type="string", example="https://www.sbiepay.sbi/secure/AggregatorHostedListener"),
+ *             @OA\Property(property="amount", type="number", format="double", example=5)
+ *         )
+ *     ),
+ *     @OA\Response(
+ *         response=400,
+ *         description="Validation error"
+ *     ),
+ *     @OA\Response(
+ *         response=401,
+ *         description="Unauthorized - Token missing or invalid"
+ *     ),
+ *     @OA\Response(
+ *         response=500,
+ *         description="Internal server error"
+ *     )
+ * )
+ */
 public function institutePayment(Request $request)
 {
     $validator = Validator::make($request->all(), [
