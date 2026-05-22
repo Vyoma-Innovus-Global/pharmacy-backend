@@ -95,6 +95,14 @@ Route::prefix('enrollment')->middleware('authenticate')->group(function () {
     Route::post('/exam-center-submit', [EnrollmentController::class, 'exam_center_submit']);
 });
 
+// Document Upload Routes (Authentication Required)
+Route::prefix('document')->middleware('authenticate')->group(function () {
+    Route::post('/upload', [App\Http\Controllers\DocumentUploadController::class, 'upload']);
+    Route::post('/upload-multiple', [App\Http\Controllers\DocumentUploadController::class, 'uploadMultiple']);
+    Route::delete('/delete', [App\Http\Controllers\DocumentUploadController::class, 'delete']);
+    Route::get('/info', [App\Http\Controllers\DocumentUploadController::class, 'getInfo']);
+});
+
 Route::prefix('master')->middleware('authenticate')->group(function () {
     Route::get('/syllabus-subject-list/{part}', [AdminController::class, 'syllabusSubjectList']);
     Route::post('/state-list/{user_type?}', [AdminController::class, 'allStates']);

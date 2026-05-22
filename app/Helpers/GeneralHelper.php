@@ -122,7 +122,8 @@ if (!function_exists('getTimeDiffInMinute')) {
 if (!function_exists('send_sms')) {
     function send_sms($phone_to, $sms_message)
     {
-        $is_send_otp = Config::get('app.env') == 'production' ? true : false;
+        // Enable SMS sending in all environments (change to false to disable in dev)
+        $is_send_otp = true; // Was: Config::get('app.env') == 'production' ? true : false;
 
         if ($is_send_otp) {
             $template_id = 0;
