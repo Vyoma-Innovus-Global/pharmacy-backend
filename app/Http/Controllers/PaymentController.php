@@ -26,6 +26,15 @@ class PaymentController extends Controller
         $late_fine = false;
         $totamount = 0;
         $pay_btn = false;
+        Log::channel('daily')->info('[Payment] getEnrollmentPaymentdata INPUT', [
+            'inst_code' => $inst_code,
+            'paying_for' => $paying_for,
+            'part_sem' => $part_sem,
+            'form_num' => $form_num,
+            'reg_no' => $reg_num,
+            'type' => $type,
+            'ip' => $request->ip(),
+        ]);
         try{
             $fee = DB::table('pharmacy_fees')
                 ->where('fees_type', $paying_for)
@@ -78,6 +87,16 @@ class PaymentController extends Controller
                         ->where('enrl_is_paid', NULL)
                         ->first();
 
+            Log::channel('daily')->info('[Payment] getEnrollmentPaymentdata OUTPUT', [
+                'inst_code' => $inst_code,
+                'paying_for' => $paying_for,
+                'part_sem' => $part_sem,
+                'amount' => $totamount,
+                'late_fine' => $late_fine,
+                'pay_btn' => $pay_btn,
+                'enrollment_found' => !empty($enrl_data),
+            ]);
+
             return response()->json([
                                 'error' => false,
                                 'enrlData' => $enrl_data,
@@ -88,7 +107,12 @@ class PaymentController extends Controller
                                 'payButton' => $pay_btn
                             ], 200);
         }
-        catch (Exception $e) {
+        catch (\Exception $e) {
+                            Log::channel('daily')->error('[Payment] getEnrollmentPaymentdata EXCEPTION', [
+                                'message' => $e->getMessage(),
+                                'line' => $e->getLine(),
+                                'file' => $e->getFile(),
+                            ]);
                             return response()->json([
                                 'error' => true,
                                 'message' => $e->getMessage()
@@ -120,6 +144,16 @@ class PaymentController extends Controller
         $reg_no = $request->s_appl_form_num;
         $latefine = $request->latefine;
 
+        Log::channel('daily')->info('[Payment] enrollment payment INPUT', [
+            'inst_code' => $s_inst_code,
+            'paying_for' => $paying_for,
+            'part_sem' => $part_sem,
+            'type' => $type,
+            'exam_year' => $exam_year,
+            'form_count' => $this->countItems($reg_no),
+            'latefine' => $latefine,
+            'ip' => $request->ip(),
+        ]);
 
         $fee = DB::table('pharmacy_fees')
             ->where('fees_type', $paying_for)
@@ -160,6 +194,15 @@ class PaymentController extends Controller
         $total_amount = $amount * $count;
 		#dd($total_amount);
 
+        Log::channel('daily')->info('[Payment] enrollment amount calculated', [
+            'inst_code' => $s_inst_code,
+            'paying_for' => $paying_for,
+            'regular_amount' => $regular_amount,
+            'amount_per_form' => $amount,
+            'form_count' => $count,
+            'total_amount' => $total_amount,
+        ]);
+
         $reg_list = implode(',', $reg_no);
         #$exam_year  =   2025;
         $part_sem_for_other = str_replace("_","-",$part_sem);// 'Part-I';
@@ -193,6 +236,17 @@ class PaymentController extends Controller
 
             //dd($requestParameter,$EncryptTrans);
             auditTrail($s_inst_code, "Payment initiated for students: {$reg_list} with order id : {$orderid} for {$paying_for}");
+
+            Log::channel('daily')->info('[Payment] enrollment gateway payload created', [
+                'order_id' => $orderid,
+                'inst_code' => $s_inst_code,
+                'paying_for' => $paying_for,
+                'amount' => $total_amount,
+                'form_count' => $count,
+                'merchant_id' => $data_1['marchant_id'],
+                'action_url' => $data_1['payment_api'],
+                'encrypted_length' => strlen($data_1['transaction_id']),
+            ]);
 			/*dd([
                 'error' => false,
                 'message' => 'Payment Data Found',
@@ -233,6 +287,14 @@ class PaymentController extends Controller
             ]);
 
         } else {
+            Log::channel('daily')->warning('[Payment] enrollment payment blocked: zero amount', [
+                'inst_code' => $s_inst_code,
+                'paying_for' => $paying_for,
+                'part_sem' => $part_sem,
+                'type' => $type,
+                'form_count' => $count,
+            ]);
+
             return response()->json([
                 'error' => true,
                 'message' => 'Something went wrong, Try Again Later'
@@ -242,6 +304,7 @@ class PaymentController extends Controller
 
     public function enrollmentPaymentSuccess(Request $request)
     {
+        Log::channel('daily')->info('[Payment] enrollment success CALLBACK received', $this->paymentCallbackMeta($request));
         $trans_details = sbiDecrypt($request->encData);
         $data = explode('|', $trans_details);
 
@@ -266,6 +329,22 @@ class PaymentController extends Controller
         $type = $other_data[5];
         $status_col = '';
 
+        Log::channel('daily')->info('[Payment] enrollment success parsed', [
+            'order_id' => $order_id,
+            'trans_id' => $trans_id,
+            'trans_status' => $trans_status,
+            'trans_amount' => $trans_amount,
+            'currency' => $currency,
+            'trans_mode' => $trans_mode,
+            'message' => $message,
+            'exam_year' => $exam_year,
+            'paying_for' => $paying_for,
+            'inst_code' => $s_inst_code,
+            'form_count' => count($s_appl_form_num),
+            'part_sem' => $part_sem,
+            'type' => $type,
+        ]);
+
         if($part_sem == 'Part_I'){
             $status_col = 's_part1_status';
         }else{
@@ -276,6 +355,12 @@ class PaymentController extends Controller
             $tranction = PaymentTransaction::where('order_id', $order_id)->first();
 
             if ($tranction) {
+                Log::channel('daily')->info('[Payment] enrollment success transaction found', [
+                    'order_id' => $order_id,
+                    'transaction_row_id' => $tranction->id ?? null,
+                    'existing_status' => $tranction->trans_status,
+                ]);
+
                 $tranction->update([
                     'trans_id' => $trans_id,
                     'trans_status' => $trans_status,
@@ -306,6 +391,13 @@ class PaymentController extends Controller
                 Enrollment::whereIn('enrl_form_num', $s_appl_form_num)->update(['enrl_is_paid' => 1, 'enrl_type' => $type]);
                # auditTrail($s_appl_form_num, "Payment for Exam Year: {$exam_year}, ORDER ID: {$order_id}, TRANSACTION ID: {$form_num}, Semester {$part_sem}, Type: {$type}");
 
+                Log::channel('daily')->info('[Payment] enrollment success DB updated', [
+                    'order_id' => $order_id,
+                    'trans_id' => $trans_id,
+                    'form_count' => count($s_appl_form_num),
+                    'status_col' => $status_col,
+                ]);
+
                 return view('redirect.payment', [
                     'trans_id' => $trans_id,
                     'order_id' => $order_id,
@@ -324,6 +416,12 @@ class PaymentController extends Controller
             $tranction = PaymentTransaction::where('order_id', $order_id)->first();
 
             if ($tranction) {
+                Log::channel('daily')->info('[Payment] review success transaction found', [
+                    'order_id' => $order_id,
+                    'transaction_row_id' => $tranction->id ?? null,
+                    'existing_status' => $tranction->trans_status,
+                ]);
+
                 $tranction->update([
                     'trans_id' => $trans_id,
                     'trans_status' => $trans_status,
@@ -349,6 +447,12 @@ class PaymentController extends Controller
                 DB::table('pharmacy_appl_review_apply')->whereIn('form_num', $s_appl_form_num)->update(['payment_transactions_id' => $trans_id,'review_status'=>2]);
                 // auditTrail($user_id, "Payment for Exam Year: {$exam_year}, ORDER ID: {$order_id}, TRANSACTION ID: {$form_num}, Semester {$part_sem}, Type: {$type}");
 
+                Log::channel('daily')->info('[Payment] review success DB updated', [
+                    'order_id' => $order_id,
+                    'trans_id' => $trans_id,
+                    'form_count' => count($s_appl_form_num),
+                ]);
+
                 return redirect()->route('payment.redirect', [
                     'trans_id' => $trans_id,
                     'order_id' => $order_id,
@@ -362,19 +466,23 @@ class PaymentController extends Controller
             }
 
         }
+
+        Log::channel('daily')->warning('[Payment] success callback transaction not handled', [
+            'order_id' => $order_id,
+            'paying_for' => $paying_for,
+            'trans_status' => $trans_status,
+        ]);
     }
 
     public function enrollmentPaymentFail(Request $request)
     {
         // Log the incoming request
-        Log::info('=== PAYMENT FAIL CALLBACK ===');
-        Log::info('Request Data: ' . json_encode($request->all()));
+        Log::channel('daily')->info('[Payment] enrollment fail CALLBACK received', $this->paymentCallbackMeta($request));
 
         // Merchant Order Number|SBIePayRefID/ATRN|Transaction Status|Amount|Currency|Pay Mode|Other Details|Reason/Message|Bank Code|Bank Reference Number|Transaction Date|Country|CIN|Merchant ID|Total Fee GST |Ref1|Ref2|Ref3|Ref4|Ref5|Ref6|Ref7|Ref8|Ref9
         // "C8YD3U722D|NA|FAIL|1|INR|NB|2025_ENROLLMENT_BMD_PHARMA01633,PHARMA12997_Part_I_REGULAR|User Cancel Transaction|NA|NA|2025-06-20 13:08:25|IN|00|1001954|0.00^0.00|||||||||
 
         $trans_details = sbiDecrypt($request->encData);
-        Log::info('Decrypted Transaction Details: ' . $trans_details);
 
         $data = explode('|', $trans_details);
 
@@ -390,18 +498,20 @@ class PaymentController extends Controller
         $marchnt_id = $data[13];
         $other_data = explode('_', $data[6]);
 
-        Log::info('Parsed Data:', [
+        Log::channel('daily')->info('[Payment] enrollment fail parsed', [
             'order_id' => $order_id,
             'trans_id' => $trans_id,
             'trans_status' => $trans_status,
             'trans_amount' => $trans_amount,
-            'message' => $message
+            'message' => $message,
+            'other_data_count' => count($other_data),
         ]);
 
         $tranction = PaymentTransaction::where('order_id', $order_id)->first();
 
         if ($tranction) {
-            Log::info('Transaction found in database:', ['order_id' => $order_id, 'paying_for' => $tranction->paying_for]);            $tranction->update([
+            Log::channel('daily')->info('[Payment] fail transaction found', ['order_id' => $order_id, 'paying_for' => $tranction->paying_for]);
+            $tranction->update([
                 'trans_id' => $trans_id,
                 'trans_status' => $trans_status,
                 'trans_amount' => $trans_amount,
@@ -454,12 +564,22 @@ class PaymentController extends Controller
                 'trans_status' => $trans_status,
             ]);
         } else {
-            Log::error('Transaction not found in database:', ['order_id' => $order_id]);
+            Log::channel('daily')->error('[Payment] fail transaction not found', ['order_id' => $order_id]);
         }
     }
 
     public function paymentOffline(Request $request)
     {
+        Log::channel('daily')->info('[Payment] offline payment INPUT', [
+            'inst_code' => $request->s_inst_code,
+            'paying_for' => $request->paying_for,
+            'part_sem' => $request->part_sem,
+            'type' => $request->type,
+            'form_count' => $this->countItems($request->s_appl_form_num),
+            'demand_no' => $request->demand_no,
+            'ip' => $request->ip(),
+        ]);
+
         $validator = Validator::make($request->all(), [
             'paying_for' => ['required'],
             'demand_date' => ['required'],
@@ -474,6 +594,10 @@ class PaymentController extends Controller
             's_appl_form_num' => 'Student Form Number',
         ]);
         if ($validator->fails()) {
+            Log::channel('daily')->warning('[Payment] offline payment validation failed', [
+                'errors' => $validator->errors()->toArray(),
+            ]);
+
             return response()->json([
                 'status' => false,
                 'message' => 'Validation errors',
@@ -582,6 +706,15 @@ class PaymentController extends Controller
         foreach ($s_appl_form_num as $formnum) {
             auditTrail($formnum, "Payment for Exam Year: {$request->exam_year}, ORDER ID: {$orderid}, TRANSACTION ID: {$trans_id}, Semester {$part_sem}, Type: {$type}");
         }
+        Log::channel('daily')->info('[Payment] offline payment completed', [
+            'order_id' => $orderid,
+            'trans_id' => $trans_id,
+            'inst_code' => $s_inst_code,
+            'paying_for' => $paying_for,
+            'total_amount' => $total_amount,
+            'form_count' => count($s_appl_form_num),
+        ]);
+
         return [
             'paying_for' => $paying_for,
             'trans_id' => $trans_id,
@@ -607,6 +740,18 @@ class PaymentController extends Controller
         $merchIdVal = env('SBI_MERCHANT_ID');
         $actionUrl = env('SBI_PAYMENT_API');
         $reg_no = $request->s_appl_form_num;
+        Log::channel('daily')->info('[Payment] review payment INPUT', [
+            'inst_code' => $s_inst_code,
+            'paying_for' => $paying_for,
+            'part_sem' => $part_sem,
+            'type' => $type,
+            'exam_year' => $exam_year,
+            'form_count' => $this->countItems($reg_no),
+            'merchant_id' => $merchIdVal,
+            'action_url' => $actionUrl,
+            'ip' => $request->ip(),
+        ]);
+
         // amount start
         $fee = DB::table('pharmacy_fees')
             ->where('fees_type', $paying_for)
@@ -662,6 +807,17 @@ class PaymentController extends Controller
 
             auditTrail($s_inst_code, "Payment initiated for students: {$reg_list} with order id : {$orderid} for {$paying_for}");
 
+            Log::channel('daily')->info('[Payment] review gateway payload created', [
+                'order_id' => $orderid,
+                'inst_code' => $s_inst_code,
+                'paying_for' => $paying_for,
+                'amount' => $total_amount,
+                'form_count' => $count,
+                'merchant_id' => $merchIdVal,
+                'action_url' => $actionUrl,
+                'encrypted_length' => strlen($EncryptTrans),
+            ]);
+
             return response()->json([
                 'error' => false,
                 'message' => 'Payment Data Found',
@@ -676,6 +832,14 @@ class PaymentController extends Controller
             //     'actionUrl' => $actionUrl
             // ]);
         } else {
+            Log::channel('daily')->warning('[Payment] review payment blocked: zero amount', [
+                'inst_code' => $s_inst_code,
+                'paying_for' => $paying_for,
+                'part_sem' => $part_sem,
+                'type' => $type,
+                'form_count' => $count,
+            ]);
+
             return response()->json([
                 'error' => true,
                 'message' => 'Something went wrong, Try Again Later'
@@ -796,6 +960,14 @@ class PaymentController extends Controller
  */
 public function institutePayment(Request $request)
 {
+    Log::channel('daily')->info('[Payment] institute payment INPUT', [
+        'admin_user_id' => $request->admin_user_id,
+        'amount' => $request->amount,
+        'inst_code' => $request->inst_code,
+        'payment_purpose' => $request->payment_purpose,
+        'ip' => $request->ip(),
+    ]);
+
     $validator = Validator::make($request->all(), [
         'admin_user_id' => 'required',
         'amount' => 'required|numeric|min:1',
@@ -804,6 +976,10 @@ public function institutePayment(Request $request)
     ]);
 
     if ($validator->fails()) {
+        Log::channel('daily')->warning('[Payment] institute payment validation failed', [
+            'errors' => $validator->errors()->toArray(),
+        ]);
+
         return response()->json([
             'error' => true,
             'message' => $validator->errors()->first()
@@ -842,6 +1018,17 @@ public function institutePayment(Request $request)
 
         auditTrail($inst_code, "Institute payment initiated by admin_user_id: {$admin_user_id} with order id: {$orderid} for amount: {$amount}");
 
+        Log::channel('daily')->info('[Payment] institute gateway payload created', [
+            'order_id' => $orderid,
+            'inst_code' => $inst_code,
+            'admin_user_id' => $admin_user_id,
+            'amount' => $amount,
+            'payment_purpose' => $payment_purpose,
+            'merchant_id' => $data_1['marchant_id'],
+            'action_url' => $data_1['payment_api'],
+            'encrypted_length' => strlen($data_1['transaction_id']),
+        ]);
+
         return response()->json([
             'error' => false,
             'message' => 'Payment initiated successfully',
@@ -853,6 +1040,12 @@ public function institutePayment(Request $request)
         ], 200);
 
     } catch (\Exception $e) {
+        Log::channel('daily')->error('[Payment] institute payment EXCEPTION', [
+            'message' => $e->getMessage(),
+            'line' => $e->getLine(),
+            'file' => $e->getFile(),
+        ]);
+
         return response()->json([
             'error' => true,
             'message' => 'Payment initiation failed: ' . $e->getMessage()
@@ -864,6 +1057,7 @@ public function institutePayment(Request $request)
 public function institutePaymentSuccess(Request $request)
 {
     try {
+        Log::channel('daily')->info('[Payment] institute success CALLBACK received', $this->paymentCallbackMeta($request));
         $trans_details = sbiDecrypt($request->encData);
         $data = explode('|', $trans_details);
 
@@ -883,9 +1077,28 @@ public function institutePaymentSuccess(Request $request)
         $admin_user_id = $other_data[1];
         $payment_purpose = $other_data[2] ?? 'Institute Fee';
 
+        Log::channel('daily')->info('[Payment] institute success parsed', [
+            'order_id' => $order_id,
+            'trans_id' => $trans_id,
+            'trans_status' => $trans_status,
+            'trans_amount' => $trans_amount,
+            'currency' => $currency,
+            'trans_mode' => $trans_mode,
+            'message' => $message,
+            'inst_code' => $inst_code,
+            'admin_user_id' => $admin_user_id,
+            'payment_purpose' => $payment_purpose,
+        ]);
+
         $tranction = PaymentTransaction::where('order_id', $order_id)->first();
 
         if ($tranction) {
+            Log::channel('daily')->info('[Payment] institute success transaction found', [
+                'order_id' => $order_id,
+                'transaction_row_id' => $tranction->id ?? null,
+                'existing_status' => $tranction->trans_status,
+            ]);
+
             $tranction->update([
                 'trans_id' => $trans_id,
                 'trans_status' => $trans_status,
@@ -913,6 +1126,13 @@ public function institutePaymentSuccess(Request $request)
 
             auditTrail($inst_code, "Institute payment successful - ORDER ID: {$order_id}, TRANSACTION ID: {$trans_id}, Amount: {$trans_amount}");
 
+            Log::channel('daily')->info('[Payment] institute success DB updated', [
+                'order_id' => $order_id,
+                'trans_id' => $trans_id,
+                'inst_code' => $inst_code,
+                'amount' => $trans_amount,
+            ]);
+
             // Get institute details
             $institute = DB::table('institute_master')
                 ->where('inst_code', $inst_code)
@@ -930,6 +1150,12 @@ public function institutePaymentSuccess(Request $request)
                 'payment_purpose' => $payment_purpose
             ]);
         }
+
+        Log::channel('daily')->warning('[Payment] institute success transaction not found', [
+            'order_id' => $order_id,
+            'trans_id' => $trans_id,
+            'trans_status' => $trans_status,
+        ]);
 
         return response()->json([
             'error' => true,
@@ -954,6 +1180,7 @@ public function institutePaymentSuccess(Request $request)
 // Institute Payment Failure Handler
 public function institutePaymentFail(Request $request)
 {
+    Log::channel('daily')->info('[Payment] institute fail CALLBACK received', $this->paymentCallbackMeta($request));
     $trans_details = sbiDecrypt($request->encData);
     $data = explode('|', $trans_details);
 
@@ -962,9 +1189,22 @@ public function institutePaymentFail(Request $request)
     $trans_status = $data[2];
     $message = $data[7];
 
+    Log::channel('daily')->info('[Payment] institute fail parsed', [
+        'order_id' => $order_id,
+        'trans_id' => $trans_id,
+        'trans_status' => $trans_status,
+        'message' => $message,
+    ]);
+
     $tranction = PaymentTransaction::where('order_id', $order_id)->first();
 
     if ($tranction) {
+        Log::channel('daily')->info('[Payment] institute fail transaction found', [
+            'order_id' => $order_id,
+            'initiated_by' => $tranction->initiated_by,
+            'existing_status' => $tranction->trans_status,
+        ]);
+
         $tranction->update([
             'trans_id' => $trans_id,
             'trans_status' => $trans_status,
@@ -973,6 +1213,11 @@ public function institutePaymentFail(Request $request)
         ]);
 
         auditTrail($tranction->initiated_by, "Institute payment failed - ORDER ID: {$order_id}, Status: {$trans_status}");
+    } else {
+        Log::channel('daily')->error('[Payment] institute fail transaction not found', [
+            'order_id' => $order_id,
+            'trans_status' => $trans_status,
+        ]);
     }
 
     return response()->json([
@@ -986,11 +1231,13 @@ public function institutePaymentFail(Request $request)
 // Download Institute Payment Receipt as PDF
 public function downloadInstitutePaymentReceipt($order_id)
 {
+    Log::channel('daily')->info('[Payment] institute receipt download requested', ['order_id' => $order_id]);
     $transaction = PaymentTransaction::where('order_id', $order_id)
         ->where('trans_status', 'SUCCESS')
         ->first();
 
     if (!$transaction) {
+        Log::channel('daily')->warning('[Payment] institute receipt download missing transaction', ['order_id' => $order_id]);
         abort(404, 'Transaction not found or payment not successful');
     }
 
@@ -1021,11 +1268,13 @@ public function downloadInstitutePaymentReceipt($order_id)
 // Get Institute Payment Receipt Data (API for React)
 public function getInstitutePaymentReceiptData($order_id)
 {
+    Log::channel('daily')->info('[Payment] institute receipt data requested', ['order_id' => $order_id]);
     $transaction = PaymentTransaction::where('order_id', $order_id)
         ->where('trans_status', 'SUCCESS')
         ->first();
 
     if (!$transaction) {
+        Log::channel('daily')->warning('[Payment] institute receipt data missing transaction', ['order_id' => $order_id]);
         return response()->json([
             'error' => true,
             'message' => 'Transaction not found or payment not successful'
@@ -1054,6 +1303,31 @@ public function getInstitutePaymentReceiptData($order_id)
             'payment_purpose' => 'Institute Registration Fee'
         ]
     ], 200);
+}
+
+private function countItems($value): int
+{
+    if (is_array($value)) {
+        return count($value);
+    }
+
+    if (is_string($value) && trim($value) !== '') {
+        return count(array_filter(array_map('trim', explode(',', $value))));
+    }
+
+    return 0;
+}
+
+private function paymentCallbackMeta(Request $request): array
+{
+    $encData = (string) $request->input('encData', '');
+
+    return [
+        'has_encData' => $encData !== '',
+        'encData_length' => strlen($encData),
+        'ip' => $request->ip(),
+        'user_agent' => substr((string) $request->userAgent(), 0, 255),
+    ];
 }
 
 }

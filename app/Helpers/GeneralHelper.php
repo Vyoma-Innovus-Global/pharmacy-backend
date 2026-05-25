@@ -124,23 +124,53 @@ if (!function_exists('send_sms')) {
     {
         // Enable SMS sending in all environments (change to false to disable in dev)
         $is_send_otp = true; // Was: Config::get('app.env') == 'production' ? true : false;
+        $maskedPhone = strlen($phone_to) > 4 ? str_repeat('*', strlen($phone_to) - 4) . substr($phone_to, -4) : $phone_to;
 
         if ($is_send_otp) {
             $template_id = 0;
-            $response = Http::withoutVerifying()
-                ->withQueryParameters([
-                    'ukey' => 'xa1a8ogxRdKjGM62zMO3yti3P',
-                    'msisdn' => urlencode($phone_to),
-                    'language' => 0,
-                    'credittype' => 7,
-                    'senderid' => 'TVESD',
-                    'templateid' => urlencode($template_id),
-                    'message' => $sms_message,
-                    'filetype' => 2
-                ])->get('https://125.16.147.178/VoicenSMS/webresources/CreateSMSCampaignGet');
+            $url = 'https://125.16.147.178/VoicenSMS/webresources/CreateSMSCampaignGet';
 
-            return $response;
+            Log::channel('daily')->info('[send_sms] Attempting SMS send', [
+                'phone' => $maskedPhone,
+                'message_length' => strlen($sms_message),
+                'template_id' => $template_id,
+                'url' => $url,
+            ]);
+
+            try {
+                $response = Http::withoutVerifying()
+                    ->withQueryParameters([
+                        'ukey' => 'xa1a8ogxRdKjGM62zMO3yti3P',
+                        'msisdn' => urlencode($phone_to),
+                        'language' => 0,
+                        'credittype' => 7,
+                        'senderid' => 'TVESD',
+                        'templateid' => urlencode($template_id),
+                        'message' => $sms_message,
+                        'filetype' => 2
+                    ])->get($url);
+
+                Log::channel('daily')->info('[send_sms] SMS provider response', [
+                    'phone' => $maskedPhone,
+                    'status' => $response->status(),
+                    'successful' => $response->successful(),
+                    'body' => substr($response->body(), 0, 500),
+                ]);
+
+                return $response;
+            } catch (\Throwable $e) {
+                Log::channel('daily')->error('[send_sms] SMS provider exception', [
+                    'phone' => $maskedPhone,
+                    'error' => $e->getMessage(),
+                    'exception' => get_class($e),
+                    'file' => $e->getFile(),
+                    'line' => $e->getLine(),
+                ]);
+
+                throw $e;
+            }
         } else {
+            Log::channel('daily')->warning('[send_sms] SMS sending disabled', ['phone' => $maskedPhone]);
             return true;
         }
     }
@@ -689,4 +719,3 @@ function convertSubname($subcode)
         ->select('subject_name')->first();
     return $data->subject_name;
 }
-

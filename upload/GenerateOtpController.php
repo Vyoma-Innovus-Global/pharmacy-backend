@@ -137,14 +137,22 @@ class GenerateOtpController extends Controller
             $emailSent  = false;
             $smsMessage = "{$otp} is your One Time Password (OTP). Don't share this with anyone. - WBSCTE&VE&SD";
 
-            // --- SEND BLOCKED (dev mode) ---
             // if (in_array($userTypeId, [9, 10, 11]) && $phone) { send_sms($phone, $smsMessage); $smsSent = true; }
-            // if ($userTypeId === 8 && $email)                   { Mail::to($email)->send(new OtpMail($otp, $name)); $emailSent = true; }
-            // if ($userTypeId === 12) {
+            if ($userTypeId === 8 && $email) {
+                Log::channel('daily')->info('[generate] Email send attempt', ['email' => $email]);
+                Mail::to($email)->send(new OtpMail($otp, $name));
+                $emailSent = true;
+                Log::channel('daily')->info('[generate] Email sent', ['email' => $email]);
+            }
+            if ($userTypeId === 12) {
             //     if ($phone) { send_sms($phone, $smsMessage); $smsSent = true; }
-            //     if ($email) { Mail::to($email)->send(new OtpMail($otp, $name)); $emailSent = true; }
-            // }
-            // --- END SEND BLOCKED ---
+                if ($email) {
+                    Log::channel('daily')->info('[generate] Email send attempt (type 12)', ['email' => $email]);
+                    Mail::to($email)->send(new OtpMail($otp, $name));
+                    $emailSent = true;
+                    Log::channel('daily')->info('[generate] Email sent (type 12)', ['email' => $email]);
+                }
+            }
 
             Log::channel('daily')->info('[generate] OUTPUT (200)', ['sms' => $smsSent, 'email' => $emailSent]);
 

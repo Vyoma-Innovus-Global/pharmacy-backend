@@ -131,6 +131,14 @@ class GenerateOtpController extends Controller
             $phone = $adminData['contactNo'] ?? null;
             $name  = $adminData['fullName']  ?? $username;
 
+            Log::channel('daily')->info('[generate] Contact details resolved', [
+                'user_type_id' => $userTypeId,
+                'phone' => $phone ? $this->maskContact($phone) : null,
+                'email' => $email ? $this->maskEmail($email) : null,
+                'has_phone' => !empty($phone),
+                'has_email' => !empty($email),
+            ]);
+
             // Step 4: Deliver OTP
             $smsSent    = false;
             $emailSent  = false;
@@ -139,33 +147,55 @@ class GenerateOtpController extends Controller
             // Send OTP based on user type
             try {
                 if (in_array($userTypeId, [9, 10, 11]) && $phone) {
-                    send_sms($phone, $smsMessage);
+                    Log::channel('daily')->info('[generate] SMS send attempt', [
+                        'phone' => $this->maskContact($phone),
+                        'user_type_id' => $userTypeId,
+                    ]);
+                    $smsResponse = send_sms($phone, $smsMessage);
                     $smsSent = true;
-                    Log::channel('daily')->info('[generate] SMS sent', ['phone' => $phone]);
+                    $this->logSmsResponse('[generate] SMS sent', $phone, $smsResponse);
+                } elseif (in_array($userTypeId, [9, 10, 11])) {
+                    Log::channel('daily')->warning('[generate] SMS skipped: phone missing', ['user_type_id' => $userTypeId]);
                 }
 
-                // Email sending blocked for OTP
-                // if ($userTypeId === 8 && $email) {
-                //     Mail::to($email)->send(new OtpMail($otp, $name));
-                //     $emailSent = true;
-                //     Log::channel('daily')->info('[generate] Email sent', ['email' => $email]);
-                // }
+                if ($userTypeId === 8 && $email) {
+                    $this->logEmailAttempt('[generate] Email send attempt', $email);
+                    Mail::to($email)->send(new OtpMail($otp, $name));
+                    $emailSent = true;
+                    Log::channel('daily')->info('[generate] Email sent', ['email' => $this->maskEmail($email)]);
+                } elseif ($userTypeId === 8) {
+                    Log::channel('daily')->warning('[generate] Email skipped: email missing', [
+                        'has_email' => !empty($email),
+                    ]);
+                }
 
                 if ($userTypeId === 12) {
                     if ($phone) {
-                        send_sms($phone, $smsMessage);
+                        Log::channel('daily')->info('[generate] SMS send attempt (type 12)', [
+                            'phone' => $this->maskContact($phone),
+                            'user_type_id' => $userTypeId,
+                        ]);
+                        $smsResponse = send_sms($phone, $smsMessage);
                         $smsSent = true;
-                        Log::channel('daily')->info('[generate] SMS sent (type 12)', ['phone' => $phone]);
+                        $this->logSmsResponse('[generate] SMS sent (type 12)', $phone, $smsResponse);
+                    } else {
+                        Log::channel('daily')->warning('[generate] SMS skipped (type 12): phone missing');
                     }
-                    // Email sending blocked for OTP
-                    // if ($email) {
-                    //     Mail::to($email)->send(new OtpMail($otp, $name));
-                    //     $emailSent = true;
-                    //     Log::channel('daily')->info('[generate] Email sent (type 12)', ['email' => $email]);
-                    // }
+                    if ($email) {
+                        $this->logEmailAttempt('[generate] Email send attempt (type 12)', $email);
+                        Mail::to($email)->send(new OtpMail($otp, $name));
+                        $emailSent = true;
+                        Log::channel('daily')->info('[generate] Email sent (type 12)', ['email' => $this->maskEmail($email)]);
+                    } else {
+                        Log::channel('daily')->warning('[generate] Email skipped (type 12): email missing');
+                    }
                 }
             } catch (\Exception $e) {
-                Log::channel('daily')->error('[generate] Send failed', ['error' => $e->getMessage()]);
+                Log::channel('daily')->error('[generate] Send failed', [
+                    'error' => $e->getMessage(),
+                    'exception' => get_class($e),
+                    'line' => $e->getLine(),
+                ]);
             }
 
             Log::channel('daily')->info('[generate] OUTPUT (200)', ['sms' => $smsSent, 'email' => $emailSent]);
@@ -389,7 +419,10 @@ class GenerateOtpController extends Controller
         $contactNo  = trim($request->input('contact_no'));
         $userTypeId = (int) $request->input('user_type_id');
 
-        Log::channel('daily')->info('[updateOtpUsed] INPUT', ['contact_no' => $contactNo, 'user_type_id' => $userTypeId]);
+        Log::channel('daily')->info('[updateOtpUsed] INPUT', [
+            'contact_no' => $this->maskContact($contactNo),
+            'user_type_id' => $userTypeId,
+        ]);
 
         try {
             $otp = (string) rand(1000, 9999);
@@ -412,11 +445,34 @@ class GenerateOtpController extends Controller
             $emailSent  = false;
             $smsMessage = "{$otp} is your One Time Password (OTP). Don't share this with anyone. - WBSCTE&VE&SD";
 
-            if (in_array($userTypeId, [9, 10, 11])) { send_sms($contactNo, $smsMessage); $smsSent = true; }
-            if ($userTypeId === 8)                   { Mail::to($contactNo)->send(new OtpMail($otp, $contactNo)); $emailSent = true; }
+            if (in_array($userTypeId, [9, 10, 11])) {
+                Log::channel('daily')->info('[updateOtpUsed] SMS send attempt', [
+                    'contact_no' => $this->maskContact($contactNo),
+                    'user_type_id' => $userTypeId,
+                ]);
+                $smsResponse = send_sms($contactNo, $smsMessage);
+                $smsSent = true;
+                $this->logSmsResponse('[updateOtpUsed] SMS sent', $contactNo, $smsResponse);
+            }
+            if ($userTypeId === 8) {
+                $this->logEmailAttempt('[updateOtpUsed] Email send attempt', $contactNo);
+                Mail::to($contactNo)->send(new OtpMail($otp, $contactNo));
+                $emailSent = true;
+                Log::channel('daily')->info('[updateOtpUsed] Email sent', ['email' => $this->maskEmail($contactNo)]);
+            }
             if ($userTypeId === 12) {
-                send_sms($contactNo, $smsMessage); $smsSent = true;
-                Mail::to($contactNo)->send(new OtpMail($otp, $contactNo)); $emailSent = true;
+                Log::channel('daily')->info('[updateOtpUsed] SMS send attempt (type 12)', [
+                    'contact_no' => $this->maskContact($contactNo),
+                    'user_type_id' => $userTypeId,
+                ]);
+                $smsResponse = send_sms($contactNo, $smsMessage);
+                $smsSent = true;
+                $this->logSmsResponse('[updateOtpUsed] SMS sent (type 12)', $contactNo, $smsResponse);
+
+                $this->logEmailAttempt('[updateOtpUsed] Email send attempt (type 12)', $contactNo);
+                Mail::to($contactNo)->send(new OtpMail($otp, $contactNo));
+                $emailSent = true;
+                Log::channel('daily')->info('[updateOtpUsed] Email sent (type 12)', ['email' => $this->maskEmail($contactNo)]);
             }
 
             $response = [
@@ -434,5 +490,51 @@ class GenerateOtpController extends Controller
             Log::channel('daily')->error('[updateOtpUsed] EXCEPTION', ['message' => $e->getMessage(), 'line' => $e->getLine()]);
             return response()->json(['error' => true, 'message' => $e->getMessage()], 500);
         }
+    }
+
+    private function logSmsResponse(string $message, string $phone, $smsResponse): void
+    {
+        $context = ['phone' => $this->maskContact($phone)];
+
+        if (is_object($smsResponse) && method_exists($smsResponse, 'status')) {
+            $context['status'] = $smsResponse->status();
+            $context['successful'] = method_exists($smsResponse, 'successful') ? $smsResponse->successful() : null;
+            $context['body'] = method_exists($smsResponse, 'body') ? substr($smsResponse->body(), 0, 500) : null;
+        } else {
+            $context['response'] = $smsResponse;
+        }
+
+        Log::channel('daily')->info($message, $context);
+    }
+
+    private function logEmailAttempt(string $message, string $email): void
+    {
+        Log::channel('daily')->info($message, [
+            'email' => $this->maskEmail($email),
+            'mail_mailer' => Config::get('mail.default'),
+            'mail_host' => Config::get('mail.mailers.smtp.host'),
+            'mail_port' => Config::get('mail.mailers.smtp.port'),
+            'mail_encryption' => Config::get('mail.mailers.smtp.encryption'),
+            'mail_from' => Config::get('mail.from.address'),
+        ]);
+    }
+
+    private function maskContact(string $contact): string
+    {
+        $length = strlen($contact);
+
+        return $length > 4 ? str_repeat('*', $length - 4) . substr($contact, -4) : $contact;
+    }
+
+    private function maskEmail(string $email): string
+    {
+        if (!str_contains($email, '@')) {
+            return $this->maskContact($email);
+        }
+
+        [$name, $domain] = explode('@', $email, 2);
+        $maskedName = strlen($name) > 2 ? substr($name, 0, 2) . str_repeat('*', strlen($name) - 2) : str_repeat('*', strlen($name));
+
+        return $maskedName . '@' . $domain;
     }
 }
