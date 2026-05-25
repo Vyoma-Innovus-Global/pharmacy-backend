@@ -227,6 +227,7 @@ class AdminTeacherController extends Controller
 
             $successCount = 0;
             $failedSubjects = [];
+            $duplicateAssignmentDetected = false;
             Log::channel('daily')->info('🔄 STEP 2: Starting subject assignment loop', ['total_subjects' => count($subjectList)]);
 
             foreach ($subjectList as $index => $subject) {
@@ -270,6 +271,12 @@ class AdminTeacherController extends Controller
                             Log::channel('daily')->info("✅ Subject #{$index} assigned successfully", ['subject_id' => $subject['subject_id']]);
                         } else {
                             $errorCode = $subjectResultData['p_errorcode'] ?? 'unknown';
+                            $errorMessage = $errorCode == 200
+                                ? 'Teacher already assign to this subject and institute'
+                                : 'Subject assignment failed';
+                            if ($errorCode == 200) {
+                                $duplicateAssignmentDetected = true;
+                            }
                             Log::channel('daily')->error("❌ Subject #{$index} failed", [
                                 'subject_id' => $subject['subject_id'],
                                 'error_code' => $errorCode
@@ -280,6 +287,7 @@ class AdminTeacherController extends Controller
                                 'semester_id' => $subject['semester_id'],
                                 'subject_category_id' => $subject['subject_category_id'],
                                 'error_code' => $errorCode,
+                                'error_message' => $errorMessage,
                                 'error_details' => $subjectResultData
                             ];
                         }
@@ -374,7 +382,9 @@ class AdminTeacherController extends Controller
                 $response = [
                     'version' => '1.0',
                     'status' => 0,
-                    'message' => 'Teacher saved but all subjects failed to assign',
+                    'message' => $duplicateAssignmentDetected
+                        ? 'Teacher already assign to this subject and institute'
+                        : 'Teacher saved but all subjects failed to assign',
                     'data' => [
                         'teacher_id' => $teacherId,
                         'failed_subjects' => $failedSubjects

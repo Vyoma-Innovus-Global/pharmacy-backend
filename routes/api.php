@@ -309,6 +309,9 @@ Route::prefix('admin')->middleware('authenticate')->group(function () {
     Route::post('/subject-categories', [AdminSubjectCategoryController::class, 'getAllSubjectCategories']);
     Route::post('/departments', [AdminDepartmentController::class, 'getDepartmentsByInst']);
     Route::post('/subjects', [AdminSubjectController::class, 'getDeptAllSubjects']);
+    Route::post('/save-bank-info', [AdminController::class, 'saveBankInfo']);
+    Route::post('/get-bank-info', [AdminController::class, 'getBankInfo']);
+    Route::post('/get-bank-info-by-ifsc', [AdminController::class, 'getBankInfoByIfsc']);
     Route::post('/save-teacher', [AdminTeacherController::class, 'saveTeacherWithSubjects']);
     Route::post('/get-assigned-teachers', [AdminTeacherController::class, 'getAssignedTeacherInfo']);
     Route::post('/get-evaluator-subject-allocation-summary', [AdminTeacherController::class, 'getEvaluatorSubjectAllocationSummary']);

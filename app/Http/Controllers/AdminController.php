@@ -32,7 +32,7 @@ class AdminController extends Controller
 {
     public function studentListPone(Request $request)
     {
-            
+
                     try {
                         $collegeId = $request->collegeId;
                         $i_code = $request->i_code;
@@ -74,8 +74,8 @@ class AdminController extends Controller
                     } catch (\Exception $e) {
                         return response()->json(['error' => $e->getMessage()], 500);
                     }
-                 
-                
+
+
     }
 
     //Syllabus Subject Master
@@ -92,7 +92,7 @@ class AdminController extends Controller
                 return response()->json([
                     'status' => 'success',
                     'data' => $paperList,
-                ]);    
+                ]);
         } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
@@ -100,10 +100,184 @@ class AdminController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Save admin bank information using PostgreSQL function fn_admin_savebankinfo.
+     *
+     * POST /admin/save-bank-info
+     */
+    public function saveBankInfo(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'user_id'          => 'required|integer',
+            'bank_id'          => 'required|integer',
+            'branch_id'        => 'required|integer',
+            'bank_name'        => 'required|string|max:255',
+            'branch_name'      => 'required|string|max:255',
+            'ifsc'             => 'required|string|max:50',
+            'acc_no'           => 'required|string|max:100',
+            'acc_holder_name'  => 'required|string|max:255',
+            'entry_user_id'    => 'required|integer',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'error'   => true,
+                'message' => $validator->errors(),
+            ], 422);
+        }
+
+        try {
+            $params = [
+                $request->input('user_id'),
+                $request->input('bank_id'),
+                $request->input('branch_id'),
+                $request->input('bank_name'),
+                $request->input('branch_name'),
+                $request->input('ifsc'),
+                $request->input('acc_no'),
+                $request->input('acc_holder_name'),
+                $request->input('entry_user_id'),
+            ];
+
+            $result = DB::select(
+                'SELECT public.fn_admin_savebankinfo(?, ?, ?, ?, ?, ?, ?, ?, ?) AS data',
+                $params
+            );
+
+            if (empty($result)) {
+                return response()->json([
+                    'error'   => true,
+                    'message' => 'No result returned from function.',
+                ], 500);
+            }
+
+            $raw = $result[0]->data ?? null;
+            $responseData = is_string($raw) ? json_decode($raw, true) : $raw;
+
+            return response()->json([
+                'error' => false,
+                'data'  => $responseData,
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error'   => true,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Get admin bank information using PostgreSQL function fn_admin_getbankinfo.
+     *
+    * POST /admin/get-bank-info
+     */
+    public function getBankInfo(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'admin_user_id' => 'required|integer',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'error'   => true,
+                'message' => $validator->errors(),
+            ], 422);
+        }
+
+        try {
+            $adminUserId = (int) $request->input('admin_user_id');
+            $result = DB::select(
+                'SELECT public.fn_admin_getbankinfo(?::bigint) AS data',
+                [$adminUserId]
+            );
+
+            if (empty($result) || !isset($result[0]->data)) {
+                return response()->json([
+                    'error'   => true,
+                    'message' => 'No bank info found for the given admin user ID.',
+                ], 404);
+            }
+
+            $raw = $result[0]->data;
+            $bankInfo = is_string($raw) ? json_decode($raw, true) : (array) $raw;
+
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                return response()->json([
+                    'error'   => true,
+                    'message' => 'Failed to parse bank info from database.',
+                ], 500);
+            }
+
+            return response()->json([
+                'error' => false,
+                'data'  => $bankInfo,
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error'   => true,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Get bank information by IFSC code using PostgreSQL function fn_admin_getbankinfobyifsc.
+     *
+     * POST /admin/get-bank-info-by-ifsc
+     */
+    public function getBankInfoByIfsc(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'ifsc' => 'required|string|max:50',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'error'   => true,
+                'message' => $validator->errors(),
+            ], 422);
+        }
+
+        try {
+            $ifsc = $request->input('ifsc');
+            $result = DB::select(
+                'SELECT public.fn_admin_getbankinfobyifsc(?::text) AS data',
+                [$ifsc]
+            );
+
+            if (empty($result) || !isset($result[0]->data)) {
+                return response()->json([
+                    'error'   => true,
+                    'message' => 'No bank info found for the given IFSC.',
+                ], 404);
+            }
+
+            $raw = $result[0]->data;
+            $bankInfo = is_string($raw) ? json_decode($raw, true) : $raw;
+
+            if (is_string($raw) && json_last_error() !== JSON_ERROR_NONE) {
+                return response()->json([
+                    'error'   => true,
+                    'message' => 'Failed to parse bank info from database.',
+                ], 500);
+            }
+
+            return response()->json([
+                'error' => false,
+                'data'  => $bankInfo,
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error'   => true,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
     public function allStates(Request $request, $type = null)
     {
         try {
-            
+
             if (is_null($type)) {
                 $state_list = State::select('state_id_pk', 'state_name')
                                     ->where('active_status', '1')
@@ -187,7 +361,7 @@ class AdminController extends Controller
     public function allSubdivisions(Request $request, $dist_id = null, $type = null)
     {
         try {
-         
+
             if ($type === null) {
                 if ($dist_id) {
                     $subdivision_list = Subdivision::with('district:district_id_pk,district_name')
@@ -217,7 +391,7 @@ class AdminController extends Controller
                 }
             }
 
-           
+
 
             return response()->json([
                 'error'     => true,
@@ -236,8 +410,8 @@ class AdminController extends Controller
             $district_id=$request->district_id;
             //subdiv_id=district_id
             $query = BlockMunicipality::where('active_status','1')->where('district_id', $district_id)->orderBy('name', 'DESC')->get();
-  
-           
+
+
 
             if ($query->isNotEmpty()) {
                 return response()->json([

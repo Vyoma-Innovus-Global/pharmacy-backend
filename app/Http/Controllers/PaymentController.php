@@ -863,77 +863,92 @@ public function institutePayment(Request $request)
 // Institute Payment Success Handler
 public function institutePaymentSuccess(Request $request)
 {
-    $trans_details = sbiDecrypt($request->encData);
-    $data = explode('|', $trans_details);
+    try {
+        $trans_details = sbiDecrypt($request->encData);
+        $data = explode('|', $trans_details);
 
-    $order_id = $data[0];
-    $trans_id = $data[1];
-    $trans_status = $data[2];
-    $trans_amount = $data[3];
-    $currency = $data[4];
-    $trans_mode = $data[5];
-    $message = $data[7];
-    $trans_time = $data[10];
-    $country_code = $data[11];
-    $marchnt_id = $data[13];
-    $other_data = explode('_', $data[6]);
+        $order_id = $data[0];
+        $trans_id = $data[1];
+        $trans_status = $data[2];
+        $trans_amount = $data[3];
+        $currency = $data[4];
+        $trans_mode = $data[5];
+        $message = $data[7];
+        $trans_time = $data[10];
+        $country_code = $data[11];
+        $marchnt_id = $data[13];
+        $other_data = explode('_', $data[6]);
 
-    $inst_code = $other_data[0];
-    $admin_user_id = $other_data[1];
-    $payment_purpose = $other_data[2] ?? 'Institute Fee';
+        $inst_code = $other_data[0];
+        $admin_user_id = $other_data[1];
+        $payment_purpose = $other_data[2] ?? 'Institute Fee';
 
-    $tranction = PaymentTransaction::where('order_id', $order_id)->first();
+        $tranction = PaymentTransaction::where('order_id', $order_id)->first();
 
-    if ($tranction) {
-        $tranction->update([
-            'trans_id' => $trans_id,
-            'trans_status' => $trans_status,
-            'trans_amount' => $trans_amount,
-            'trans_mode' => $trans_mode,
-            'trans_time' => $trans_time,
-            'country_code' => $country_code,
-            'marchnt_id' => $marchnt_id,
-            'trans_details' => $trans_details,
-            'is_verified' => 1,
+        if ($tranction) {
+            $tranction->update([
+                'trans_id' => $trans_id,
+                'trans_status' => $trans_status,
+                'trans_amount' => $trans_amount,
+                'trans_mode' => $trans_mode,
+                'trans_time' => $trans_time,
+                'country_code' => $country_code,
+                'marchnt_id' => $marchnt_id,
+                'trans_details' => $trans_details,
+                'is_verified' => 1,
+            ]);
+
+            Payment::create([
+                'order_id' => $order_id,
+                'trans_id' => $trans_id,
+                'form_id' => $admin_user_id,
+                'inst_code' => $inst_code,
+                'paid_type' => 'INSTITUTE_FEE',
+                'paid_amount' => $trans_amount,
+                'paid_at' => $trans_time,
+                'payment_mode' => $trans_mode,
+                'detail' => $trans_details,
+                'exam_year' => date('Y'),
+            ]);
+
+            auditTrail($inst_code, "Institute payment successful - ORDER ID: {$order_id}, TRANSACTION ID: {$trans_id}, Amount: {$trans_amount}");
+
+            // Get institute details
+            $institute = DB::table('institute_master')
+                ->where('inst_code', $inst_code)
+                ->first();
+
+            // Use redirect page that will pass data to React app
+            return view('institute-payment-success-redirect', [
+                'trans_id' => $trans_id,
+                'order_id' => $order_id,
+                'trans_amount' => $trans_amount,
+                'trans_status' => $trans_status,
+                'trans_time' => date('d-m-Y h:i a', strtotime($trans_time)),
+                'inst_code' => $inst_code,
+                'inst_name' => $institute->inst_name ?? 'N/A',
+                'payment_purpose' => $payment_purpose
+            ]);
+        }
+
+        return response()->json([
+            'error' => true,
+            'message' => 'Transaction not found'
+        ], 404);
+
+    } catch (\Exception $e) {
+        Log::channel('daily')->error('[Payment] Success handler failed', [
+            'error' => $e->getMessage(),
+            'line' => $e->getLine(),
+            'file' => $e->getFile(),
+            'request' => $request->all()
         ]);
 
-        Payment::create([
-            'order_id' => $order_id,
-            'trans_id' => $trans_id,
-            'form_id' => $admin_user_id,
-            'inst_code' => $inst_code,
-            'paid_type' => 'INSTITUTE_FEE',
-            'paid_amount' => $trans_amount,
-            'paid_at' => $trans_time,
-            'payment_mode' => $trans_mode,
-            'detail' => $trans_details,
-            'exam_year' => date('Y'),
-        ]);
-
-        auditTrail($inst_code, "Institute payment successful - ORDER ID: {$order_id}, TRANSACTION ID: {$trans_id}, Amount: {$trans_amount}");
-
-        // Get institute details
-        $institute = DB::table('institute_master')
-            ->where('inst_code', $inst_code)
-            ->first();
-
-        // Use redirect page that will pass data to React app
-        return view('institute-payment-success-redirect', [
-            'trans_id' => $trans_id,
-            'order_id' => $order_id,
-            'trans_amount' => $trans_amount,
-            'trans_status' => $trans_status,
-            'trans_time' => date('d-m-Y h:i a', strtotime($trans_time)),
-            'inst_code' => $inst_code,
-            'inst_name' => $institute->inst_name ?? 'N/A',
-            'payment_purpose' => $payment_purpose
-        ]);
+        return response()->json([
+            'error' => true,
+            'message' => 'Payment processing failed: ' . $e->getMessage()
+        ], 500);
     }
-
-    return response()->json([
-        'error' => true,
-        'message' => 'Transaction not found'
-    ], 404);
 }
 
 // Institute Payment Failure Handler
