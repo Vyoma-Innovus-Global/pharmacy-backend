@@ -598,6 +598,141 @@ class AdminTeacherController extends Controller
     }
 
     /**
+     * @OA\Post(
+     *     path="/api/admin/get-marks-entered-teachers-info",
+     *     tags={"Admin - Teacher"},
+     *     summary="Get marks entered teachers information",
+     *     description="Retrieves teachers who have entered marks for the selected institute, department, subject, exam year, and semester. Calls: fn_admin_getmarksenteredteachersinfo",
+     *     security={{"token": {}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"admin_user_id", "teacher_id", "inst_code", "dept_code", "subject_code", "exam_year", "semester"},
+     *             @OA\Property(property="admin_user_id", type="integer", example=1),
+     *             @OA\Property(property="teacher_id", type="integer", example=5),
+     *             @OA\Property(property="inst_code", type="string", example="JCG"),
+     *             @OA\Property(property="dept_code", type="string", example="PHARM"),
+     *             @OA\Property(property="subject_code", type="string", example="PHCE"),
+     *             @OA\Property(property="exam_year", type="integer", example=2025),
+     *             @OA\Property(property="semester", type="integer", example=1)
+     *         )
+     *     ),
+     *     @OA\Response(response=200, description="Marks entered teacher information retrieved successfully"),
+     *     @OA\Response(response=400, description="Validation failed"),
+     *     @OA\Response(response=401, description="Unauthorized"),
+     *     @OA\Response(response=500, description="Internal server error")
+     * )
+     */
+    public function getMarksEnteredTeachersInfo(Request $request)
+    {
+        Log::info('=== GET MARKS ENTERED TEACHERS INFO API - REQUEST START ===', [
+            'payload' => $request->all(),
+            'method' => $request->method(),
+            'url' => $request->fullUrl(),
+        ]);
+
+        $validator = Validator::make($request->all(), [
+            'admin_user_id' => 'required|integer',
+            'teacher_id' => 'required|integer',
+            'inst_code' => 'required|string',
+            'dept_code' => 'required|string',
+            'subject_code' => 'required|string',
+            'exam_year' => 'required|integer',
+            'semester' => 'required|integer',
+        ]);
+
+        if ($validator->fails()) {
+            Log::error('GET MARKS ENTERED TEACHERS INFO API - Validation Failed:', [
+                'errors' => $validator->errors()->all(),
+            ]);
+
+            return response()->json([
+                'version' => '1.0',
+                'status' => 0,
+                'message' => 'Validation failed: ' . $validator->errors()->first(),
+                'data' => [],
+            ], 400);
+        }
+
+        $adminUserId = (int) $request->input('admin_user_id');
+        $teacherId = (int) $request->input('teacher_id');
+        $instCode = $request->input('inst_code');
+        $deptCode = $request->input('dept_code');
+        $subjectCode = $request->input('subject_code');
+        $examYear = (int) $request->input('exam_year');
+        $semester = (int) $request->input('semester');
+
+        try {
+            Log::info('Calling fn_admin_getmarksenteredteachersinfo with parameters:', [
+                'p_admin_user_id' => $adminUserId,
+                'p_teacher_id' => $teacherId,
+                'p_inst_code' => $instCode,
+                'p_dept_code' => $deptCode,
+                'p_subject_code' => $subjectCode,
+                'p_exam_year' => $examYear,
+                'p_semester' => $semester,
+            ]);
+
+            $result = DB::selectOne(
+                'SELECT public.fn_admin_getmarksenteredteachersinfo(?, ?, ?, ?, ?, ?, ?) AS result',
+                [$adminUserId, $teacherId, $instCode, $deptCode, $subjectCode, $examYear, $semester]
+            );
+
+            Log::info('OUTPUT from fn_admin_getmarksenteredteachersinfo:', [
+                'raw_result' => $result,
+                'result_json' => $result->result ?? null,
+            ]);
+
+            if (!$result || !isset($result->result) || $result->result === null) {
+                return response()->json([
+                    'version' => '1.0',
+                    'status' => 0,
+                    'message' => 'No marks entered teacher information found',
+                    'data' => [],
+                ], 404);
+            }
+
+            $data = is_string($result->result)
+                ? json_decode($result->result, true)
+                : (array) $result->result;
+
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                Log::error('GET MARKS ENTERED TEACHERS INFO API - JSON parsing error:', [
+                    'error' => json_last_error_msg(),
+                    'raw' => $result->result,
+                ]);
+
+                return response()->json([
+                    'version' => '1.0',
+                    'status' => 0,
+                    'message' => 'Failed to parse database response',
+                    'data' => [],
+                ], 500);
+            }
+
+            return response()->json([
+                'version' => '1.0',
+                'status' => 1,
+                'message' => 'Marks entered teacher information retrieved successfully',
+                'data' => $data ?? [],
+            ], 200);
+
+        } catch (\Exception $e) {
+            Log::error('AdminTeacherController::getMarksEnteredTeachersInfo - Exception', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'version' => '1.0',
+                'status' => 0,
+                'message' => 'Server error: ' . $e->getMessage(),
+                'data' => [],
+            ], 500);
+        }
+    }
+
+    /**
      * Group flat teacher-subject rows into one record per teacher with assignments[].
      */
     private function groupTeachersByTeacherId(array $rows): array
@@ -871,4 +1006,3 @@ class AdminTeacherController extends Controller
         }
     }
 }
-

@@ -14,7 +14,7 @@ class AdminSubjectController extends Controller
      *     path="/api/admin/subjects",
      *     tags={"Admin - Master Data"},
      *     summary="Get all subjects for a department",
-     *     description="Retrieves all subjects for a specific department, semester, and subject category. Note: semester_id should be numeric string (1, 2, 3) from semester dropdown's semesterId field. Calls: fn_admin_getdeptallsubjects_v1",
+     *     description="Retrieves all subjects for a specific department, semester, and subject category. Calls: fn_admin_getdeptallsubjects_v1",
      *     security={{"token": {}}},
      *     @OA\RequestBody(
      *         required=true,
@@ -22,7 +22,7 @@ class AdminSubjectController extends Controller
      *             required={"admin_user_id", "dept_code", "semester_id", "subject_category_id"},
      *             @OA\Property(property="admin_user_id", type="integer", example=1, description="Admin user ID"),
      *             @OA\Property(property="dept_code", type="string", example="PHARM", description="Department code (e.g., PHARM, BIO)"),
-     *             @OA\Property(property="semester_id", type="string", example="1", description="Semester ID as numeric string (1-6)"),
+     *             @OA\Property(property="semester_id", type="integer", example=1, description="Semester ID"),
      *             @OA\Property(property="subject_category_id", type="integer", example=1, description="Subject category ID (1=Theory, 2=Practical, etc.)")
      *         )
      *     ),
@@ -65,11 +65,9 @@ class AdminSubjectController extends Controller
      * Body: {
      *   "admin_user_id": 1,
      *   "dept_code": "PHARM",
-     *   "semester_id": "1",
+     *   "semester_id": 1,
      *   "subject_category_id": 1
      * }
-     *
-     * Note: semester_id should be numeric string (1, 2, 3) from semester dropdown's semesterId field
      *
      * Calls: fn_admin_getdeptallsubjects_v1(p_admin_user_id, p_dept_code, p_semester_id, p_subject_category_id)
      */
@@ -78,7 +76,7 @@ class AdminSubjectController extends Controller
         $validator = Validator::make($request->all(), [
             'admin_user_id'       => 'required|integer',
             'dept_code'           => 'required|string',
-            'semester_id'         => 'required|string',
+            'semester_id'         => 'required|integer',
             'subject_category_id' => 'required|integer',
         ]);
 
@@ -93,7 +91,7 @@ class AdminSubjectController extends Controller
 
         $adminUserId       = (int) $request->input('admin_user_id');
         $deptCode          = $request->input('dept_code');
-        $semesterId        = $request->input('semester_id');
+        $semesterId        = (int) $request->input('semester_id');
         $subjectCategoryId = (int) $request->input('subject_category_id');
 
         Log::channel('daily')->info('[getDeptAllSubjects] INPUT', [
