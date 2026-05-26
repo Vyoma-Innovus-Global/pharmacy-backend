@@ -274,6 +274,66 @@ class AdminController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Get admin dashboard summary using PostgreSQL function fn_admin_getdashboard.
+     *
+     * POST /admin/dashboard
+     */
+    public function getDashboard(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'admin_user_id' => 'required|integer',
+            'semester_id' => 'required|integer',
+            'exam_year' => 'required|integer',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'error'   => true,
+                'message' => $validator->errors(),
+            ], 422);
+        }
+
+        try {
+            $adminUserId = (int) $request->input('admin_user_id');
+            $semesterId = (int) $request->input('semester_id');
+            $examYear = (int) $request->input('exam_year');
+
+            $result = DB::select(
+                'SELECT public.fn_admin_getdashboard(?::bigint, ?::integer, ?::integer) AS data',
+                [$adminUserId, $semesterId, $examYear]
+            );
+
+            if (empty($result) || !isset($result[0]->data)) {
+                return response()->json([
+                    'error'   => true,
+                    'message' => 'No dashboard data found.',
+                ], 404);
+            }
+
+            $raw = $result[0]->data;
+            $dashboardData = is_string($raw) ? json_decode($raw, true) : (array) $raw;
+
+            if (is_string($raw) && json_last_error() !== JSON_ERROR_NONE) {
+                return response()->json([
+                    'error'   => true,
+                    'message' => 'Failed to parse dashboard data from database.',
+                ], 500);
+            }
+
+            return response()->json([
+                'error' => false,
+                'data'  => $dashboardData,
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error'   => true,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
     public function allStates(Request $request, $type = null)
     {
         try {
