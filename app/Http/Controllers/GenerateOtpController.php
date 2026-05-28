@@ -14,7 +14,7 @@ use App\Mail\OtpMail;
 
 class GenerateOtpController extends Controller
 {
-    private const OTP_EMAIL_SENDING_ENABLED = false;
+    private const OTP_EMAIL_SENDING_ENABLED = true;
 
     /*
     |--------------------------------------------------------------------------
