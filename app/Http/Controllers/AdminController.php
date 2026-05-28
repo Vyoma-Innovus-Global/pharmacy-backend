@@ -334,6 +334,77 @@ class AdminController extends Controller
         }
     }
 
+    /**
+     * Get entered student marks info using PostgreSQL function fn_admin_getenteredstudentmarksinfo.
+     *
+     * POST /admin/get-entered-student-marks-info
+     */
+    public function getEnteredStudentMarksInfo(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'admin_user_id'     => 'required|integer',
+            'teacher_id'        => 'required|integer',
+            'student_id'        => 'required|integer',
+            'evaluator_type_id' => 'required|integer',
+            'inst_code'         => 'required|string|max:50',
+            'dept_code'         => 'required|string|max:50',
+            'subject_code'      => 'required|string|max:50',
+            'exam_year'         => 'required|integer',
+            'semester'          => 'required|integer',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'error'   => true,
+                'message' => $validator->errors(),
+            ], 422);
+        }
+
+        try {
+            $result = DB::select(
+                'SELECT public.fn_admin_getenteredstudentmarksinfo(?::bigint, ?::bigint, ?::bigint, ?::bigint, ?::varchar, ?::varchar, ?::varchar, ?::integer, ?::integer) AS data',
+                [
+                    (int) $request->input('admin_user_id'),
+                    (int) $request->input('teacher_id'),
+                    (int) $request->input('student_id'),
+                    (int) $request->input('evaluator_type_id'),
+                    $request->input('inst_code'),
+                    $request->input('dept_code'),
+                    $request->input('subject_code'),
+                    (int) $request->input('exam_year'),
+                    (int) $request->input('semester'),
+                ]
+            );
+
+            if (empty($result) || !isset($result[0]->data)) {
+                return response()->json([
+                    'error'   => true,
+                    'message' => 'No entered student marks info found.',
+                ], 404);
+            }
+
+            $raw = $result[0]->data;
+            $marksInfo = is_string($raw) ? json_decode($raw, true) : (array) $raw;
+
+            if (is_string($raw) && json_last_error() !== JSON_ERROR_NONE) {
+                return response()->json([
+                    'error'   => true,
+                    'message' => 'Failed to parse entered student marks info from database.',
+                ], 500);
+            }
+
+            return response()->json([
+                'error' => false,
+                'data'  => $marksInfo,
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error'   => true,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
     public function allStates(Request $request, $type = null)
     {
         try {

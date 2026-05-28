@@ -314,6 +314,7 @@ Route::prefix('admin')->middleware('authenticate')->group(function () {
     Route::post('/get-bank-info', [AdminController::class, 'getBankInfo']);
     Route::post('/get-bank-info-by-ifsc', [AdminController::class, 'getBankInfoByIfsc']);
     Route::post('/dashboard', [AdminController::class, 'getDashboard']);
+    Route::post('/get-entered-student-marks-info', [AdminController::class, 'getEnteredStudentMarksInfo']);
     Route::post('/save-teacher', [AdminTeacherController::class, 'saveTeacherWithSubjects']);
     Route::post('/get-assigned-teachers', [AdminTeacherController::class, 'getAssignedTeacherInfo']);
     Route::post('/get-marks-entered-teachers-info', [AdminTeacherController::class, 'getMarksEnteredTeachersInfo']);
