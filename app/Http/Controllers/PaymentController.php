@@ -14,6 +14,34 @@ use Illuminate\Support\Facades\Validator;
 
 class PaymentController extends Controller
 {
+    private function institutePaymentFrontendReceiptUrl(array $params): string
+    {
+        $baseUrl = rtrim(
+            env(
+                'PAYMENT_FRONTEND_RECEIPT_URL',
+                env(
+                    'PAYMENT_FRONTEND_STATUS_URL',
+                    env('FRONTEND_PAYMENT_STATUS_URL', 'https://sctedved.wb.gov.in/hsvoc/payment-receipt')
+                )
+            ),
+            '?'
+        );
+
+        return $baseUrl . '?' . http_build_query([
+            'txnNo' => $params['trans_id'] ?? '',
+            'transno' => $params['trans_id'] ?? '',
+            'orderId' => $params['order_id'] ?? '',
+            'status' => $params['trans_status'] ?? '',
+            'amount' => $params['trans_amount'] ?? '',
+            'currency' => $params['currency'] ?? 'INR',
+            'message' => $params['message'] ?? '',
+            'time' => $params['trans_time'] ?? '',
+            'paying_for' => 'INSTITUTE_FEE',
+            'inst_code' => $params['inst_code'] ?? '',
+            'payment_purpose' => $params['payment_purpose'] ?? 'Institute Fee',
+        ]);
+    }
+
     //get Enrollment payment fees data
     public function getEnrollmentPaymentdata(Request $request)
     {
@@ -1133,22 +1161,17 @@ public function institutePaymentSuccess(Request $request)
                 'amount' => $trans_amount,
             ]);
 
-            // Get institute details
-            $institute = DB::table('institute_master')
-                ->where('inst_code', $inst_code)
-                ->first();
-
-            // Use redirect page that will pass data to React app
-            return view('institute-payment-success-redirect', [
+            return redirect()->away($this->institutePaymentFrontendReceiptUrl([
                 'trans_id' => $trans_id,
                 'order_id' => $order_id,
                 'trans_amount' => $trans_amount,
                 'trans_status' => $trans_status,
+                'currency' => $currency,
+                'message' => $message,
                 'trans_time' => date('d-m-Y h:i a', strtotime($trans_time)),
                 'inst_code' => $inst_code,
-                'inst_name' => $institute->inst_name ?? 'N/A',
                 'payment_purpose' => $payment_purpose
-            ]);
+            ]));
         }
 
         Log::channel('daily')->warning('[Payment] institute success transaction not found', [
@@ -1187,7 +1210,13 @@ public function institutePaymentFail(Request $request)
     $order_id = $data[0];
     $trans_id = $data[1];
     $trans_status = $data[2];
+    $trans_amount = $data[3] ?? '';
+    $currency = $data[4] ?? 'INR';
     $message = $data[7];
+    $trans_time = $data[10] ?? date('Y-m-d H:i:s');
+    $other_data = explode('_', $data[6] ?? '');
+    $inst_code = $other_data[0] ?? '';
+    $payment_purpose = $other_data[2] ?? 'Institute Fee';
 
     Log::channel('daily')->info('[Payment] institute fail parsed', [
         'order_id' => $order_id,
@@ -1220,12 +1249,17 @@ public function institutePaymentFail(Request $request)
         ]);
     }
 
-    return response()->json([
-        'error' => true,
-        'message' => 'Payment failed: ' . $message,
+    return redirect()->away($this->institutePaymentFrontendReceiptUrl([
+        'trans_id' => $trans_id,
         'order_id' => $order_id,
-        'trans_status' => $trans_status
-    ], 400);
+        'trans_amount' => $trans_amount,
+        'trans_status' => in_array($trans_status, ['FAIL', 'ABORT'], true) ? 'FAILED' : $trans_status,
+        'currency' => $currency,
+        'message' => $message,
+        'trans_time' => date('d-m-Y h:i a', strtotime($trans_time)),
+        'inst_code' => $inst_code ?: ($tranction->initiated_by ?? ''),
+        'payment_purpose' => $payment_purpose
+    ]));
 }
 
 // Download Institute Payment Receipt as PDF

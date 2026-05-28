@@ -14,6 +14,8 @@ use App\Mail\OtpMail;
 
 class GenerateOtpController extends Controller
 {
+    private const OTP_EMAIL_SENDING_ENABLED = false;
+
     /*
     |--------------------------------------------------------------------------
     | OTP Delivery Rules by user_type_id
@@ -163,9 +165,7 @@ class GenerateOtpController extends Controller
 
                 if ($userTypeId === 8 && $email) {
                     $otpSendTo = $email;
-                    Log::channel('daily')->warning('[generate] Email sending disabled', [
-                        'email' => $this->maskEmail($email),
-                    ]);
+                    $emailSent = $this->sendOtpEmail($email, $otp, $name, '[generate]');
                 } elseif ($userTypeId === 8) {
                     Log::channel('daily')->warning('[generate] Email skipped: email missing', [
                         'has_email' => !empty($email),
@@ -187,9 +187,7 @@ class GenerateOtpController extends Controller
                     }
                     if ($email) {
                         $otpSendTo = $otpSendTo ? "{$otpSendTo}, {$email}" : $email;
-                        Log::channel('daily')->warning('[generate] Email sending disabled (type 12)', [
-                            'email' => $this->maskEmail($email),
-                        ]);
+                        $emailSent = $this->sendOtpEmail($email, $otp, $name, '[generate] type 12');
                     } else {
                         Log::channel('daily')->warning('[generate] Email skipped (type 12): email missing');
                     }
@@ -474,10 +472,7 @@ class GenerateOtpController extends Controller
                 $this->logSmsResponse('[updateOtpUsed] SMS sent', $contactNo, $smsResponse);
             }
             if ($userTypeId === 8) {
-                $this->logEmailAttempt('[updateOtpUsed] Email send attempt', $contactNo);
-                Mail::to($contactNo)->send(new OtpMail($otp, $contactNo));
-                $emailSent = true;
-                Log::channel('daily')->info('[updateOtpUsed] Email sent', ['email' => $this->maskEmail($contactNo)]);
+                $emailSent = $this->sendOtpEmail($contactNo, $otp, $contactNo, '[updateOtpUsed]');
             }
             if ($userTypeId === 12) {
                 Log::channel('daily')->info('[updateOtpUsed] SMS send attempt (type 12)', [
@@ -488,10 +483,7 @@ class GenerateOtpController extends Controller
                 $smsSent = true;
                 $this->logSmsResponse('[updateOtpUsed] SMS sent (type 12)', $contactNo, $smsResponse);
 
-                $this->logEmailAttempt('[updateOtpUsed] Email send attempt (type 12)', $contactNo);
-                Mail::to($contactNo)->send(new OtpMail($otp, $contactNo));
-                $emailSent = true;
-                Log::channel('daily')->info('[updateOtpUsed] Email sent (type 12)', ['email' => $this->maskEmail($contactNo)]);
+                $emailSent = $this->sendOtpEmail($contactNo, $otp, $contactNo, '[updateOtpUsed] type 12');
             }
 
             $response = [
@@ -509,6 +501,23 @@ class GenerateOtpController extends Controller
             Log::channel('daily')->error('[updateOtpUsed] EXCEPTION', ['message' => $e->getMessage(), 'line' => $e->getLine()]);
             return response()->json(['error' => true, 'message' => $e->getMessage()], 500);
         }
+    }
+
+    private function sendOtpEmail(string $email, string $otp, string $recipientName, string $context): bool
+    {
+        if (!self::OTP_EMAIL_SENDING_ENABLED) {
+            Log::channel('daily')->warning("{$context} OTP email sending blocked", [
+                'email' => $this->maskEmail($email),
+            ]);
+
+            return false;
+        }
+
+        $this->logEmailAttempt("{$context} Email send attempt", $email);
+        Mail::to($email)->send(new OtpMail($otp, $recipientName));
+        Log::channel('daily')->info("{$context} Email sent", ['email' => $this->maskEmail($email)]);
+
+        return true;
     }
 
     private function logSmsResponse(string $message, string $phone, $smsResponse): void
