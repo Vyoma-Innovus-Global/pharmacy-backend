@@ -336,7 +336,8 @@ class GenerateOtpController extends Controller
             } elseif (in_array($userTypeId, [8, 13])) {
                 $contactNo = $adminData['email'] ?? null;
             } elseif ($userTypeId === 12) {
-                $contactNo = $adminData['contactNo'] ?? ($adminData['email'] ?? null);
+                // For type 12: Try phone first (primary), then email (fallback)
+                $contactNo = $adminData['contactNo'] ?? null;
             } else {
                 $contactNo = $adminData['contactNo'] ?? ($adminData['email'] ?? $username);
             }
@@ -362,6 +363,34 @@ class GenerateOtpController extends Controller
                 'raw'        => $raw,
                 'stored_otp' => $storedOtp,
             ]);
+
+            // For type 12: If phone OTP not found, try email
+            if (($storedOtp === '' || $storedOtp === 'null') && $userTypeId === 12) {
+                $emailContactNo = $adminData['email'] ?? null;
+                if ($emailContactNo && $emailContactNo !== $contactNo) {
+                    Log::channel('daily')->info('[verifyOtp] Phone OTP not found for type 12, trying email', [
+                        'phone' => $contactNo,
+                        'email' => $emailContactNo,
+                    ]);
+
+                    $emailResult = DB::select('SELECT public.fn_getlatestotpbyusername(?::varchar, ?::integer) AS data', [$emailContactNo, $userTypeId]);
+                    $emailRaw = $emailResult[0]->data ?? null;
+                    $emailOtpData = is_string($emailRaw) ? json_decode($emailRaw, true) : (array) $emailRaw;
+                    $emailStoredOtp = (string)($emailOtpData['otp'] ?? '');
+
+                    Log::channel('daily')->info('[verifyOtp] fn_getlatestotpbyusername (email fallback)', [
+                        'contact_no' => $emailContactNo,
+                        'raw' => $emailRaw,
+                        'stored_otp' => $emailStoredOtp,
+                    ]);
+
+                    if ($emailStoredOtp !== '' && $emailStoredOtp !== 'null') {
+                        $storedOtp = $emailStoredOtp;
+                        $contactNo = $emailContactNo;
+                        Log::channel('daily')->info('[verifyOtp] Using email OTP for type 12', ['contactNo' => $contactNo]);
+                    }
+                }
+            }
 
             if ($storedOtp === '' || $storedOtp === 'null') {
                 return response()->json(['error' => true, 'message' => 'No OTP found. Please request a new OTP.'], 404);
