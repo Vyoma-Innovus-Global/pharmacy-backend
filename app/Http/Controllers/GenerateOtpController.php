@@ -130,8 +130,8 @@ class GenerateOtpController extends Controller
             $adminRaw    = $adminResult[0]->data ?? null;
             $adminData   = is_string($adminRaw) ? json_decode($adminRaw, true) : (array) $adminRaw;
 
-            $email = $adminData['email']     ?? null;
-            $phone = $adminData['contactNo'] ?? null;
+            $email = $this->normalizeContact($adminData['email'] ?? null);
+            $phone = $this->normalizeContact($adminData['contactNo'] ?? null);
             $name  = $adminData['fullName']  ?? $username;
 
             Log::channel('daily')->info('[generate] Contact details resolved', [
@@ -202,7 +202,9 @@ class GenerateOtpController extends Controller
 
             Log::channel('daily')->info('[generate] OUTPUT (200)', ['sms' => $smsSent, 'email' => $emailSent]);
 
-            if (!$smsSent && !$emailSent) {
+            $emailDeliveryBlocked = in_array($userTypeId, [8, 12]) && !self::OTP_EMAIL_SENDING_ENABLED;
+
+            if (!$smsSent && !$emailSent && !$emailDeliveryBlocked) {
                 $hasDestination = !empty($otpSendTo);
 
                 return response()->json([
@@ -218,7 +220,9 @@ class GenerateOtpController extends Controller
 
             return response()->json([
                 'error'           => false,
-                'message'         => 'OTP Sent Successfully.',
+                'message'         => $emailDeliveryBlocked && !$smsSent
+                    ? 'OTP generated successfully. Email sending is currently blocked.'
+                    : 'OTP Sent Successfully.',
                 'otp_expire_time' => now()->addMinutes(2)->format('Y-m-d H:i:s'),
                 'sent_via'        => ['sms' => $smsSent, 'email' => $emailSent],
                 'OTPSendTo'       => $otpSendTo,
@@ -518,6 +522,17 @@ class GenerateOtpController extends Controller
         Log::channel('daily')->info("{$context} Email sent", ['email' => $this->maskEmail($email)]);
 
         return true;
+    }
+
+    private function normalizeContact($contact): ?string
+    {
+        if ($contact === null) {
+            return null;
+        }
+
+        $contact = trim((string) $contact);
+
+        return $contact === '' || strtolower($contact) === 'null' ? null : $contact;
     }
 
     private function logSmsResponse(string $message, string $phone, $smsResponse): void
