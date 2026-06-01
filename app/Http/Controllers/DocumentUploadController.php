@@ -23,11 +23,11 @@ class DocumentUploadController extends Controller
     {
         // Validate request
         $validator = Validator::make($request->all(), [
-            'document' => 'required|file|mimes:pdf|max:10240', // Max 10MB
+            'document' => 'required|file|mimes:pdf|max:2048', // Max 2MB
         ], [
             'document.required' => 'Please select a PDF file to upload.',
             'document.mimes' => 'Only PDF files are allowed.',
-            'document.max' => 'File size must not exceed 10MB.',
+            'document.max' => 'File size must not exceed 2MB.',
         ]);
 
         if ($validator->fails()) {
@@ -121,13 +121,13 @@ class DocumentUploadController extends Controller
         // Validate request
         $validator = Validator::make($request->all(), [
             'documents' => 'required|array|min:1|max:10',
-            'documents.*' => 'required|file|mimes:pdf|max:10240',
+            'documents.*' => 'required|file|mimes:pdf|max:2048',
         ], [
             'documents.required' => 'Please select at least one PDF file to upload.',
             'documents.array' => 'Documents must be an array of files.',
             'documents.max' => 'Maximum 10 files allowed at once.',
             'documents.*.mimes' => 'Only PDF files are allowed.',
-            'documents.*.max' => 'Each file size must not exceed 10MB.',
+            'documents.*.max' => 'Each file size must not exceed 2MB.',
         ]);
 
         if ($validator->fails()) {

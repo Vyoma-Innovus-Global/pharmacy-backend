@@ -498,6 +498,90 @@ class AdminTeacherController extends Controller
         }
     }
 
+    public function deleteTeacherInfo(Request $request)
+    {
+        Log::info('=== DELETE TEACHER INFO API - REQUEST START ===', [
+            'payload' => $request->all(),
+            'method' => $request->method(),
+            'url' => $request->fullUrl(),
+        ]);
+
+        $validator = Validator::make($request->all(), [
+            'teacher_id' => 'required|integer',
+            'admin_user_id' => 'nullable|integer|required_without:entry_user_id',
+            'entry_user_id' => 'nullable|integer|required_without:admin_user_id',
+            'remarks' => 'nullable|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'version' => '1.0',
+                'status' => 0,
+                'message' => 'Validation failed: ' . $validator->errors()->first(),
+                'data' => [],
+            ], 400);
+        }
+
+        $teacherId = (int) $request->input('teacher_id');
+        $entryUserId = (int) ($request->input('admin_user_id') ?? $request->input('entry_user_id'));
+        $remarks = $request->input('remarks', '');
+
+        try {
+            $result = DB::selectOne(
+                'SELECT public.fn_admin_deleteteacherinfo(?, ?, ?) AS result',
+                [$teacherId, $entryUserId, $remarks]
+            );
+
+            if (!$result || !isset($result->result) || $result->result === null) {
+                return response()->json([
+                    'version' => '1.0',
+                    'status' => 0,
+                    'message' => 'No response returned from delete teacher function',
+                    'data' => [],
+                ], 500);
+            }
+
+            $data = json_decode($result->result, true);
+
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                return response()->json([
+                    'version' => '1.0',
+                    'status' => 0,
+                    'message' => 'Failed to parse database response',
+                    'data' => [],
+                ], 500);
+            }
+
+            $errorCode = (int) ($data['p_errorcode'] ?? -1);
+            $messages = [
+                0 => 'Teacher deleted successfully',
+                700 => 'Teacher does not exist',
+                810 => 'Teacher marks entry exists, delete not possible',
+                703 => 'Teacher is not assigned to any subject; delete not possible for this function',
+            ];
+
+            return response()->json([
+                'version' => '1.0',
+                'status' => $errorCode === 0 ? 1 : 0,
+                'message' => $messages[$errorCode] ?? 'Teacher delete returned error code: ' . $errorCode,
+                'data' => $data,
+            ], 200);
+
+        } catch (\Exception $e) {
+            Log::error('AdminTeacherController::deleteTeacherInfo - Exception', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'version' => '1.0',
+                'status' => 0,
+                'message' => 'Server error: ' . $e->getMessage(),
+                'data' => [],
+            ], 500);
+        }
+    }
+
     /**
      * Group flat teacher-subject rows into one record per teacher with assignments[].
      */
@@ -717,4 +801,3 @@ class AdminTeacherController extends Controller
         }
     }
 }
-

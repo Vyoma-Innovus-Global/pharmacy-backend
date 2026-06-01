@@ -318,6 +318,7 @@ Route::prefix('admin')->middleware('authenticate')->group(function () {
     Route::post('/save-teacher', [AdminTeacherController::class, 'saveTeacherWithSubjects']);
     Route::post('/get-assigned-teachers', [AdminTeacherController::class, 'getAssignedTeacherInfo']);
     Route::post('/get-marks-entered-teachers-info', [AdminTeacherController::class, 'getMarksEnteredTeachersInfo']);
+    Route::post('/delete-teacher', [AdminTeacherController::class, 'deleteTeacherInfo']);
     Route::post('/get-evaluator-subject-allocation-summary', [AdminTeacherController::class, 'getEvaluatorSubjectAllocationSummary']);
     Route::post('/save-student-marks', [AdminStudentMarksController::class, 'saveStudentMarks']);
     Route::post('/institute-wise-summary', [AdminInstituteWiseSummaryController::class, 'getInstituteWiseSummary']);
