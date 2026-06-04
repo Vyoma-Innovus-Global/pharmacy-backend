@@ -15,13 +15,15 @@ use App\Mail\OtpMail;
 class GenerateOtpController extends Controller
 {
     private const OTP_EMAIL_SENDING_ENABLED = true;
+    private const SMS_ONLY_USER_TYPES = [9, 10, 11, 15];
+    private const EMAIL_ONLY_USER_TYPES = [8, 13];
 
     /*
     |--------------------------------------------------------------------------
     | OTP Delivery Rules by user_type_id
     |--------------------------------------------------------------------------
-    | Type  9, 10, 11  → SMS only  (contact_no = phone)
-    | Type  8          → Email only (contact_no = email)
+    | Type  9, 10, 11, 15  → SMS only  (contact_no = phone)
+    | Type  8, 13          → Email only (contact_no = email)
     | Type  12         → SMS + Email
     |--------------------------------------------------------------------------
     */
@@ -31,13 +33,13 @@ class GenerateOtpController extends Controller
      *     path="/api/generate-otp/send",
      *     tags={"Authentication"},
      *     summary="Generate and send OTP",
-     *     description="Generates OTP for admin users. Calls fn_generateotp to create OTP, then sends via SMS/Email based on user_type_id. Type 8→Email, Types 9/10/11→SMS, Type 12→Both. OTP expires in 2 minutes.",
+     *     description="Generates OTP for admin users. Calls fn_generateotp to create OTP, then sends via SMS/Email based on user_type_id. Type 8/13→Email, Types 9/10/11/15→SMS, Type 12→Both. OTP expires in 2 minutes.",
      *     @OA\RequestBody(
      *         required=true,
      *         @OA\JsonContent(
      *             required={"username", "user_type_id"},
      *             @OA\Property(property="username", type="string", example="AIE", description="Admin username"),
-     *             @OA\Property(property="user_type_id", type="integer", example=8, description="User type: 8=Email, 9/10/11=SMS, 12=Both")
+     *             @OA\Property(property="user_type_id", type="integer", example=8, description="User type: 8/13=Email, 9/10/11/15=SMS, 12=Both")
      *         )
      *     ),
      *     @OA\Response(
@@ -150,7 +152,7 @@ class GenerateOtpController extends Controller
 
             // Send OTP based on user type
             try {
-                if (in_array($userTypeId, [9, 10, 11]) && $phone) {
+                if (in_array($userTypeId, self::SMS_ONLY_USER_TYPES, true) && $phone) {
                     $otpSendTo = $phone;
                     Log::channel('daily')->info('[generate] SMS send attempt', [
                         'phone' => $this->maskContact($phone),
@@ -159,14 +161,14 @@ class GenerateOtpController extends Controller
                     $smsResponse = send_sms($phone, $smsMessage);
                     $smsSent = true;
                     $this->logSmsResponse('[generate] SMS sent', $phone, $smsResponse);
-                } elseif (in_array($userTypeId, [9, 10, 11])) {
+                } elseif (in_array($userTypeId, self::SMS_ONLY_USER_TYPES, true)) {
                     Log::channel('daily')->warning('[generate] SMS skipped: phone missing', ['user_type_id' => $userTypeId]);
                 }
 
-                if ($userTypeId === 8 && $email) {
+                if (in_array($userTypeId, self::EMAIL_ONLY_USER_TYPES, true) && $email) {
                     $otpSendTo = $email;
                     $emailSent = $this->sendOtpEmail($email, $otp, $name, '[generate]');
-                } elseif ($userTypeId === 8) {
+                } elseif (in_array($userTypeId, self::EMAIL_ONLY_USER_TYPES, true)) {
                     Log::channel('daily')->warning('[generate] Email skipped: email missing', [
                         'has_email' => !empty($email),
                     ]);
@@ -202,7 +204,7 @@ class GenerateOtpController extends Controller
 
             Log::channel('daily')->info('[generate] OUTPUT (200)', ['sms' => $smsSent, 'email' => $emailSent]);
 
-            $emailDeliveryBlocked = in_array($userTypeId, [8, 12]) && !self::OTP_EMAIL_SENDING_ENABLED;
+            $emailDeliveryBlocked = (in_array($userTypeId, self::EMAIL_ONLY_USER_TYPES, true) || $userTypeId === 12) && !self::OTP_EMAIL_SENDING_ENABLED;
 
             if (!$smsSent && !$emailSent && !$emailDeliveryBlocked) {
                 $hasDestination = !empty($otpSendTo);
@@ -330,10 +332,10 @@ class GenerateOtpController extends Controller
 
             $adminUserId = $adminData['adminUserId'] ?? null;
 
-            // Resolve contact_no: phone for types 9/10/11, email for types 8/13, both for 12
-            if (in_array($userTypeId, [9, 10, 11])) {
+            // Resolve contact_no: phone for SMS-only types, email for email-only types, both for 12
+            if (in_array($userTypeId, self::SMS_ONLY_USER_TYPES, true)) {
                 $contactNo = $adminData['contactNo'] ?? null;
-            } elseif (in_array($userTypeId, [8, 13])) {
+            } elseif (in_array($userTypeId, self::EMAIL_ONLY_USER_TYPES, true)) {
                 $contactNo = $adminData['email'] ?? null;
             } elseif ($userTypeId === 12) {
                 // For type 12: Try phone first (primary), then email (fallback)
@@ -495,7 +497,7 @@ class GenerateOtpController extends Controller
             $emailSent  = false;
             $smsMessage = "{$otp} is your One Time Password (OTP). Don't share this with anyone. - WBSCTE&VE&SD";
 
-            if (in_array($userTypeId, [9, 10, 11])) {
+            if (in_array($userTypeId, self::SMS_ONLY_USER_TYPES, true)) {
                 Log::channel('daily')->info('[updateOtpUsed] SMS send attempt', [
                     'contact_no' => $this->maskContact($contactNo),
                     'user_type_id' => $userTypeId,
@@ -504,7 +506,7 @@ class GenerateOtpController extends Controller
                 $smsSent = true;
                 $this->logSmsResponse('[updateOtpUsed] SMS sent', $contactNo, $smsResponse);
             }
-            if ($userTypeId === 8) {
+            if (in_array($userTypeId, self::EMAIL_ONLY_USER_TYPES, true)) {
                 $emailSent = $this->sendOtpEmail($contactNo, $otp, $contactNo, '[updateOtpUsed]');
             }
             if ($userTypeId === 12) {
