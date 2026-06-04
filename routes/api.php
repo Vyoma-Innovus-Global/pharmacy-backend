@@ -238,6 +238,8 @@ Route::prefix('marks-entry')->middleware('authenticate')->group(function () {
 //->middleware('authenticate')
 Route::prefix('reports')->group(function () {
     Route::post('/registered-student-report-list', [ReportController::class, 'registeredStudentReportList']);
+    Route::get('/registered-student-details-by-institute-admin', [ReportController::class, 'registeredStudentDetailsListByInstituteAdmin']);
+    Route::post('/registered-student-details-by-institute-admin', [ReportController::class, 'registeredStudentDetailsListByInstituteAdmin']);
     Route::get('/result-department-wise-report-list', [ReportController::class, 'resultDepartmentWiseReportList']);
     Route::get('/result-subject-wise-report-list', [ReportController::class, 'resultSubjectWiseReportList']);
     Route::get('/student-result-report', [ReportController::class, 'studentResultReport']);

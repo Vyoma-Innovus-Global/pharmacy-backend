@@ -8,10 +8,86 @@ use Exception;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Validator;
 
 
 class ReportController extends Controller
 {
+    /**
+     * Get registered student details list for an institute admin.
+     *
+     * Calls: public.fn_getregistredstudentdetailslistbyinstrituteadmin(
+     *   p_department, p_instcode, p_academicseason
+     * )
+     */
+    public function registeredStudentDetailsListByInstituteAdmin(Request $request)
+    {
+        $department = $request->input('department', $request->input('p_department'));
+        $instCode = $request->input('inst_code', $request->input('p_instcode', $request->input('instcode')));
+        $academicSession = $request->input('academic_session', $request->input('p_academicseason', $request->input('academicseason', $request->input('sess_yr'))));
+
+        $validator = Validator::make([
+            'department' => $department,
+            'inst_code' => $instCode,
+            'academic_session' => $academicSession,
+        ], [
+            'department' => 'required|string|max:50',
+            'inst_code' => 'required|string|max:50',
+            'academic_session' => 'required|string|max:20',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'error' => true,
+                'message' => $validator->errors(),
+            ], 422);
+        }
+
+        try {
+            $result = DB::select(
+                'SELECT public.fn_getregistredstudentdetailslistbyinstrituteadmin(?::varchar, ?::varchar, ?::varchar) AS data',
+                [trim($department), trim($instCode), trim($academicSession)]
+            );
+
+            if (empty($result)) {
+                return response()->json([
+                    'error' => true,
+                    'message' => 'No registered student data found.',
+                ], 404);
+            }
+
+            $raw = $result[0]->data ?? null;
+
+            if ($raw === null) {
+                return response()->json([
+                    'error' => true,
+                    'message' => 'No registered student data found.',
+                ], 404);
+            }
+
+            $studentData = is_string($raw) ? json_decode($raw, true) : (array) $raw;
+
+            if (json_last_error() !== JSON_ERROR_NONE || empty($studentData)) {
+                return response()->json([
+                    'error' => true,
+                    'message' => 'Failed to parse registered student data from database.',
+                ], 500);
+            }
+
+            return response()->json([
+                'error' => false,
+                'message' => 'Data found',
+                'data' => $studentData,
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => true,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
     public function registeredStudentReportList(Request $request)
     {
         try {
