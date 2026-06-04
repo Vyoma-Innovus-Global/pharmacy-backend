@@ -175,11 +175,11 @@
                     <td>{{ $row->roll }}</td>
                     <td>{{ $row->roll_no }}</td>
                     <td>PRESENT</td>
-                    <td>{{ $row->marks ?? '-' }}</td>
-                    <td>-</td>
-                    <td>-</td>
-                    <td>-</td>
-                    <td>-</td>
+                    <td>{{ $row->marks ?? '' }}</td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
                 </tr>
             @empty
                 <tr>

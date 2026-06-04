@@ -278,6 +278,16 @@ Route::prefix('admin-details')->group(function () {
 
 /*
 |--------------------------------------------------------------------------
+| Student Details Routes  —  fn_getstudentdetailsbyusername
+|--------------------------------------------------------------------------
+*/
+Route::prefix('student-details')->group(function () {
+    Route::get('/by-username',  [StudentController::class, 'getByUsername']);
+    Route::post('/by-username', [StudentController::class, 'getByUsername']);
+});
+
+/*
+|--------------------------------------------------------------------------
 | Generate OTP Routes  —  fn_generateotp
 |--------------------------------------------------------------------------
 | Type  8        → Email only

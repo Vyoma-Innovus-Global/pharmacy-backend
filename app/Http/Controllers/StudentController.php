@@ -28,6 +28,73 @@ use Illuminate\Support\Facades\Storage;
 
 class StudentController extends Controller
 {
+    /**
+     * Get student details by username/mobile using PostgreSQL function.
+     *
+     * Calls: public.fn_getstudentdetailsbyusername(p_username)
+     *
+     * GET  /student-details/by-username?username=8016605066
+     * POST /student-details/by-username  { "username": "8016605066" }
+     */
+    public function getByUsername(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'username' => 'required|string|max:100',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'error'   => true,
+                'message' => $validator->errors(),
+            ], 422);
+        }
+
+        $username = trim($request->input('username'));
+
+        try {
+            $result = DB::select(
+                'SELECT public.fn_getstudentdetailsbyusername(?::varchar) AS data',
+                [$username]
+            );
+
+            if (empty($result)) {
+                return response()->json([
+                    'error'   => true,
+                    'message' => 'No data found for the given username.',
+                ], 404);
+            }
+
+            $raw = $result[0]->data ?? null;
+
+            if ($raw === null) {
+                return response()->json([
+                    'error'   => true,
+                    'message' => 'No student record found.',
+                ], 404);
+            }
+
+            $studentData = is_string($raw) ? json_decode($raw, true) : (array) $raw;
+
+            if (json_last_error() !== JSON_ERROR_NONE || empty($studentData)) {
+                return response()->json([
+                    'error'   => true,
+                    'message' => 'Failed to parse student data from database.',
+                ], 500);
+            }
+
+            return response()->json([
+                'error' => false,
+                'data'  => $studentData,
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'error'   => true,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
     //Student Data update
     public function studentInfoUpdate(Request $request)
     {
