@@ -74,6 +74,16 @@ class ReportController extends Controller
                 ], 500);
             }
 
+            $studentData = collect($studentData)->map(function ($student) {
+                $student = (array) $student;
+                $student['studentId'] = $student['studentId']
+                    ?? $student['student_id']
+                    ?? $student['s_id']
+                    ?? null;
+
+                return $student;
+            })->values()->all();
+
             return response()->json([
                 'error' => false,
                 'message' => 'Data found',
