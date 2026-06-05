@@ -172,6 +172,18 @@ class ReportController extends Controller
                 ?? $studentData['student_id']
                 ?? $studentData['s_id']
                 ?? (int) $studentId;
+            $studentData['instregistrationstatus'] = $studentData['instregistrationstatus']
+                ?? $studentData['inst_registration_status']
+                ?? null;
+            $studentData['instregistrationstatusBy'] = $studentData['instregistrationstatusBy']
+                ?? $studentData['inst_registration_status_by']
+                ?? null;
+            $studentData['councilregistrationstatus'] = $studentData['councilregistrationstatus']
+                ?? $studentData['council_registration_status']
+                ?? null;
+            $studentData['councilregistrationstatusBy'] = $studentData['councilregistrationstatusBy']
+                ?? $studentData['council_registration_status_by']
+                ?? null;
 
             return response()->json([
                 'error' => false,
