@@ -175,6 +175,168 @@ class ReportController extends Controller
         }
     }
 
+    /**
+     * Update registered student details by admin.
+     *
+     * Calls: public.fn_updatestudentdetailsbyadmin(...)
+     */
+    public function updateStudentDetailsByAdmin(Request $request)
+    {
+        $input = function ($snake, $camel = null, $stored = null) use ($request) {
+            return $request->input($snake, $request->input($camel, $request->input($stored)));
+        };
+
+        $payload = [
+            'student_id' => $input('student_id', 'studentId', 'p_studentid'),
+            'admin_user_id' => $input('admin_user_id', 'adminUserId', 'p_adminuserid'),
+            'admin_user_type' => $input('admin_user_type', 'adminUserType', 'p_adminusertype'),
+            'first_name' => $input('first_name', 'firstName', 'p_firstname'),
+            'middle_name' => $input('middle_name', 'middleName', 'p_middlename'),
+            'last_name' => $input('last_name', 'lastName', 'p_lastname'),
+            'father_name' => $input('father_name', 'fatherName', 'p_fathername'),
+            'mother_name' => $input('mother_name', 'motherName', 'p_mothername'),
+            'date_of_birth' => $input('date_of_birth', 'dateOfBirth', 'p_dob'),
+            'gender' => $input('gender', null, 'p_gender'),
+            'phone' => $input('phone', null, 'p_phone'),
+            'email' => $input('email', null, 'p_email'),
+            'aadhar_no' => $input('aadhar_no', 'aadharNo', 'p_aadharno'),
+            'caste' => $input('caste', null, 'p_caste'),
+            'address' => $input('address', null, 'p_address'),
+            'police_station' => $input('police_station', 'policeStation', 'p_ps'),
+            'post_office' => $input('post_office', 'postOffice', 'p_po'),
+            'pin' => $input('pin', null, 'p_pin'),
+            'is_married' => $input('is_married', 'isMarried', 'p_ismarried'),
+            'is_kanyashree' => $input('is_kanyashree', 'isKanyashree', 'p_iskanyashree'),
+            'photo' => $input('photo', null, 'p_photo'),
+            'signature' => $input('signature', 'sign', 'p_sign'),
+            'guardian_name' => $input('guardian_name', 'guardianName', 'p_guardianname'),
+            'guardian_relation' => $input('guardian_relation', 'guardianRelation', 'p_guardianrelation'),
+            'citizenship' => $input('citizenship', null, 'p_citizenship'),
+            'state' => $input('state', null, 'p_state'),
+            'district' => $input('district', null, 'p_district'),
+            'sub_division' => $input('sub_division', 'subDivision', 'p_subdivision'),
+            'municipality_block' => $input('municipality_block', 'municipalityBlock', 'p_municipalityblock'),
+            'board_name' => $input('board_name', 'boardName', 'p_boardname'),
+            'last_institute' => $input('last_institute', 'lastInstitute', 'p_lastinstitute'),
+            'passing_year' => $input('passing_year', 'passingYear', 'p_passingyear'),
+            'aggregate_marks' => $input('aggregate_marks', 'aggregateMarks', 'p_aggregatemarks'),
+            'marks_obtained' => $input('marks_obtained', 'marksObtained', 'p_marksobtained'),
+            'percentage' => $input('percentage', null, 'p_percentage'),
+            'physics_full_marks' => $input('physics_full_marks', 'physicsFullMarks', 'p_physicsfullmarks'),
+            'chemistry_full_marks' => $input('chemistry_full_marks', 'chemistryFullMarks', 'p_chemistryfullmarks'),
+            'biology_math_full_marks' => $input('biology_math_full_marks', 'biologyMathFullMarks', 'p_biomathfullmarks'),
+            'physics_marks' => $input('physics_marks', 'physicsMarks', 'p_physicsmarks'),
+            'chemistry_marks' => $input('chemistry_marks', 'chemistryMarks', 'p_chemistrymarks'),
+            'biology_math_marks' => $input('biology_math_marks', 'biologyMathMarks', 'p_biomathmarks'),
+            'other_qualification' => $input('other_qualification', 'otherQualification', 'p_otherqualification'),
+            'citizenship_document' => $input('citizenship_document', 'citizenshipDocument', 'p_citizenshipdoc'),
+            'caste_document' => $input('caste_document', 'casteDocument', 'p_castdoc'),
+            'physically_challenged_document' => $input('physically_challenged_document', 'physicallyChallengedDocument', 'p_pccertificatedoc'),
+            'aadhar_document' => $input('aadhar_document', 'aadharDocument', 'p_aadhardoc'),
+        ];
+
+        $validator = Validator::make($payload, [
+            'student_id' => 'required|integer',
+            'admin_user_id' => 'required|integer',
+            'admin_user_type' => 'required|integer',
+            'date_of_birth' => 'nullable|date',
+            'is_married' => 'nullable|integer',
+            'is_kanyashree' => 'nullable|integer',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'error' => true,
+                'message' => $validator->errors(),
+            ], 422);
+        }
+
+        try {
+            $result = DB::select(
+                'SELECT public.fn_updatestudentdetailsbyadmin(
+                    ?::bigint, ?::bigint, ?::bigint,
+                    ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::date, ?::varchar,
+                    ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar,
+                    ?::varchar, ?::smallint, ?::smallint, ?::varchar, ?::varchar,
+                    ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar,
+                    ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar,
+                    ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar,
+                    ?::varchar, ?::varchar, ?::varchar
+                ) AS data',
+                [
+                    (int) $payload['student_id'],
+                    (int) $payload['admin_user_id'],
+                    (int) $payload['admin_user_type'],
+                    $payload['first_name'],
+                    $payload['middle_name'],
+                    $payload['last_name'],
+                    $payload['father_name'],
+                    $payload['mother_name'],
+                    $payload['date_of_birth'],
+                    $payload['gender'],
+                    $payload['phone'],
+                    $payload['email'],
+                    $payload['aadhar_no'],
+                    $payload['caste'],
+                    $payload['address'],
+                    $payload['police_station'],
+                    $payload['post_office'],
+                    $payload['pin'],
+                    $payload['is_married'] === null ? null : (int) $payload['is_married'],
+                    $payload['is_kanyashree'] === null ? null : (int) $payload['is_kanyashree'],
+                    $payload['photo'],
+                    $payload['signature'],
+                    $payload['guardian_name'],
+                    $payload['guardian_relation'],
+                    $payload['citizenship'],
+                    $payload['state'],
+                    $payload['district'],
+                    $payload['sub_division'],
+                    $payload['municipality_block'],
+                    $payload['board_name'],
+                    $payload['last_institute'],
+                    $payload['passing_year'],
+                    $payload['aggregate_marks'],
+                    $payload['marks_obtained'],
+                    $payload['percentage'],
+                    $payload['physics_full_marks'],
+                    $payload['chemistry_full_marks'],
+                    $payload['biology_math_full_marks'],
+                    $payload['physics_marks'],
+                    $payload['chemistry_marks'],
+                    $payload['biology_math_marks'],
+                    $payload['other_qualification'],
+                    $payload['citizenship_document'],
+                    $payload['caste_document'],
+                    $payload['physically_challenged_document'],
+                    $payload['aadhar_document'],
+                ]
+            );
+
+            $raw = $result[0]->data ?? null;
+            $responseData = is_string($raw) ? json_decode($raw, true) : (array) $raw;
+
+            if (json_last_error() !== JSON_ERROR_NONE || $raw === null) {
+                return response()->json([
+                    'error' => true,
+                    'message' => 'Failed to parse student update response from database.',
+                ], 500);
+            }
+
+            return response()->json([
+                'error' => false,
+                'message' => 'Student details updated',
+                'data' => $responseData,
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => true,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
     public function registeredStudentReportList(Request $request)
     {
         try {

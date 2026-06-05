@@ -242,6 +242,7 @@ Route::prefix('reports')->group(function () {
     Route::post('/registered-student-details-by-institute-admin', [ReportController::class, 'registeredStudentDetailsListByInstituteAdmin']);
     Route::get('/registered-student-details-by-student-id', [ReportController::class, 'registeredStudentDetailsListByStudentId']);
     Route::post('/registered-student-details-by-student-id', [ReportController::class, 'registeredStudentDetailsListByStudentId']);
+    Route::post('/update-student-details-by-admin', [ReportController::class, 'updateStudentDetailsByAdmin']);
     Route::get('/result-department-wise-report-list', [ReportController::class, 'resultDepartmentWiseReportList']);
     Route::get('/result-subject-wise-report-list', [ReportController::class, 'resultSubjectWiseReportList']);
     Route::get('/student-result-report', [ReportController::class, 'studentResultReport']);
