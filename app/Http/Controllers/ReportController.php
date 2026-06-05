@@ -80,6 +80,18 @@ class ReportController extends Controller
                     ?? $student['student_id']
                     ?? $student['s_id']
                     ?? null;
+                $student['instregistrationstatus'] = $student['instregistrationstatus']
+                    ?? $student['inst_registration_status']
+                    ?? null;
+                $student['instregistrationstatusBy'] = $student['instregistrationstatusBy']
+                    ?? $student['inst_registration_status_by']
+                    ?? null;
+                $student['councilregistrationstatus'] = $student['councilregistrationstatus']
+                    ?? $student['council_registration_status']
+                    ?? null;
+                $student['councilregistrationstatusBy'] = $student['councilregistrationstatusBy']
+                    ?? $student['council_registration_status_by']
+                    ?? null;
 
                 return $student;
             })->values()->all();
