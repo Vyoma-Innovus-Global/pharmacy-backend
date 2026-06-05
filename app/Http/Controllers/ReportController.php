@@ -337,6 +337,78 @@ class ReportController extends Controller
         }
     }
 
+    /**
+     * Update registered student registration status by admin.
+     *
+     * Calls: public.fn_updatestudentregistrationstatusbyadmin(
+     *   p_studentid, p_adminuserid, p_adminusertype, p_status, p_remarks
+     * )
+     */
+    public function updateStudentRegistrationStatusByAdmin(Request $request)
+    {
+        $studentId = $request->input('student_id', $request->input('studentId', $request->input('p_studentid')));
+        $adminUserId = $request->input('admin_user_id', $request->input('adminUserId', $request->input('p_adminuserid')));
+        $adminUserType = $request->input('admin_user_type', $request->input('adminUserType', $request->input('p_adminusertype')));
+        $status = $request->input('status', $request->input('p_status'));
+        $remarks = $request->input('remarks', $request->input('p_remarks'));
+
+        $validator = Validator::make([
+            'student_id' => $studentId,
+            'admin_user_id' => $adminUserId,
+            'admin_user_type' => $adminUserType,
+            'status' => $status,
+            'remarks' => $remarks,
+        ], [
+            'student_id' => 'required|integer',
+            'admin_user_id' => 'required|integer',
+            'admin_user_type' => 'required|integer',
+            'status' => 'required|integer',
+            'remarks' => 'nullable|string|max:500',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'error' => true,
+                'message' => $validator->errors(),
+            ], 422);
+        }
+
+        try {
+            $result = DB::select(
+                'SELECT public.fn_updatestudentregistrationstatusbyadmin(?::bigint, ?::bigint, ?::bigint, ?::integer, ?::varchar) AS data',
+                [
+                    (int) $studentId,
+                    (int) $adminUserId,
+                    (int) $adminUserType,
+                    (int) $status,
+                    $remarks,
+                ]
+            );
+
+            $raw = $result[0]->data ?? null;
+            $responseData = is_string($raw) ? json_decode($raw, true) : (array) $raw;
+
+            if (json_last_error() !== JSON_ERROR_NONE || $raw === null) {
+                return response()->json([
+                    'error' => true,
+                    'message' => 'Failed to parse student registration status update response from database.',
+                ], 500);
+            }
+
+            return response()->json([
+                'error' => false,
+                'message' => 'Student registration status updated',
+                'data' => $responseData,
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => true,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
     public function registeredStudentReportList(Request $request)
     {
         try {
