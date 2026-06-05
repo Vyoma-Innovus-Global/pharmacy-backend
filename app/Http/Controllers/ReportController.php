@@ -98,6 +98,83 @@ class ReportController extends Controller
         }
     }
 
+    /**
+     * Get registered student details by student ID.
+     *
+     * Calls: public.fn_getregistredstudentdetailslistbystudentid(
+     *   p_studentid, p_adminuserid
+     * )
+     */
+    public function registeredStudentDetailsListByStudentId(Request $request)
+    {
+        $studentId = $request->input('student_id', $request->input('p_studentid', $request->input('studentId')));
+        $adminUserId = $request->input('admin_user_id', $request->input('p_adminuserid', $request->input('adminUserId')));
+
+        $validator = Validator::make([
+            'student_id' => $studentId,
+            'admin_user_id' => $adminUserId,
+        ], [
+            'student_id' => 'required|integer',
+            'admin_user_id' => 'required|integer',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'error' => true,
+                'message' => $validator->errors(),
+            ], 422);
+        }
+
+        try {
+            $result = DB::select(
+                'SELECT public.fn_getregistredstudentdetailslistbystudentid(?::bigint, ?::bigint) AS data',
+                [(int) $studentId, (int) $adminUserId]
+            );
+
+            if (empty($result)) {
+                return response()->json([
+                    'error' => true,
+                    'message' => 'No registered student data found.',
+                ], 404);
+            }
+
+            $raw = $result[0]->data ?? null;
+
+            if ($raw === null) {
+                return response()->json([
+                    'error' => true,
+                    'message' => 'No registered student data found.',
+                ], 404);
+            }
+
+            $studentData = is_string($raw) ? json_decode($raw, true) : (array) $raw;
+
+            if (json_last_error() !== JSON_ERROR_NONE || empty($studentData)) {
+                return response()->json([
+                    'error' => true,
+                    'message' => 'Failed to parse registered student data from database.',
+                ], 500);
+            }
+
+            $studentData['studentId'] = $studentData['studentId']
+                ?? $studentData['student_id']
+                ?? $studentData['s_id']
+                ?? (int) $studentId;
+
+            return response()->json([
+                'error' => false,
+                'message' => 'Data found',
+                'data' => $studentData,
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => true,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
     public function registeredStudentReportList(Request $request)
     {
         try {
