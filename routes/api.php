@@ -96,6 +96,15 @@ Route::prefix('enrollment')->middleware('authenticate')->group(function () {
     Route::post('/exam-center-submit', [EnrollmentController::class, 'exam_center_submit']);
 });
 
+Route::prefix('payment')->middleware('authenticate')->group(function () {
+    Route::post('/saveSbiPaymentDetails', [PaymentController::class, 'saveSbiPaymentDetails']);
+    Route::post('/save-sbi-payment-details', [PaymentController::class, 'saveSbiPaymentDetails']);
+    Route::post('/savePaymentDetails', [PaymentController::class, 'savePaymentDetails']);
+    Route::post('/save-payment-details', [PaymentController::class, 'savePaymentDetails']);
+    Route::post('/updateSbiPaymentResponse', [PaymentController::class, 'updateSbiPaymentResponse']);
+    Route::post('/update-sbi-payment-response', [PaymentController::class, 'updateSbiPaymentResponse']);
+});
+
 // Document Upload Routes (Authentication Required)
 Route::prefix('document')->middleware('authenticate')->group(function () {
     Route::post('/upload', [App\Http\Controllers\DocumentUploadController::class, 'upload']);

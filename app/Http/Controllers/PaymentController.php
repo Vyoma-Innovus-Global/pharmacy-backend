@@ -1339,6 +1339,236 @@ public function getInstitutePaymentReceiptData($order_id)
     ], 200);
 }
 
+public function saveSbiPaymentDetails(Request $request)
+{
+    $amount = $request->input('amount', $request->input('p_amount'));
+    $otherDetails = $request->input('other_details', $request->input('p_other_details'));
+    $studentMobileNo = $request->input('student_mobile_no', $request->input('p_student_mobile_no'));
+    $entryUserId = $request->input('entry_user_id', $request->input('p_entry_user_id'));
+
+    $validator = Validator::make([
+        'amount' => $amount,
+        'other_details' => $otherDetails,
+        'student_mobile_no' => $studentMobileNo,
+        'entry_user_id' => $entryUserId,
+    ], [
+        'amount' => 'required|numeric|min:0',
+        'other_details' => 'nullable|string',
+        'student_mobile_no' => 'required|string|max:20',
+        'entry_user_id' => 'required|integer',
+    ]);
+
+    if ($validator->fails()) {
+        return response()->json([
+            'error' => true,
+            'message' => 'Validation failed.',
+            'data' => $validator->errors(),
+        ], 422);
+    }
+
+    Log::channel('daily')->info('[Payment] fn_savesbipaymentdtls INPUT', [
+        'amount' => $amount,
+        'student_mobile_no' => $studentMobileNo,
+        'entry_user_id' => $entryUserId,
+        'ip' => $request->ip(),
+    ]);
+
+    try {
+        $result = DB::select(
+            'SELECT public.fn_savesbipaymentdtls(?::double precision, ?::text, ?::varchar, ?::bigint) AS data',
+            [(float) $amount, $otherDetails, $studentMobileNo, (int) $entryUserId]
+        );
+
+        return $this->dbFunctionJsonResponse($result[0]->data ?? null, 'fn_savesbipaymentdtls');
+    } catch (\Exception $e) {
+        Log::channel('daily')->error('[Payment] fn_savesbipaymentdtls EXCEPTION', [
+            'message' => $e->getMessage(),
+            'line' => $e->getLine(),
+            'file' => $e->getFile(),
+        ]);
+
+        return response()->json([
+            'error' => true,
+            'message' => 'Failed to save SBI payment details.',
+        ], 500);
+    }
+}
+
+public function savePaymentDetails(Request $request)
+{
+    $studentId = $request->input('student_id', $request->input('p_student_id'));
+    $paymentTypeId = $request->input('payment_type_id', $request->input('p_payment_type_id'));
+    $transactionNo = $request->input('transaction_no', $request->input('p_transaction_no'));
+    $amount = $request->input('amount', $request->input('p_amount'));
+    $entryUserId = $request->input('entry_user_id', $request->input('p_entry_user_id'));
+
+    $validator = Validator::make([
+        'student_id' => $studentId,
+        'payment_type_id' => $paymentTypeId,
+        'transaction_no' => $transactionNo,
+        'amount' => $amount,
+        'entry_user_id' => $entryUserId,
+    ], [
+        'student_id' => 'required|integer',
+        'payment_type_id' => 'required|integer',
+        'transaction_no' => 'required|string|max:100',
+        'amount' => 'required|numeric|min:0',
+        'entry_user_id' => 'required|integer',
+    ]);
+
+    if ($validator->fails()) {
+        return response()->json([
+            'error' => true,
+            'message' => 'Validation failed.',
+            'data' => $validator->errors(),
+        ], 422);
+    }
+
+    Log::channel('daily')->info('[Payment] fn_savepaymentdtls INPUT', [
+        'student_id' => $studentId,
+        'payment_type_id' => $paymentTypeId,
+        'transaction_no' => $transactionNo,
+        'amount' => $amount,
+        'entry_user_id' => $entryUserId,
+        'ip' => $request->ip(),
+    ]);
+
+    try {
+        $result = DB::select(
+            'SELECT public.fn_savepaymentdtls(?::bigint, ?::bigint, ?::varchar, ?::double precision, ?::bigint) AS data',
+            [(int) $studentId, (int) $paymentTypeId, $transactionNo, (float) $amount, (int) $entryUserId]
+        );
+
+        return $this->dbFunctionJsonResponse($result[0]->data ?? null, 'fn_savepaymentdtls');
+    } catch (\Exception $e) {
+        Log::channel('daily')->error('[Payment] fn_savepaymentdtls EXCEPTION', [
+            'message' => $e->getMessage(),
+            'line' => $e->getLine(),
+            'file' => $e->getFile(),
+        ]);
+
+        return response()->json([
+            'error' => true,
+            'message' => 'Failed to save payment details.',
+        ], 500);
+    }
+}
+
+public function updateSbiPaymentResponse(Request $request)
+{
+    $txnNo = $request->input('txn_no', $request->input('txnNo', $request->input('p_txnno')));
+    $aggregatorTxnRefNo = $request->input('aggregator_txn_ref_no', $request->input('p_aggregator_txn_ref_no'));
+    $paymentStatus = $request->input('payment_status', $request->input('status', $request->input('p_payment_status')));
+    $paymentAmount = $request->input('payment_amount', $request->input('amount', $request->input('p_payment_amount')));
+    $currency = $request->input('currency', $request->input('p_currency', 'INR'));
+    $nb = $request->input('nb', $request->input('p_nb'));
+    $otherDetails = $request->input('other_details', $request->input('p_other_details'));
+    $paymentMsg = $request->input('payment_msg', $request->input('message', $request->input('p_payment_msg')));
+    $paymentBankCode = $request->input('payment_bank_code', $request->input('p_payment_bank_code'));
+    $bankRefNo = $request->input('bank_ref_no', $request->input('p_bank_ref_no'));
+    $txnDateTime = $request->input('txn_datetime', $request->input('p_txn_datetime'));
+    $country = $request->input('country', $request->input('p_country'));
+    $challanIdNo = $request->input('challan_id_no', $request->input('p_challan_id_no'));
+    $merchantId = $request->input('merchant_id', $request->input('p_merchant_id'));
+    $gst = $request->input('gst', $request->input('p_gst'));
+    $servicesTax = $request->input('services_tax', $request->input('p_services_tax'));
+
+    $validator = Validator::make([
+        'txn_no' => $txnNo,
+        'payment_status' => $paymentStatus,
+        'payment_amount' => $paymentAmount,
+        'currency' => $currency,
+        'merchant_id' => $merchantId,
+    ], [
+        'txn_no' => 'required|string|max:100',
+        'payment_status' => 'required|string|max:50',
+        'payment_amount' => 'required|numeric|min:0',
+        'currency' => 'required|string|max:10',
+        'merchant_id' => 'required|integer',
+    ]);
+
+    if ($validator->fails()) {
+        return response()->json([
+            'error' => true,
+            'message' => 'Validation failed.',
+            'data' => $validator->errors(),
+        ], 422);
+    }
+
+    Log::channel('daily')->info('[Payment] fn_updatesbipaymentresponse INPUT', [
+        'txn_no' => $txnNo,
+        'payment_status' => $paymentStatus,
+        'payment_amount' => $paymentAmount,
+        'currency' => $currency,
+        'merchant_id' => $merchantId,
+        'ip' => $request->ip(),
+    ]);
+
+    try {
+        $result = DB::select(
+            'SELECT public.fn_updatesbipaymentresponse(?::varchar, ?::text, ?::varchar, ?::double precision, ?::varchar, ?::varchar, ?::text, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::integer, ?::double precision, ?::double precision) AS data',
+            [
+                $txnNo,
+                $aggregatorTxnRefNo,
+                $paymentStatus,
+                (float) $paymentAmount,
+                $currency,
+                $nb,
+                $otherDetails,
+                $paymentMsg,
+                $paymentBankCode,
+                $bankRefNo,
+                $txnDateTime,
+                $country,
+                $challanIdNo,
+                (int) $merchantId,
+                $gst === null ? null : (float) $gst,
+                $servicesTax === null ? null : (float) $servicesTax,
+            ]
+        );
+
+        return $this->dbFunctionJsonResponse($result[0]->data ?? null, 'fn_updatesbipaymentresponse');
+    } catch (\Exception $e) {
+        Log::channel('daily')->error('[Payment] fn_updatesbipaymentresponse EXCEPTION', [
+            'message' => $e->getMessage(),
+            'line' => $e->getLine(),
+            'file' => $e->getFile(),
+        ]);
+
+        return response()->json([
+            'error' => true,
+            'message' => 'Failed to update SBI payment response.',
+        ], 500);
+    }
+}
+
+private function dbFunctionJsonResponse($raw, string $functionName)
+{
+    if ($raw === null) {
+        return response()->json([
+            'error' => true,
+            'message' => "No data returned from {$functionName}.",
+        ], 404);
+    }
+
+    $decoded = is_string($raw) ? json_decode($raw, true) : (array) $raw;
+
+    if (json_last_error() !== JSON_ERROR_NONE || !is_array($decoded)) {
+        Log::channel('daily')->error("[Payment] {$functionName} invalid JSON response", [
+            'raw' => $raw,
+        ]);
+
+        return response()->json([
+            'error' => true,
+            'message' => "Invalid response from {$functionName}.",
+        ], 500);
+    }
+
+    Log::channel('daily')->info("[Payment] {$functionName} OUTPUT", $decoded);
+
+    return response()->json($decoded, 200);
+}
+
 private function countItems($value): int
 {
     if (is_array($value)) {
