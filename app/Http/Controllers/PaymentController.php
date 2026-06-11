@@ -1542,6 +1542,54 @@ public function updateSbiPaymentResponse(Request $request)
     }
 }
 
+public function getPaymentDetailsByTransNo(Request $request, $transactionNo = null)
+{
+    $transactionNo = $transactionNo
+        ?? $request->input('transaction_no')
+        ?? $request->input('txnNo')
+        ?? $request->input('transno')
+        ?? $request->input('p_transaction_no');
+
+    $validator = Validator::make([
+        'transaction_no' => $transactionNo,
+    ], [
+        'transaction_no' => 'required|string|max:100',
+    ]);
+
+    if ($validator->fails()) {
+        return response()->json([
+            'error' => true,
+            'message' => 'Validation failed.',
+            'data' => $validator->errors(),
+        ], 422);
+    }
+
+    Log::channel('daily')->info('[Payment] fn_getpaymentdetailsbytransno INPUT', [
+        'transaction_no' => $transactionNo,
+        'ip' => $request->ip(),
+    ]);
+
+    try {
+        $result = DB::select(
+            'SELECT public.fn_getpaymentdetailsbytransno(?::varchar) AS data',
+            [$transactionNo]
+        );
+
+        return $this->dbFunctionJsonResponse($result[0]->data ?? null, 'fn_getpaymentdetailsbytransno');
+    } catch (\Exception $e) {
+        Log::channel('daily')->error('[Payment] fn_getpaymentdetailsbytransno EXCEPTION', [
+            'message' => $e->getMessage(),
+            'line' => $e->getLine(),
+            'file' => $e->getFile(),
+        ]);
+
+        return response()->json([
+            'error' => true,
+            'message' => 'Failed to get payment details by transaction number.',
+        ], 500);
+    }
+}
+
 private function dbFunctionJsonResponse($raw, string $functionName)
 {
     if ($raw === null) {

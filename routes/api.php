@@ -103,6 +103,10 @@ Route::prefix('payment')->middleware('authenticate')->group(function () {
     Route::post('/save-payment-details', [PaymentController::class, 'savePaymentDetails']);
     Route::post('/updateSbiPaymentResponse', [PaymentController::class, 'updateSbiPaymentResponse']);
     Route::post('/update-sbi-payment-response', [PaymentController::class, 'updateSbiPaymentResponse']);
+    Route::get('/getPaymentDetailsByTransNo', [PaymentController::class, 'getPaymentDetailsByTransNo']);
+    Route::get('/get-payment-details-by-trans-no', [PaymentController::class, 'getPaymentDetailsByTransNo']);
+    Route::get('/details-by-transaction/{transactionNo}', [PaymentController::class, 'getPaymentDetailsByTransNo']);
+    Route::get('/sbiPayment', [PaymentController::class, 'getPaymentDetailsByTransNo']);
 });
 
 // Document Upload Routes (Authentication Required)
