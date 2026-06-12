@@ -97,6 +97,8 @@ Route::prefix('enrollment')->middleware('authenticate')->group(function () {
 });
 
 Route::prefix('payment')->middleware('authenticate')->group(function () {
+    Route::post('/generateOrderId', [PaymentController::class, 'generateStudentOrderId']);
+    Route::post('/generate-order-id', [PaymentController::class, 'generateStudentOrderId']);
     Route::post('/saveSbiPaymentDetails', [PaymentController::class, 'saveSbiPaymentDetails']);
     Route::post('/save-sbi-payment-details', [PaymentController::class, 'saveSbiPaymentDetails']);
     Route::post('/savePaymentDetails', [PaymentController::class, 'savePaymentDetails']);

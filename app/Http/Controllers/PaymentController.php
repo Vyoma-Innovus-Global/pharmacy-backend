@@ -1454,6 +1454,58 @@ public function savePaymentDetails(Request $request)
     }
 }
 
+public function generateStudentOrderId(Request $request)
+{
+    $studentId = $request->input('student_id', $request->input('p_student_id'));
+    $examYear = $request->input('exam_year', $request->input('p_exam_year'));
+    $paymentTypeId = $request->input('payment_type_id', $request->input('p_payment_type_id'));
+
+    $validator = Validator::make([
+        'student_id' => $studentId,
+        'exam_year' => $examYear,
+        'payment_type_id' => $paymentTypeId,
+    ], [
+        'student_id' => 'required|integer',
+        'exam_year' => 'required|string|max:20',
+        'payment_type_id' => 'required|integer',
+    ]);
+
+    if ($validator->fails()) {
+        return response()->json([
+            'error' => true,
+            'message' => 'Validation failed.',
+            'data' => $validator->errors(),
+        ], 422);
+    }
+
+    Log::channel('daily')->info('[Payment] fn_student_generateorderid INPUT', [
+        'student_id' => $studentId,
+        'exam_year' => $examYear,
+        'payment_type_id' => $paymentTypeId,
+        'ip' => $request->ip(),
+    ]);
+
+    try {
+        $result = DB::select(
+            'SELECT public.fn_student_generateorderid(?::bigint, ?::varchar, ?::integer) AS data',
+            [(int) $studentId, $examYear, (int) $paymentTypeId]
+        );
+
+        return $this->dbFunctionJsonResponse($result[0]->data ?? null, 'fn_student_generateorderid');
+    } catch (\Exception $e) {
+        Log::channel('daily')->error('[Payment] fn_student_generateorderid EXCEPTION', [
+            'message' => $e->getMessage(),
+            'line' => $e->getLine(),
+            'file' => $e->getFile(),
+        ]);
+
+        return response()->json([
+            'error' => true,
+            'message' => 'Failed to generate student order id.',
+        ], 500);
+    }
+}
+
 public function updateSbiPaymentResponse(Request $request)
 {
     $txnNo = $request->input('txn_no', $request->input('txnNo', $request->input('p_txnno')));
