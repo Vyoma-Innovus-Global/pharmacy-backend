@@ -1506,6 +1506,105 @@ public function generateStudentOrderId(Request $request)
     }
 }
 
+public function savePharmacyPaymentResponse(Request $request)
+{
+    $orderId = $request->input('order_id', $request->input('p_order_id'));
+    $merchantId = $request->input('merchant_id', $request->input('p_merchant_id'));
+    $transactionId = $request->input('transaction_id', $request->input('txn_id', $request->input('p_transaction_id')));
+    $paymentStatus = $request->input('payment_status', $request->input('status', $request->input('p_payment_status')));
+    $amount = $request->input('amount', $request->input('p_amount'));
+    $paymentMsg = $request->input('payment_msg', $request->input('message', $request->input('p_payment_msg')));
+    $paymentBankCode = $request->input('payment_bank_code', $request->input('bank_code', $request->input('p_payment_bank_code')));
+    $trnDateTime = $request->input('trn_date_time', $request->input('txn_datetime', $request->input('p_trn_date_time')));
+    $currency = $request->input('currency', $request->input('p_currency', 'INR'));
+    $paymentMode = $request->input('payment_mode', $request->input('p_payment_mode'));
+    $bankRef = $request->input('bank_ref', $request->input('bank_ref_no', $request->input('p_bank_ref')));
+    $challanId = $request->input('challan_id', $request->input('challan_id_no', $request->input('p_challan_id')));
+    $remarks = $request->input('remarks', $request->input('p_remarks'));
+
+    $validator = Validator::make([
+        'order_id' => $orderId,
+        'merchant_id' => $merchantId,
+        'transaction_id' => $transactionId,
+        'payment_status' => $paymentStatus,
+        'amount' => $amount,
+        'payment_msg' => $paymentMsg,
+        'payment_bank_code' => $paymentBankCode,
+        'trn_date_time' => $trnDateTime,
+        'currency' => $currency,
+        'payment_mode' => $paymentMode,
+        'bank_ref' => $bankRef,
+        'challan_id' => $challanId,
+        'remarks' => $remarks,
+    ], [
+        'order_id' => 'required|string|max:100',
+        'merchant_id' => 'required|string|max:100',
+        'transaction_id' => 'required|string|max:100',
+        'payment_status' => 'required|string|max:50',
+        'amount' => 'required|numeric|min:0',
+        'payment_msg' => 'nullable|string|max:255',
+        'payment_bank_code' => 'nullable|string|max:100',
+        'trn_date_time' => 'required|date',
+        'currency' => 'required|string|max:10',
+        'payment_mode' => 'nullable|string|max:100',
+        'bank_ref' => 'nullable|string|max:100',
+        'challan_id' => 'nullable|string|max:100',
+        'remarks' => 'nullable|string',
+    ]);
+
+    if ($validator->fails()) {
+        return response()->json([
+            'error' => true,
+            'message' => 'Validation failed.',
+            'data' => $validator->errors(),
+        ], 422);
+    }
+
+    Log::channel('daily')->info('[Payment] fn_savepharmacypaymentresponse INPUT', [
+        'order_id' => $orderId,
+        'merchant_id' => $merchantId,
+        'transaction_id' => $transactionId,
+        'payment_status' => $paymentStatus,
+        'amount' => $amount,
+        'currency' => $currency,
+        'ip' => $request->ip(),
+    ]);
+
+    try {
+        $result = DB::select(
+            'SELECT public.fn_savepharmacypaymentresponse(?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::double precision, ?::varchar, ?::varchar, ?::timestamp, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::text) AS data',
+            [
+                $orderId,
+                $merchantId,
+                $transactionId,
+                $paymentStatus,
+                (float) $amount,
+                $paymentMsg,
+                $paymentBankCode,
+                $trnDateTime,
+                $currency,
+                $paymentMode,
+                $bankRef,
+                $challanId,
+                $remarks,
+            ]
+        );
+
+        return $this->dbFunctionJsonResponse($result[0]->data ?? null, 'fn_savepharmacypaymentresponse');
+    } catch (\Exception $e) {
+        Log::channel('daily')->error('[Payment] fn_savepharmacypaymentresponse EXCEPTION', [
+            'message' => $e->getMessage(),
+            'line' => $e->getLine(),
+            'file' => $e->getFile(),
+        ]);
+
+        return response()->json([
+            'error' => true,
+            'message' => 'Failed to save pharmacy payment response.',
+        ], 500);
+    }
+}
+
 public function updateSbiPaymentResponse(Request $request)
 {
     $txnNo = $request->input('txn_no', $request->input('txnNo', $request->input('p_txnno')));

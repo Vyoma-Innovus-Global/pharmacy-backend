@@ -14,7 +14,6 @@ use App\Mail\OtpMail;
 
 class GenerateOtpController extends Controller
 {
-    private const OTP_EMAIL_SENDING_ENABLED = true;
     private const SMS_ONLY_USER_TYPES = [9, 10, 11, 15];
     private const EMAIL_ONLY_USER_TYPES = [8, 13];
 
@@ -204,7 +203,7 @@ class GenerateOtpController extends Controller
 
             Log::channel('daily')->info('[generate] OUTPUT (200)', ['sms' => $smsSent, 'email' => $emailSent]);
 
-            $emailDeliveryBlocked = (in_array($userTypeId, self::EMAIL_ONLY_USER_TYPES, true) || $userTypeId === 12) && !self::OTP_EMAIL_SENDING_ENABLED;
+            $emailDeliveryBlocked = (in_array($userTypeId, self::EMAIL_ONLY_USER_TYPES, true) || $userTypeId === 12) && !$this->isOtpEmailSendingEnabled();
 
             if (!$smsSent && !$emailSent && !$emailDeliveryBlocked) {
                 $hasDestination = !empty($otpSendTo);
@@ -228,6 +227,7 @@ class GenerateOtpController extends Controller
                 'otp_expire_time' => now()->addMinutes(2)->format('Y-m-d H:i:s'),
                 'sent_via'        => ['sms' => $smsSent, 'email' => $emailSent],
                 'OTPSendTo'       => $otpSendTo,
+                'p_otp'           => $emailDeliveryBlocked && Config::get('app.env') !== 'production' ? $otp : null,
             ], 200);
 
         } catch (\Exception $e) {
@@ -540,7 +540,7 @@ class GenerateOtpController extends Controller
 
     private function sendOtpEmail(string $email, string $otp, string $recipientName, string $context): bool
     {
-        if (!self::OTP_EMAIL_SENDING_ENABLED) {
+        if (!$this->isOtpEmailSendingEnabled()) {
             Log::channel('daily')->warning("{$context} OTP email sending blocked", [
                 'email' => $this->maskEmail($email),
             ]);
@@ -553,6 +553,11 @@ class GenerateOtpController extends Controller
         Log::channel('daily')->info("{$context} Email sent", ['email' => $this->maskEmail($email)]);
 
         return true;
+    }
+
+    private function isOtpEmailSendingEnabled(): bool
+    {
+        return filter_var(Config::get('mail.otp_email_sending_enabled', true), FILTER_VALIDATE_BOOLEAN);
     }
 
     private function normalizeContact($contact): ?string

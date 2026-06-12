@@ -15,6 +15,8 @@ return [
 
     'default' => env('MAIL_MAILER', 'smtp'),
 
+    'otp_email_sending_enabled' => env('OTP_EMAIL_SENDING_ENABLED', true),
+
     /*
     |--------------------------------------------------------------------------
     | Mailer Configurations

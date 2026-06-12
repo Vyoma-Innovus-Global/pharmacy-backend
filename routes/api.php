@@ -96,6 +96,11 @@ Route::prefix('enrollment')->middleware('authenticate')->group(function () {
     Route::post('/exam-center-submit', [EnrollmentController::class, 'exam_center_submit']);
 });
 
+Route::prefix('payment')->group(function () {
+    Route::post('/save-pharmacy-payment-response', [PaymentController::class, 'savePharmacyPaymentResponse']);
+    Route::post('/savePharmacyPaymentResponse', [PaymentController::class, 'savePharmacyPaymentResponse']);
+});
+
 Route::prefix('payment')->middleware('authenticate')->group(function () {
     Route::post('/generateOrderId', [PaymentController::class, 'generateStudentOrderId']);
     Route::post('/generate-order-id', [PaymentController::class, 'generateStudentOrderId']);
