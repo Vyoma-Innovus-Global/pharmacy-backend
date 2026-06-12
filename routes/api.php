@@ -335,6 +335,8 @@ Route::prefix('marks')->middleware('authenticate')->group(function () {
 Route::prefix('admin')->middleware('authenticate')->group(function () {
     Route::post('/designations', [AdminDesignationController::class, 'getAllDesignations']);
     Route::post('/institutes', [AdminInstituteController::class, 'getAllInstitutes']);
+    Route::get('/institute-list', [AdminInstituteController::class, 'getInstituteList']);
+    Route::post('/institute-list', [AdminInstituteController::class, 'getInstituteList']);
     Route::post('/semesters', [AdminSemesterController::class, 'getAllSemesters']);
     Route::post('/subject-categories', [AdminSubjectCategoryController::class, 'getAllSubjectCategories']);
     Route::post('/departments', [AdminDepartmentController::class, 'getDepartmentsByInst']);

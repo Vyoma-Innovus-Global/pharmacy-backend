@@ -126,4 +126,90 @@ class AdminInstituteController extends Controller
             ], 500);
         }
     }
+
+    public function getInstituteList(Request $request)
+    {
+        Log::channel('daily')->info('[getInstituteList] INPUT', [
+            'ip' => $request->ip(),
+        ]);
+
+        try {
+            $result = DB::select('SELECT public.fn_get_institute_list() AS data');
+
+            if (empty($result)) {
+                return response()->json([
+                    'version' => '1.0',
+                    'status'  => 1,
+                    'message' => 'No institutes found.',
+                    'data'    => [],
+                ], 404);
+            }
+
+            $institutes = [];
+
+            foreach ($result as $row) {
+                $raw = $row->data ?? null;
+
+                if ($raw === null) {
+                    continue;
+                }
+
+                $decoded = is_string($raw) ? json_decode($raw, true) : (array) $raw;
+
+                if (is_string($raw) && json_last_error() !== JSON_ERROR_NONE) {
+                    Log::channel('daily')->error('[getInstituteList] JSON_DECODE_ERROR', [
+                        'error' => json_last_error_msg(),
+                        'raw'   => $raw,
+                    ]);
+
+                    return response()->json([
+                        'version' => '1.0',
+                        'status'  => 1,
+                        'message' => 'Failed to parse database response.',
+                        'data'    => null,
+                    ], 500);
+                }
+
+                if (array_is_list($decoded)) {
+                    $institutes = array_merge($institutes, $decoded);
+                } else {
+                    $institutes[] = $decoded;
+                }
+            }
+
+            if (empty($institutes)) {
+                return response()->json([
+                    'version' => '1.0',
+                    'status'  => 1,
+                    'message' => 'No institutes found.',
+                    'data'    => [],
+                ], 404);
+            }
+
+            Log::channel('daily')->info('[getInstituteList] OUTPUT (200)', [
+                'count' => count($institutes),
+            ]);
+
+            return response()->json([
+                'version' => '1.0',
+                'status'  => 0,
+                'message' => 'Data fetch successfully',
+                'count'   => count($institutes),
+                'data'    => $institutes,
+            ], 200);
+
+        } catch (\Exception $e) {
+            Log::channel('daily')->error('[getInstituteList] EXCEPTION', [
+                'message' => $e->getMessage(),
+                'line'    => $e->getLine(),
+            ]);
+
+            return response()->json([
+                'version' => '1.0',
+                'status'  => 1,
+                'message' => $e->getMessage(),
+                'data'    => null,
+            ], 500);
+        }
+    }
 }
