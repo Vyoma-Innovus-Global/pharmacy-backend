@@ -1491,7 +1491,28 @@ public function generateStudentOrderId(Request $request)
             [(int) $studentId, $examYear, (int) $paymentTypeId]
         );
 
-        return $this->dbFunctionJsonResponse($result[0]->data ?? null, 'fn_student_generateorderid');
+        $payload = $this->decodeDbFunctionJson($result[0]->data ?? null, 'fn_student_generateorderid');
+
+        if ($payload instanceof \Illuminate\Http\JsonResponse) {
+            return $payload;
+        }
+
+        $payload['encryptTrans'] = env(
+            'SBI_ENCRYPT_TRANS',
+            $payload['encryptTrans'] ?? $payload['EncryptTrans'] ?? $payload['transaction_id'] ?? null
+        );
+        $payload['merchIdVal'] = env(
+            'SBI_MERCHANT_ID',
+            $payload['merchIdVal'] ?? $payload['merchant_id'] ?? $payload['marchant_id'] ?? null
+        );
+        $payload['actionUrl'] = env(
+            'SBI_PAYMENT_API',
+            $payload['actionUrl'] ?? $payload['payment_api'] ?? null
+        );
+
+        Log::channel('daily')->info('[Payment] fn_student_generateorderid OUTPUT', $payload);
+
+        return response()->json($payload, 200);
     } catch (\Exception $e) {
         Log::channel('daily')->error('[Payment] fn_student_generateorderid EXCEPTION', [
             'message' => $e->getMessage(),
@@ -1843,6 +1864,19 @@ public function getPaymentDetailsByTransNo(Request $request, $transactionNo = nu
 
 private function dbFunctionJsonResponse($raw, string $functionName)
 {
+    $decoded = $this->decodeDbFunctionJson($raw, $functionName);
+
+    if ($decoded instanceof \Illuminate\Http\JsonResponse) {
+        return $decoded;
+    }
+
+    Log::channel('daily')->info("[Payment] {$functionName} OUTPUT", $decoded);
+
+    return response()->json($decoded, 200);
+}
+
+private function decodeDbFunctionJson($raw, string $functionName)
+{
     if ($raw === null) {
         return response()->json([
             'error' => true,
@@ -1863,9 +1897,7 @@ private function dbFunctionJsonResponse($raw, string $functionName)
         ], 500);
     }
 
-    Log::channel('daily')->info("[Payment] {$functionName} OUTPUT", $decoded);
-
-    return response()->json($decoded, 200);
+    return $decoded;
 }
 
 private function countItems($value): int
