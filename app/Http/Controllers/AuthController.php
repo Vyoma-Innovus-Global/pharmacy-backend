@@ -46,112 +46,53 @@ class AuthController extends Controller
                         'message' => $validated->errors()
                     ]);
                 }
-                $login_phone = $request->user_phone;
-                $login_aadhar = $request->aadhar_num;
+                $login_phone = trim($request->user_phone);
+                $login_aadhar = trim($request->aadhar_num);
 
-                $student = Registerstudent::where([
-                    's_phone' => $login_phone,
-                    'is_active' => 1,
-                ])->first();
+                $result = DB::select(
+                    'SELECT public.fn_generateotp_student(?::varchar, ?::varchar) AS data',
+                    [$login_aadhar, $login_phone]
+                );
 
-                if (!$student) {
+                $raw = $result[0]->data ?? null;
+                $otpData = is_string($raw) ? json_decode($raw, true) : (array) $raw;
+                $errorCode = (int)($otpData['p_errorcode'] ?? -1);
+
+                if ($errorCode !== 0) {
+                    $errorMessages = [
+                        1 => 'No data Found',
+                        2 => 'Aadhar Number not matched',
+                        3 => 'Your previous OTP was generated in last 2 minutes',
+                        4 => 'You exceed the OTP generation limit for today. Try again tomorrow.',
+                    ];
+
                     return response()->json([
                         'error' => true,
-                        'message' => 'No data Found'
+                        'message' => $otpData['p_message'] ?? ($errorMessages[$errorCode] ?? 'OTP generation failed. Please try again.'),
                     ], 200);
                 }
 
-                // $otp_code = rand(1111, 9999);
-                $student_phone = $student->s_phone;
-                $sms_message_user = "{$otp_code} is your One Time Password (OTP). Don't share this with anyone. - WBSCTE&VE&SD";
-                //s_aadhar_original
-                //block for casual student encrypt data not updated
-                //$student_adhar = substr(decryptHEXFormat($student->s_aadhar_no, env('ENC_KEY')), -4);
-                $student_adhar = substr($student->s_aadhar_original, -4);
+                $otp_code = (string)($otpData['p_otp'] ?? '');
 
-                switch ($student_adhar) {
-                    case $login_aadhar:
-                        $otp_res = Otp::where('username', $student_phone)->first();
-                        break;
-                    default:
-                        return response()->json([
-                            'error' => true,
-                            'message' => "Aadhar Number not matched"
-                        ], 200);
-                }
-
-                if ($otp_res) {
-                    $last_otp_date = substr(trim($otp_res->otp_created_on), 0, 10);
-
-                    switch ($last_otp_date) {
-                        case $today:
-                            $minutes = getTimeDiffInMinute($now, $otp_res->otp_created_on);
-
-                            if ($otp_res->otp_count < 9) {
-                                if ($minutes > 2) {
-                                    send_sms($student_phone, $sms_message_user);
-
-                                    $otp_res->update([
-                                        'username' => $student_phone,
-                                        'otp' => $otp_code,
-                                        'otp_created_on' => $now,
-                                        'otp_count' => intval($otp_res->otp_count) + 1
-                                    ]);
-
-                                    $otp_send = true;
-                                }
-                                else {
-                                    return response()->json([
-                                        'error' => true,
-                                        'message' => "Your previous OTP was generated in last 2 minutes"
-                                    ], 200);
-                                }
-                            }
-                            else {
-                                return response()->json([
-                                    'error' => true,
-                                    'message' => "You exceed the OTP generation limit for today. Try again tomorrow."
-                                ], 200);
-                            }
-                            break;
-                        default:
-                            send_sms($student_phone, $sms_message_user);
-
-                            $otp_res->update([
-                                'username' => $student_phone,
-                                'otp' => $otp_code,
-                                'otp_created_on' => $now,
-                                'otp_count' => 1
-                            ]);
-
-                            $otp_send = true;
-                            break;
-                    }
-                }
-                else {
-                    send_sms($student_phone, $sms_message_user);
-
-                    Otp::updateOrCreate([
-                        'username' => $student_phone,
-                    ], [
-                        'otp' => $otp_code,
-                        'otp_created_on' => $now,
-                        'otp_count' => 1
-                    ]);
-
-                    $otp_send = true;
-                }
-
-                if ($otp_send) {
-                    $otp_exp_time = date('Y-m-d H:i:s', strtotime('+120 seconds', strtotime($now)));
-
+                if ($otp_code === '') {
                     return response()->json([
-                        'error' => false,
-                        'message' => 'Otp sent successfully',
-                        'otp_expire_time' => formatDate($otp_exp_time, 'Y-m-d H:i:s', 'M j, Y H:i:s'),
-                        'user_phone' => $student_phone,
+                        'error' => true,
+                        'message' => 'OTP generation failed. Please try again.',
                     ], 200);
                 }
+
+                $sms_message_user = "{$otp_code} is your One Time Password (OTP). Don't share this with anyone. - WBSCTE&VE&SD";
+                send_sms($login_phone, $sms_message_user);
+
+                $otp_exp_time = date('Y-m-d H:i:s', strtotime('+120 seconds', strtotime($now)));
+
+                return response()->json([
+                    'error' => false,
+                    'message' => 'Otp sent successfully',
+                    'otp_expire_time' => formatDate($otp_exp_time, 'Y-m-d H:i:s', 'M j, Y H:i:s'),
+                    'user_phone' => $login_phone,
+                    'p_otp' => Config::get('app.env') !== 'production' ? $otp_code : null,
+                ], 200);
                 break;
             case 'COUNCIL_ADMIN':
                 $now = date('Y-m-d H:i:s');

@@ -13,6 +13,7 @@
 3. [Generate OTP — Verify](#3-generate-otp--verify)
 4. [Generate OTP — Update OTP Used (Send by Contact)](#4-generate-otp--update-otp-used)
 5. [Evaluator — Institute Allocation Summary](#5-evaluator--institute-allocation-summary)
+6. [Student Login — Generate OTP](#6-student-login--generate-otp)
 
 ---
 
@@ -316,6 +317,44 @@ Each institute contains a `departments` array built from all rows matching that 
 | `500` | DB exception or parse failure |
 
 ---
+
+## 6. Student Login — Generate OTP
+
+**Endpoint:** `POST /api/authenticate`  
+**DB Function:** `public.fn_generateotp_student(p_aadharnumber, p_phonenumber)`  
+**Auth Required:** No
+
+### Request Body
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `user_type` | string | ✅ | Must be `STUDENT` |
+| `aadhar_num` | string | ✅ | Full Aadhaar number |
+| `user_phone` | string | ✅ | Student registered phone number |
+
+### Example Request
+```bash
+curl --location 'http://127.0.0.1:8000/api/authenticate' \
+--header 'Content-Type: application/json' \
+--data '{
+  "user_type": "STUDENT",
+  "aadhar_num": "215828352013",
+  "user_phone": "9832102643"
+}'
+```
+
+### Success Response `200`
+```json
+{
+  "error": false,
+  "message": "Otp sent successfully",
+  "otp_expire_time": "Jun 16, 2026 16:00:00",
+  "user_phone": "9832102643",
+  "p_otp": "7777"
+}
+```
+
+> **Note:** `p_otp` is only returned in non-production environments for debugging. It will be `null` in production.
 
 ## Login Flow Sequence
 
