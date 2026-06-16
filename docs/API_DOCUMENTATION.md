@@ -14,6 +14,7 @@
 4. [Generate OTP — Update OTP Used (Send by Contact)](#4-generate-otp--update-otp-used)
 5. [Evaluator — Institute Allocation Summary](#5-evaluator--institute-allocation-summary)
 6. [Student Login — Generate OTP](#6-student-login--generate-otp)
+7. [Payment — Student Payment Type](#7-payment--student-payment-type)
 
 ---
 
@@ -355,6 +356,49 @@ curl --location 'http://127.0.0.1:8000/api/authenticate' \
 ```
 
 > **Note:** `p_otp` is only returned in non-production environments for debugging. It will be `null` in production.
+
+---
+
+## 7. Payment — Student Payment Type
+
+**Endpoint:** `POST /api/payment/student-payment-type`  
+**DB Function:** `public.fn_get_studentpayment_type_studentid(p_student_id, p_payment_type)`  
+**Auth Required:** Yes
+
+### Payment Type
+
+| `payment_type` | Meaning |
+|---|---|
+| `1` | Registration |
+| `2` | Exam |
+
+### Request Body
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `student_id` | integer | ✅ | Student ID |
+| `payment_type` | integer | ✅ | `1` Registration, `2` Exam |
+
+### Example Request
+```bash
+curl --location 'http://127.0.0.1:8000/api/payment/student-payment-type' \
+--header 'Content-Type: application/json' \
+--header 'token: YOUR_AUTH_TOKEN' \
+--data '{
+  "student_id": 15343,
+  "payment_type": 1
+}'
+```
+
+### Success Response `200`
+```json
+[
+  {
+    "Amount": 100,
+    "paymentTypeId": 2
+  }
+]
+```
 
 ## Login Flow Sequence
 

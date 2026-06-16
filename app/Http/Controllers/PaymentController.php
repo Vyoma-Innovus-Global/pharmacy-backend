@@ -1506,6 +1506,54 @@ public function generateStudentOrderId(Request $request)
     }
 }
 
+public function getStudentPaymentTypeByStudentId(Request $request)
+{
+    $studentId = $request->input('student_id', $request->input('p_student_id'));
+    $paymentType = $request->input('payment_type', $request->input('p_payment_type'));
+
+    $validator = Validator::make([
+        'student_id' => $studentId,
+        'payment_type' => $paymentType,
+    ], [
+        'student_id' => 'required|integer',
+        'payment_type' => 'required|integer|in:1,2',
+    ]);
+
+    if ($validator->fails()) {
+        return response()->json([
+            'error' => true,
+            'message' => 'Validation failed.',
+            'data' => $validator->errors(),
+        ], 422);
+    }
+
+    Log::channel('daily')->info('[Payment] fn_get_studentpayment_type_studentid INPUT', [
+        'student_id' => $studentId,
+        'payment_type' => $paymentType,
+        'ip' => $request->ip(),
+    ]);
+
+    try {
+        $result = DB::select(
+            'SELECT public.fn_get_studentpayment_type_studentid(?::bigint, ?::integer) AS data',
+            [(int) $studentId, (int) $paymentType]
+        );
+
+        return $this->dbFunctionJsonResponse($result[0]->data ?? null, 'fn_get_studentpayment_type_studentid');
+    } catch (\Exception $e) {
+        Log::channel('daily')->error('[Payment] fn_get_studentpayment_type_studentid EXCEPTION', [
+            'message' => $e->getMessage(),
+            'line' => $e->getLine(),
+            'file' => $e->getFile(),
+        ]);
+
+        return response()->json([
+            'error' => true,
+            'message' => 'Failed to get student payment type details.',
+        ], 500);
+    }
+}
+
 public function savePharmacyPaymentResponse(Request $request)
 {
     $orderId = $request->input('order_id', $request->input('p_order_id'));
