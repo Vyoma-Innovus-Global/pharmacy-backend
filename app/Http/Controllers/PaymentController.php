@@ -1554,6 +1554,58 @@ public function getStudentPaymentTypeByStudentId(Request $request)
     }
 }
 
+public function getPaymentResponseByStudentId(Request $request)
+{
+    $studentId = $request->input('student_id', $request->input('p_student_id'));
+    $paymentPurpose = $request->input('payment_purpose', $request->input('p_paymen_purpouse'));
+    $year = $request->input('year', $request->input('p_year'));
+
+    $validator = Validator::make([
+        'student_id' => $studentId,
+        'payment_purpose' => $paymentPurpose,
+        'year' => $year,
+    ], [
+        'student_id' => 'required|integer',
+        'payment_purpose' => 'required|string|max:100',
+        'year' => 'required|string|max:20',
+    ]);
+
+    if ($validator->fails()) {
+        return response()->json([
+            'error' => true,
+            'message' => 'Validation failed.',
+            'data' => $validator->errors(),
+        ], 422);
+    }
+
+    Log::channel('daily')->info('[Payment] fn_get_payment_response_studentid INPUT', [
+        'student_id' => $studentId,
+        'payment_purpose' => $paymentPurpose,
+        'year' => $year,
+        'ip' => $request->ip(),
+    ]);
+
+    try {
+        $result = DB::select(
+            'SELECT public.fn_get_payment_response_studentid(?::bigint, ?::varchar, ?::varchar) AS data',
+            [(int) $studentId, $paymentPurpose, $year]
+        );
+
+        return $this->dbFunctionJsonResponse($result[0]->data ?? null, 'fn_get_payment_response_studentid');
+    } catch (\Exception $e) {
+        Log::channel('daily')->error('[Payment] fn_get_payment_response_studentid EXCEPTION', [
+            'message' => $e->getMessage(),
+            'line' => $e->getLine(),
+            'file' => $e->getFile(),
+        ]);
+
+        return response()->json([
+            'error' => true,
+            'message' => 'Failed to get student payment response.',
+        ], 500);
+    }
+}
+
 public function savePharmacyPaymentResponse(Request $request)
 {
     $orderId = $request->input('order_id', $request->input('p_order_id'));
