@@ -1503,12 +1503,28 @@ public function generateStudentOrderId(Request $request)
             ?? $payload['paymentData']
             ?? $payload['payment_data']
             ?? null;
+        $merchantId = env('SBI_MERCHANT_ID');
+        $actionUrl = env('SBI_PAYMENT_API');
+        $orderId = $payload['order_id'] ?? $payload['orderId'] ?? null;
+        $amount = $payload['payment_amount'] ?? $payload['amount'] ?? null;
+
+        if (!$requestParameter && $merchantId && $orderId && $amount !== null) {
+            $baseUrl = rtrim(env('APP_URL'), '/') . '/payment/';
+            $successUrl = "{$baseUrl}success";
+            $failUrl = "{$baseUrl}fail";
+            $marId = '5';
+            $otherData = $payload['other_data']
+                ?? $payload['otherData']
+                ?? "{$studentId}_{$examYear}_{$paymentTypeId}";
+
+            $requestParameter = "{$merchantId}|DOM|IN|INR|{$amount}|{$otherData}|{$successUrl}|{$failUrl}|SBIEPAY|{$orderId}|{$marId}|NB|ONLINE|ONLINE,pWhMnIEMc4q6hKdi2Fx50Ii8CKAoSIqv9ScSpwuMHM4=";
+        }
 
         $payload['encryptTrans'] = ($paymentKey && $requestParameter)
-            ? encryptedString($requestParameter, $paymentKey)
+            ? sbiEncrypt($requestParameter)
             : ($payload['encryptTrans'] ?? $payload['EncryptTrans'] ?? $payload['transaction_id'] ?? null);
-        $payload['merchIdVal'] = env('SBI_MERCHANT_ID');
-        $payload['actionUrl'] = env('SBI_PAYMENT_API');
+        $payload['merchIdVal'] = $merchantId;
+        $payload['actionUrl'] = $actionUrl;
 
         Log::channel('daily')->info('[Payment] fn_student_generateorderid OUTPUT', $payload);
 
