@@ -28,12 +28,13 @@ class AuthController extends Controller
     public function authenticate(Request $request)
     {
         $user_type = $request->input('user_type');
+        $normalized_user_type = (string)$user_type === '2' ? 'STUDENT' : $user_type;
         $now = date('Y-m-d H:i:s');
         $today = date('Y-m-d');
         $otp_code = Config::get('app.env') === 'production' ? rand(1111, 9999) : 1234;
         $sms_message = "{$otp_code} is your One Time Password (OTP). Don't share this with anyone. - WBSCTE&VE&SD";
 
-        switch ($user_type) {
+        switch ($normalized_user_type) {
             case 'STUDENT':
                 $validated = Validator::make($request->all(), [
                     'user_phone' => ['required'],
@@ -344,7 +345,7 @@ class AuthController extends Controller
                         DB::commit();
 
                         return response()->json([
-                            'role' => $user_type,
+                            'role' => $normalized_user_type,
                             'error' => false,
                             'token' => $token,
                             'token_expired_on' => $expiry,
@@ -443,6 +444,7 @@ class AuthController extends Controller
 
         $login_phone = $request->user_phone;
         $login_otp = $request->security_code;
+        $normalized_user_type = (string)$request->user_type === '2' ? 'STUDENT' : $request->user_type;
 
         $otp = Otp::where([
             'username' => $login_phone,
@@ -453,7 +455,7 @@ class AuthController extends Controller
             # DB::beginTransaction();
             try {
 
-                if ($request->user_type === 'STUDENT') {
+                if ($normalized_user_type === 'STUDENT') {
                     $student = Registerstudent::where([
                         's_phone' => $login_phone,
                         'is_active' => 1
@@ -581,7 +583,7 @@ class AuthController extends Controller
                 }
 
                 //EVALUATOR
-                if ($request->user_type === 'EVALUATOR') {
+                if ($normalized_user_type === 'EVALUATOR') {
                     try {
                         $user = EvaluatorDetails::with('roles:role_id,role_name,role_description')
                             ->where('phone', $login_phone)
@@ -612,7 +614,7 @@ class AuthController extends Controller
 
                         //DB::commit();
                         return response()->json([
-                            'role' => $request->user_type,
+                            'role' => $normalized_user_type,
                             'error' => false,
                             'token' => $token,
                             'token_expired_on' => $expiry,
@@ -624,7 +626,7 @@ class AuthController extends Controller
                                 'inst_code' => $evaluator->institute ?? '',
                                 'inst_name' => $evaluator->institute ?? '',
                                 'full_name' => $evaluator->name,
-                                'user_role' => $request->user_type,
+                                'user_role' => $normalized_user_type,
                                 'user_role_id' => $evaluator->ev_role_id,
                                 'is_default_pwd' => 1,
                                 'u_phone' => $evaluator->phone,
@@ -652,7 +654,7 @@ class AuthController extends Controller
 
 
 
-                if ($request->user_type === 'COUNCIL_ADMIN') {
+                if ($normalized_user_type === 'COUNCIL_ADMIN') {
                     $user = SuperUser::where([
                         'u_phone' => $login_phone,
                         'is_active' => 1
@@ -680,7 +682,7 @@ class AuthController extends Controller
                         DB::commit();
 
                         return response()->json([
-                            'role' => $request->user_type,
+                            'role' => $normalized_user_type,
                             'error' => false,
                             'token' => $token,
                             'token_expired_on' => $expiry,

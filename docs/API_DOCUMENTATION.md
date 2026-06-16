@@ -328,7 +328,7 @@ Each institute contains a `departments` array built from all rows matching that 
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `user_type` | string | ✅ | Must be `STUDENT` |
+| `user_type` | integer | ✅ | Student user type ID. Use `2` |
 | `aadhar_num` | string | ✅ | Full Aadhaar number |
 | `user_phone` | string | ✅ | Student registered phone number |
 
@@ -337,7 +337,7 @@ Each institute contains a `departments` array built from all rows matching that 
 curl --location 'http://127.0.0.1:8000/api/authenticate' \
 --header 'Content-Type: application/json' \
 --data '{
-  "user_type": "STUDENT",
+  "user_type": 2,
   "aadhar_num": "215828352013",
   "user_phone": "9832102643"
 }'
