@@ -1497,18 +1497,18 @@ public function generateStudentOrderId(Request $request)
             return $payload;
         }
 
-        $payload['encryptTrans'] = env(
-            'SBI_ENCRYPT_TRANS',
-            $payload['encryptTrans'] ?? $payload['EncryptTrans'] ?? $payload['transaction_id'] ?? null
-        );
-        $payload['merchIdVal'] = env(
-            'SBI_MERCHANT_ID',
-            $payload['merchIdVal'] ?? $payload['merchant_id'] ?? $payload['marchant_id'] ?? null
-        );
-        $payload['actionUrl'] = env(
-            'SBI_PAYMENT_API',
-            $payload['actionUrl'] ?? $payload['payment_api'] ?? null
-        );
+        $paymentKey = env('SBI_PAYMENT_KEY');
+        $requestParameter = $payload['requestParameter']
+            ?? $payload['request_parameter']
+            ?? $payload['paymentData']
+            ?? $payload['payment_data']
+            ?? null;
+
+        $payload['encryptTrans'] = ($paymentKey && $requestParameter)
+            ? encryptedString($requestParameter, $paymentKey)
+            : ($payload['encryptTrans'] ?? $payload['EncryptTrans'] ?? $payload['transaction_id'] ?? null);
+        $payload['merchIdVal'] = env('SBI_MERCHANT_ID');
+        $payload['actionUrl'] = env('SBI_PAYMENT_API');
 
         Log::channel('daily')->info('[Payment] fn_student_generateorderid OUTPUT', $payload);
 
