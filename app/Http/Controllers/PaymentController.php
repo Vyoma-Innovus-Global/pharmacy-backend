@@ -42,6 +42,54 @@ class PaymentController extends Controller
         ]);
     }
 
+    private function studentPaymentFrontendStatusUrl(array $params): string
+    {
+        $baseUrl = rtrim(
+            env(
+                'STUDENT_PAYMENT_FRONTEND_STATUS_URL',
+                env('PAYMENT_FRONTEND_STATUS_URL', 'http://127.0.0.1:5173/emp/pharmacy/portal/payment-status')
+            ),
+            '#'
+        );
+
+        $payload = rtrim(strtr(base64_encode(json_encode($params)), '+/', '-_'), '=');
+
+        return $baseUrl . '#payment=' . rawurlencode($payload);
+    }
+
+    private function studentPaymentRedirectResponse(array $params)
+    {
+        return redirect()->away($this->studentPaymentFrontendStatusUrl($params), 303);
+    }
+
+    public function studentPaymentSubmit(Request $request)
+    {
+        $encryptTrans = $request->query('EncryptTrans')
+            ?? $request->query('encryptTrans')
+            ?? '';
+
+        if ($encryptTrans === '') {
+            return $this->studentPaymentRedirectResponse([
+                'status' => 'FAIL',
+                'message' => 'Missing payment gateway transaction data.',
+                'payment_purpose' => 'Student Fee',
+            ]);
+        }
+
+        Log::channel('daily')->info('[Payment] student gateway submit page', [
+            'encrypted_length' => strlen((string) $encryptTrans),
+            'merchant_id' => env('SBI_MERCHANT_ID'),
+            'action_url' => env('SBI_PAYMENT_API'),
+            'ip' => $request->ip(),
+        ]);
+
+        return view('redirect.sbi-submit', [
+            'encryptTrans' => $encryptTrans,
+            'merchIdVal' => env('SBI_MERCHANT_ID'),
+            'actionUrl' => env('SBI_PAYMENT_API'),
+        ]);
+    }
+
     //get Enrollment payment fees data
     public function getEnrollmentPaymentdata(Request $request)
     {
@@ -1262,6 +1310,118 @@ public function institutePaymentFail(Request $request)
     ]));
 }
 
+public function studentPaymentSuccess(Request $request)
+{
+    return $this->handleStudentPaymentCallback($request, true);
+}
+
+public function studentPaymentFail(Request $request)
+{
+    return $this->handleStudentPaymentCallback($request, false);
+}
+
+private function handleStudentPaymentCallback(Request $request, bool $expectedSuccess)
+{
+    try {
+        Log::channel('daily')->info(
+            '[Payment] student CALLBACK received',
+            array_merge(['expected_success' => $expectedSuccess], $this->paymentCallbackMeta($request))
+        );
+
+        $encryptedData = $request->input('encData')
+            ?? $request->input('EncryptTrans')
+            ?? $request->input('encryptTrans')
+            ?? '';
+
+        if ($encryptedData === '') {
+            throw new \RuntimeException('Missing encrypted payment response.');
+        }
+
+        $transDetails = sbiDecrypt($encryptedData);
+        if (!is_string($transDetails) || trim($transDetails) === '') {
+            throw new \RuntimeException('Unable to decrypt payment response.');
+        }
+
+        $data = explode('|', $transDetails);
+
+        $orderId = $data[0] ?? '';
+        $txnNo = $data[1] ?? '';
+        $paymentStatus = $data[2] ?? ($expectedSuccess ? 'SUCCESS' : 'FAIL');
+        $paymentAmount = $data[3] ?? 0;
+        $currency = $data[4] ?? 'INR';
+        $nb = $data[5] ?? '';
+        $otherDetails = $data[6] ?? '';
+        $paymentMsg = $data[7] ?? '';
+        $paymentBankCode = $data[8] ?? '';
+        $bankRefNo = $data[9] ?? '';
+        $txnDateTime = $data[10] ?? date('Y-m-d H:i:s');
+        $country = $data[11] ?? '';
+        $challanIdNo = $data[12] ?? '';
+        $merchantId = $data[13] ?? env('SBI_MERCHANT_ID');
+        $gstParts = explode('^', $data[14] ?? '0^0');
+        $gst = $gstParts[0] ?? 0;
+        $servicesTax = $gstParts[1] ?? 0;
+
+        Log::channel('daily')->info('[Payment] student callback parsed', [
+            'order_id' => $orderId,
+            'txn_no' => $txnNo,
+            'payment_status' => $paymentStatus,
+            'payment_amount' => $paymentAmount,
+            'other_details' => $otherDetails,
+            'merchant_id' => $merchantId,
+        ]);
+
+        DB::select(
+            'SELECT public.fn_updatesbipaymentresponse(?::varchar, ?::text, ?::varchar, ?::double precision, ?::varchar, ?::varchar, ?::text, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::integer, ?::double precision, ?::double precision) AS data',
+            [
+                $txnNo ?: $orderId,
+                $txnNo,
+                $paymentStatus,
+                (float) $paymentAmount,
+                $currency,
+                $nb,
+                $otherDetails,
+                $paymentMsg,
+                $paymentBankCode,
+                $bankRefNo,
+                $txnDateTime,
+                $country,
+                $challanIdNo,
+                (int) $merchantId,
+                (float) $gst,
+                (float) $servicesTax,
+            ]
+        );
+
+        return $this->studentPaymentRedirectResponse([
+            'txnNo' => $txnNo,
+            'orderId' => $orderId,
+            'status' => $paymentStatus,
+            'amount' => $paymentAmount,
+            'currency' => $currency,
+            'message' => $paymentMsg,
+            'time' => $txnDateTime,
+            'payment_mode' => $nb,
+            'bank_ref' => $bankRefNo,
+            'challan_id' => $challanIdNo,
+            'payment_purpose' => 'Student Fee',
+        ]);
+    } catch (\Exception $e) {
+        Log::channel('daily')->error('[Payment] student callback failed', [
+            'message' => $e->getMessage(),
+            'line' => $e->getLine(),
+            'file' => $e->getFile(),
+            'request' => $request->all(),
+        ]);
+
+        return $this->studentPaymentRedirectResponse([
+            'status' => 'FAIL',
+            'message' => 'Payment processing failed: ' . $e->getMessage(),
+            'payment_purpose' => 'Student Fee',
+        ]);
+    }
+}
+
 // Download Institute Payment Receipt as PDF
 public function downloadInstitutePaymentReceipt($order_id)
 {
@@ -1509,7 +1669,7 @@ public function generateStudentOrderId(Request $request)
         $amount = $payload['payment_amount'] ?? $payload['amount'] ?? null;
 
         if (!$requestParameter && $merchantId && $orderId && $amount !== null) {
-            $baseUrl = rtrim(env('APP_URL'), '/') . '/payment/';
+            $baseUrl = rtrim(env('APP_URL'), '/') . '/student-payment/';
             $successUrl = "{$baseUrl}success";
             $failUrl = "{$baseUrl}fail";
             $marId = '5';
@@ -1525,6 +1685,7 @@ public function generateStudentOrderId(Request $request)
             : ($payload['encryptTrans'] ?? $payload['EncryptTrans'] ?? $payload['transaction_id'] ?? null);
         $payload['merchIdVal'] = $merchantId;
         $payload['actionUrl'] = $actionUrl;
+        $payload['gatewaySubmitUrl'] = rtrim(env('APP_URL'), '/') . '/student-payment/submit';
 
         Log::channel('daily')->info('[Payment] fn_student_generateorderid OUTPUT', $payload);
 
@@ -1931,11 +2092,17 @@ private function countItems($value): int
 
 private function paymentCallbackMeta(Request $request): array
 {
-    $encData = (string) $request->input('encData', '');
+    $encData = (string) (
+        $request->input('encData')
+        ?? $request->input('EncryptTrans')
+        ?? $request->input('encryptTrans')
+        ?? ''
+    );
 
     return [
         'has_encData' => $encData !== '',
         'encData_length' => strlen($encData),
+        'method' => $request->method(),
         'ip' => $request->ip(),
         'user_agent' => substr((string) $request->userAgent(), 0, 255),
     ];

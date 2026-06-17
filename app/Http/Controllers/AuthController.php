@@ -50,10 +50,29 @@ class AuthController extends Controller
                 $login_phone = trim($request->user_phone);
                 $login_aadhar = trim($request->aadhar_num);
 
-                $result = DB::select(
-                    'SELECT public.fn_generateotp_student(?::varchar, ?::varchar) AS data',
-                    [$login_aadhar, $login_phone]
-                );
+                try {
+                    \Log::channel('daily')->info('[Auth] student OTP INPUT', [
+                        'phone' => strlen($login_phone) > 4 ? str_repeat('*', strlen($login_phone) - 4) . substr($login_phone, -4) : $login_phone,
+                        'aadhar_length' => strlen($login_aadhar),
+                        'ip' => $request->ip(),
+                    ]);
+
+                    $result = DB::select(
+                        'SELECT public.fn_generateotp_student(?::varchar, ?::varchar) AS data',
+                        [$login_aadhar, $login_phone]
+                    );
+                } catch (\Throwable $e) {
+                    \Log::channel('daily')->error('[Auth] student OTP DB failed', [
+                        'message' => $e->getMessage(),
+                        'line' => $e->getLine(),
+                        'file' => $e->getFile(),
+                    ]);
+
+                    return response()->json([
+                        'error' => true,
+                        'message' => 'Student OTP generation failed. Please try again.',
+                    ], 500);
+                }
 
                 $raw = $result[0]->data ?? null;
                 $otpData = is_string($raw) ? json_decode($raw, true) : (array) $raw;

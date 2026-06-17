@@ -25,6 +25,12 @@ Route::prefix('payment')->group(function () {
     Route::get('/receipt/{order_id}', [PaymentController::class, 'downloadInstitutePaymentReceipt']);
 });
 
+Route::prefix('student-payment')->group(function () {
+    Route::get('/submit', [PaymentController::class, 'studentPaymentSubmit']);
+    Route::match(['get', 'post'], '/success', [PaymentController::class, 'studentPaymentSuccess']);
+    Route::match(['get', 'post'], '/fail', [PaymentController::class, 'studentPaymentFail']);
+});
+
 Route::get('/paynow',[PaymentController::class, 'payment']);
 Route::get('/clear-all', function() {
     Artisan::call('route:clear');
