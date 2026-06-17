@@ -206,8 +206,14 @@ class ReportController extends Controller
      */
     public function updateStudentDetailsByAdmin(Request $request)
     {
-        $input = function ($snake, $camel = null, $stored = null) use ($request) {
-            return $request->input($snake, $request->input($camel, $request->input($stored)));
+        $input = function (...$keys) use ($request) {
+            foreach ($keys as $key) {
+                if ($key !== null && $request->has($key)) {
+                    return $request->input($key);
+                }
+            }
+
+            return null;
         };
 
         $payload = [
@@ -257,7 +263,12 @@ class ReportController extends Controller
             'caste_document' => $input('caste_document', 'casteDocument', 'p_castdoc'),
             'physically_challenged_document' => $input('physically_challenged_document', 'physicallyChallengedDocument', 'p_pccertificatedoc'),
             'aadhar_document' => $input('aadhar_document', 'aadharDocument', 'p_aadhardoc'),
+            'kanyashree_document' => $input('kanyashree_document', 'kanyashreeDocument', 'p_kanyashreedoc'),
+            'kanyashree_number' => $input('kanyashree_number', 'kanyashreeNumber', 'kanyashreeId', 'p_kanyashreenumber'),
+            'pwd_document' => $input('pwd_document', 'pwdDocument', 'p_pwddoc'),
         ];
+
+        $payload['pwd_document'] = $payload['pwd_document'] ?? $payload['physically_challenged_document'];
 
         $validator = Validator::make($payload, [
             'student_id' => 'required|integer',
@@ -285,7 +296,7 @@ class ReportController extends Controller
                     ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar,
                     ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar,
                     ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar,
-                    ?::varchar, ?::varchar, ?::varchar
+                    ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar
                 ) AS data',
                 [
                     (int) $payload['student_id'],
@@ -334,6 +345,9 @@ class ReportController extends Controller
                     $payload['caste_document'],
                     $payload['physically_challenged_document'],
                     $payload['aadhar_document'],
+                    $payload['kanyashree_document'],
+                    $payload['kanyashree_number'],
+                    $payload['pwd_document'],
                 ]
             );
 
