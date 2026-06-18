@@ -266,9 +266,11 @@ class ReportController extends Controller
             'kanyashree_document' => $input('kanyashree_document', 'kanyashreeDocument', 'p_kanyashreedoc'),
             'kanyashree_number' => $input('kanyashree_number', 'kanyashreeNumber', 'kanyashreeId', 'p_kanyashreenumber'),
             'pwd_document' => $input('pwd_document', 'pwdDocument', 'p_pwddoc'),
+            'is_pwd' => $input('is_pwd', 'isPwd', 's_pwd', 'p_ispwd'),
         ];
 
         $payload['pwd_document'] = $payload['pwd_document'] ?? $payload['physically_challenged_document'];
+        $payload['is_pwd'] = $payload['is_pwd'] ?? ($payload['pwd_document'] ? 1 : 0);
 
         $validator = Validator::make($payload, [
             'student_id' => 'required|integer',
@@ -277,6 +279,7 @@ class ReportController extends Controller
             'date_of_birth' => 'nullable|date',
             'is_married' => 'nullable|integer',
             'is_kanyashree' => 'nullable|integer',
+            'is_pwd' => 'nullable|integer',
         ]);
 
         if ($validator->fails()) {
@@ -296,7 +299,7 @@ class ReportController extends Controller
                     ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar,
                     ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar,
                     ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar,
-                    ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar
+                    ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::smallint
                 ) AS data',
                 [
                     (int) $payload['student_id'],
@@ -348,6 +351,7 @@ class ReportController extends Controller
                     $payload['kanyashree_document'],
                     $payload['kanyashree_number'],
                     $payload['pwd_document'],
+                    $payload['is_pwd'] === null ? null : (int) $payload['is_pwd'],
                 ]
             );
 
