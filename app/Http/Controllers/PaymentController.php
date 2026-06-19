@@ -1714,7 +1714,7 @@ public function getStudentPaymentTypeByStudentId(Request $request)
         'payment_type' => $paymentType,
     ], [
         'student_id' => 'required|integer',
-        'payment_type' => 'required|integer|in:1,2',
+        'payment_type' => 'required|integer|in:1,2,3',
     ]);
 
     if ($validator->fails()) {

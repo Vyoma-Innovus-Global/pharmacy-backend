@@ -103,6 +103,7 @@ Route::prefix('payment')->group(function () {
 
 Route::prefix('payment')->middleware('authenticate')->group(function () {
     Route::post('/student-payment-type', [PaymentController::class, 'getStudentPaymentTypeByStudentId']);
+    Route::post('/student-payment-type-studentid', [PaymentController::class, 'getStudentPaymentTypeByStudentId']);
     Route::post('/student-payment-response', [PaymentController::class, 'getPaymentResponseByStudentId']);
     Route::post('/generateOrderId', [PaymentController::class, 'generateStudentOrderId']);
     Route::post('/generate-order-id', [PaymentController::class, 'generateStudentOrderId']);
