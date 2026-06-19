@@ -276,7 +276,7 @@ class ReportController extends Controller
             'student_id' => 'required|integer',
             'admin_user_id' => 'required|integer',
             'admin_user_type' => 'required|integer',
-            'date_of_birth' => 'nullable|date',
+           'date_of_birth' => 'nullable|string',
             'is_married' => 'nullable|integer',
             'is_kanyashree' => 'nullable|integer',
             'is_pwd' => 'nullable|integer',
@@ -293,8 +293,7 @@ class ReportController extends Controller
             $result = DB::select(
                 'SELECT public.fn_updatestudentdetailsbyadmin(
                     ?::bigint, ?::bigint, ?::bigint,
-                    ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::date, ?::varchar,
-                    ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar,
+                    ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar,                    ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar,
                     ?::varchar, ?::smallint, ?::smallint, ?::varchar, ?::varchar,
                     ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar,
                     ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar,
