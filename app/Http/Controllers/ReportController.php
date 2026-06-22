@@ -290,6 +290,8 @@ class ReportController extends Controller
         }
 
         try {
+            $payload = $this->storeUploadedStudentUpdateFiles($request, $payload);
+
             $result = DB::select(
                 'SELECT public.fn_updatestudentdetailsbyadmin(
                     ?::bigint, ?::bigint, ?::bigint,
@@ -376,6 +378,99 @@ class ReportController extends Controller
                 'message' => $e->getMessage(),
             ], 500);
         }
+    }
+
+    private function storeUploadedStudentUpdateFiles(Request $request, array $payload): array
+    {
+        $fileMappings = [
+            'photo' => [
+                'keys' => ['photo', 's_photo', 'p_photo'],
+                'suffix' => 'image',
+            ],
+            'signature' => [
+                'keys' => ['signature', 'sign', 's_sign', 'p_sign'],
+                'suffix' => 'sign',
+            ],
+            'citizenship_document' => [
+                'keys' => ['citizenship_document', 'citizenshipDocument', 'ei_citizenship_doc', 'p_citizenshipdoc'],
+                'suffix' => 'citizen',
+            ],
+            'caste_document' => [
+                'keys' => ['caste_document', 'casteDocument', 'ei_cast_doc', 'p_castdoc'],
+                'suffix' => 'cast',
+            ],
+            'physically_challenged_document' => [
+                'keys' => ['physically_challenged_document', 'physicallyChallengedDocument', 'ei_pc_certificate_doc', 'p_pccertificatedoc'],
+                'suffix' => 'pc',
+            ],
+            'aadhar_document' => [
+                'keys' => ['aadhar_document', 'aadharDocument', 'ei_aadhar_doc', 'p_aadhardoc'],
+                'suffix' => 'aadhar',
+            ],
+            'kanyashree_document' => [
+                'keys' => ['kanyashree_document', 'kanyashreeDocument', 'ei_kanyashree_doc', 'p_kanyashreedoc'],
+                'suffix' => 'kanyashree',
+            ],
+            'pwd_document' => [
+                'keys' => ['pwd_document', 'pwdDocument', 'ei_pwd_doc', 'p_pwddoc'],
+                'suffix' => 'pwd',
+            ],
+        ];
+
+        foreach ($fileMappings as $payloadKey => $mapping) {
+            $file = $this->firstUploadedFile($request, $mapping['keys']);
+
+            if ($file === null) {
+                continue;
+            }
+
+            $payload[$payloadKey] = $this->storeStudentUpdateFile($request, $payload, $file, $mapping['suffix']);
+        }
+
+        $payload['pwd_document'] = $payload['pwd_document'] ?? $payload['physically_challenged_document'];
+        $payload['is_pwd'] = $payload['is_pwd'] ?? ($payload['pwd_document'] ? 1 : 0);
+
+        return $payload;
+    }
+
+    private function firstUploadedFile(Request $request, array $keys)
+    {
+        foreach ($keys as $key) {
+            if ($request->hasFile($key)) {
+                return $request->file($key);
+            }
+        }
+
+        return null;
+    }
+
+    private function storeStudentUpdateFile(Request $request, array $payload, $file, string $suffix): string
+    {
+        $formNumber = $request->input(
+            'form_no',
+            $request->input(
+                'formNumber',
+                $request->input('s_appl_form_num', $payload['student_id'] ?? 'student')
+            )
+        );
+        $formNumber = $this->safePathSegment((string) $formNumber) ?: 'student';
+
+        $extension = strtolower($file->getClientOriginalExtension());
+        $filename = "{$formNumber}_{$suffix}" . time() . ".{$extension}";
+        $directory = 'uploads';
+
+        $stored = $file->storeAs($directory, $filename, 'public');
+
+        if (!$stored) {
+            throw new \RuntimeException('Unable to store uploaded student file.');
+        }
+
+        return "{$directory}/{$filename}";
+    }
+
+    private function safePathSegment(string $value): string
+    {
+        return trim(preg_replace('/[^A-Za-z0-9_-]+/', '_', $value), '_');
     }
 
     /**

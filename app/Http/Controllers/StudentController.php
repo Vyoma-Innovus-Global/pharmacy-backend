@@ -82,6 +82,8 @@ class StudentController extends Controller
                 ], 500);
             }
 
+            $studentData = $this->normalizeStudentUploadPaths($studentData);
+
             return response()->json([
                 'error' => false,
                 'data'  => $studentData,
@@ -93,6 +95,50 @@ class StudentController extends Controller
                 'message' => $e->getMessage(),
             ], 500);
         }
+    }
+
+    private function normalizeStudentUploadPaths(array $studentData): array
+    {
+        $fileFields = [
+            'photo',
+            'signature',
+            'studentPhoto',
+            'studentSignature',
+            's_photo',
+            's_sign',
+            'citizenshipDocument',
+            'casteDocument',
+            'physicallyChallengedDocument',
+            'aadharDocument',
+            'kanyashreeDocument',
+            'pwdDocument',
+            'ei_citizenship_doc',
+            'ei_cast_doc',
+            'ei_pc_certificate_doc',
+            'ei_aadhar_doc',
+            'ei_kanyashree_doc',
+            'ei_pwd_doc',
+        ];
+
+        foreach ($fileFields as $field) {
+            if (!empty($studentData[$field]) && is_string($studentData[$field])) {
+                $studentData[$field] = $this->storageUploadsPath($studentData[$field]);
+            }
+        }
+
+        return $studentData;
+    }
+
+    private function storageUploadsPath(string $path): string
+    {
+        $pathOnly = parse_url($path, PHP_URL_PATH) ?: $path;
+        $filename = basename($pathOnly);
+
+        if ($filename === '' || $filename === '.' || $filename === '/') {
+            return $path;
+        }
+
+        return "/storage/uploads/{$filename}";
     }
 
     //Student Data update
