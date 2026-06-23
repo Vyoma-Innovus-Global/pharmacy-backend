@@ -458,8 +458,13 @@ class ReportController extends Controller
         $extension = strtolower($file->getClientOriginalExtension());
         $filename = "{$formNumber}_{$suffix}" . time() . ".{$extension}";
         $directory = 'uploads';
+        $publicDirectory = public_path("storage/{$directory}");
 
-        $stored = $file->storeAs($directory, $filename, 'public');
+        if (!is_dir($publicDirectory) && !mkdir($publicDirectory, 0775, true) && !is_dir($publicDirectory)) {
+            throw new \RuntimeException('Unable to create uploaded student file directory.');
+        }
+
+        $stored = $file->move($publicDirectory, $filename);
 
         if (!$stored) {
             throw new \RuntimeException('Unable to store uploaded student file.');
