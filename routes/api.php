@@ -122,6 +122,7 @@ Route::prefix('payment')->middleware('authenticate')->group(function () {
 // Document Upload Routes (Authentication Required)
 Route::prefix('document')->middleware('authenticate')->group(function () {
     Route::post('/upload', [App\Http\Controllers\DocumentUploadController::class, 'upload']);
+    Route::post('/upload-general', [App\Http\Controllers\DocumentUploadController::class, 'uploadGeneral']);
     Route::post('/upload-multiple', [App\Http\Controllers\DocumentUploadController::class, 'uploadMultiple']);
     Route::delete('/delete', [App\Http\Controllers\DocumentUploadController::class, 'delete']);
     Route::get('/info', [App\Http\Controllers\DocumentUploadController::class, 'getInfo']);

@@ -92,6 +92,79 @@ class DocumentUploadController extends Controller
     }
 
     /**
+     * General purpose document upload.
+     *
+     * POST /api/document/upload-general
+     * Body: multipart/form-data with 'file' field
+     *
+     * Stores file in: storage/app/public/uploads/
+     * Returns: uploads/{filename} for database storage
+     */
+    public function uploadGeneral(Request $request)
+    {
+        $fileField = $request->hasFile('file') ? 'file' : 'document';
+
+        $validator = Validator::make($request->all(), [
+            $fileField => 'required|file|mimes:pdf,doc,docx,jpg,jpeg,png,webp,csv,xls,xlsx|max:10240',
+        ], [
+            "{$fileField}.required" => 'Please select a file to upload.',
+            "{$fileField}.mimes" => 'Only PDF, DOC, DOCX, JPG, JPEG, PNG, WEBP, CSV, XLS, and XLSX files are allowed.',
+            "{$fileField}.max" => 'File size must not exceed 10MB.',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'error' => true,
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        try {
+            $file = $request->file($fileField);
+            $storedFile = $this->storeUploadedFile($file, $request);
+            $fileSize = $file->getSize();
+
+            Log::channel('daily')->info('[DocumentUpload] General file uploaded successfully', [
+                'original_name' => $file->getClientOriginalName(),
+                'stored_name' => $storedFile['stored_name'],
+                'file_path' => $storedFile['file_path'],
+                'ip' => $request->ip()
+            ]);
+
+            return response()->json([
+                'error' => false,
+                'message' => 'File uploaded successfully',
+                'data' => [
+                    'filename' => $storedFile['stored_name'],
+                    'stored_name' => $storedFile['stored_name'],
+                    'path' => $storedFile['file_path'],
+                    'file_path' => $storedFile['file_path'],
+                    'storage_path' => $storedFile['file_path'],
+                    'full_url' => $this->publicFileUrl($storedFile['file_path']),
+                    'original_name' => $file->getClientOriginalName(),
+                    'mime_type' => $file->getClientMimeType(),
+                    'file_size' => round($fileSize / 1024, 2),
+                    'file_size_bytes' => $fileSize,
+                    'uploaded_at' => now()->format('Y-m-d H:i:s')
+                ]
+            ], 200);
+        } catch (\Exception $e) {
+            Log::channel('daily')->error('[DocumentUpload] General upload failed', [
+                'error' => $e->getMessage(),
+                'line' => $e->getLine(),
+                'file' => $e->getFile()
+            ]);
+
+            return response()->json([
+                'error' => true,
+                'message' => 'Failed to upload file',
+                'details' => config('app.debug') ? $e->getMessage() : 'Internal server error'
+            ], 500);
+        }
+    }
+
+    /**
      * Upload multiple documents
      *
      * POST /api/document/upload-multiple

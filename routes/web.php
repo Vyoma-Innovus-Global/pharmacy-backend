@@ -18,6 +18,21 @@ Route::get('/', function () {
     return view('welcome');
 });
 
+Route::get('/storage/uploads/{path}', function (string $path) {
+    if (str_contains($path, '..') || str_starts_with($path, '/')) {
+        abort(404);
+    }
+
+    $uploadRoot = realpath(storage_path('app/public/uploads'));
+    $filePath = realpath(storage_path("app/public/uploads/{$path}"));
+
+    if (!$uploadRoot || !$filePath || !str_starts_with($filePath, $uploadRoot) || !is_file($filePath)) {
+        abort(404);
+    }
+
+    return response()->file($filePath);
+})->where('path', '.*');
+
 Route::prefix('payment')->group(function () {
     Route::post('/success', [PaymentController::class, 'institutePaymentSuccess']);
     Route::post('/fail', [PaymentController::class, 'institutePaymentFail']);
