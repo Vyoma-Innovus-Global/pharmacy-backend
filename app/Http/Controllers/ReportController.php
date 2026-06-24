@@ -766,6 +766,98 @@ class ReportController extends Controller
         }
     }
 
+    /**
+     * Get student marks details by registration number.
+     *
+     * Calls: public.fn_getstudentmarksdetails(
+     *   p_registrationnumber, p_usertypeid, p_userid
+     * )
+     */
+    public function studentMarksDetails(Request $request)
+    {
+        $registrationNumber = $request->input(
+            'registration_number',
+            $request->input('registrationNumber', $request->input('p_registrationnumber'))
+        );
+        $userTypeId = $request->input(
+            'user_type_id',
+            $request->input('userTypeId', $request->input('p_usertypeid'))
+        );
+        $userId = $request->input(
+            'user_id',
+            $request->input('userId', $request->input('p_userid'))
+        );
+
+        $validator = Validator::make([
+            'registration_number' => $registrationNumber,
+            'user_type_id' => $userTypeId,
+            'user_id' => $userId,
+        ], [
+            'registration_number' => 'required|string|max:50',
+            'user_type_id' => 'required|integer',
+            'user_id' => 'required|integer',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'error' => true,
+                'message' => $validator->errors(),
+            ], 422);
+        }
+
+        try {
+            $result = DB::select(
+                'SELECT public.fn_getstudentmarksdetails(?::varchar, ?::int, ?::bigint) AS data',
+                [
+                    trim($registrationNumber),
+                    (int) $userTypeId,
+                    (int) $userId,
+                ]
+            );
+
+            if (empty($result)) {
+                return response()->json([
+                    'error' => true,
+                    'message' => 'No marks details found for the given registration number.',
+                ], 404);
+            }
+
+            $raw = $result[0]->data ?? null;
+
+            if ($raw === null) {
+                return response()->json([
+                    'error' => true,
+                    'message' => 'No marks details found.',
+                ], 404);
+            }
+
+            $marksData = is_string($raw) ? json_decode($raw, true) : (array) $raw;
+
+            if (json_last_error() !== JSON_ERROR_NONE || empty($marksData)) {
+                return response()->json([
+                    'error' => true,
+                    'message' => 'Failed to parse student marks details from database.',
+                ], 500);
+            }
+
+            if (!empty($marksData['photo']) && is_string($marksData['photo'])) {
+                $marksData['photoUrl'] = url('storage/' . ltrim($marksData['photo'], '/'));
+            }
+
+            return response()->json([
+                'error' => false,
+                'message' => 'Data found',
+                'data' => $marksData,
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => true,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
 
 
 

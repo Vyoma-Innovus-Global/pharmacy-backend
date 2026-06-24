@@ -270,6 +270,8 @@ Route::prefix('reports')->group(function () {
     Route::get('/result-department-wise-report-list', [ReportController::class, 'resultDepartmentWiseReportList']);
     Route::get('/result-subject-wise-report-list', [ReportController::class, 'resultSubjectWiseReportList']);
     Route::get('/student-result-report', [ReportController::class, 'studentResultReport']);
+    Route::get('/student-marks-details', [ReportController::class, 'studentMarksDetails']);
+    Route::post('/student-marks-details', [ReportController::class, 'studentMarksDetails']);
 });
 
 Route::prefix('review')->middleware('authenticate')->group(function () {
