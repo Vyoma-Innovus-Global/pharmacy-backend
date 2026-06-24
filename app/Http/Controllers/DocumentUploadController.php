@@ -105,19 +105,29 @@ class DocumentUploadController extends Controller
         $fileField = $request->hasFile('file') ? 'file' : 'document';
 
         $validator = Validator::make($request->all(), [
-            $fileField => 'required|file|mimes:pdf,doc,docx,jpg,jpeg,png,webp,csv,xls,xlsx|max:10240',
+            $fileField => 'required|file|mimes:pdf,png,jpg,jpeg|max:200',
         ], [
             "{$fileField}.required" => 'Please select a file to upload.',
-            "{$fileField}.mimes" => 'Only PDF, DOC, DOCX, JPG, JPEG, PNG, WEBP, CSV, XLS, and XLSX files are allowed.',
-            "{$fileField}.max" => 'File size must not exceed 10MB.',
+            "{$fileField}.mimes" => 'Only PDF, PNG, JPG, and JPEG files are allowed.',
+            "{$fileField}.max" => 'File size must not exceed 200KB.',
         ]);
 
         if ($validator->fails()) {
-            return response()->json([
+            $response = [
                 'error' => true,
                 'message' => 'Validation failed',
                 'errors' => $validator->errors()
-            ], 422);
+            ];
+
+            if ($request->hasFile($fileField)) {
+                $file = $request->file($fileField);
+                $fileSizeBytes = $file->getSize();
+
+                $response['file_size'] = round($fileSizeBytes / 1024, 2) . ' KB';
+                $response['max_file_size'] = '200 KB';
+            }
+
+            return response()->json($response, 422);
         }
 
         try {
