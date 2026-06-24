@@ -134,6 +134,7 @@ Route::prefix('master')->middleware('authenticate')->group(function () {
     Route::get('/subdivision-list/{dist_id?}/{user_type?}', [AdminController::class, 'allSubdivisions']);
     Route::post('/block-municipality-list/{user_type?}', [AdminController::class, 'allBlockMunicipality']);
     Route::get('/students-board-list', [AdminController::class, 'studentsBoardList']);
+    Route::get('/council-board-list', [MasterController::class, 'councilBoardList'])->withoutMiddleware('authenticate');
 
     //Holiday Master
     Route::post('/import-holidayList', [MasterController::class, 'importHolidayList']);
@@ -266,12 +267,15 @@ Route::prefix('reports')->group(function () {
     Route::get('/registered-student-details-by-student-id', [ReportController::class, 'registeredStudentDetailsListByStudentId']);
     Route::post('/registered-student-details-by-student-id', [ReportController::class, 'registeredStudentDetailsListByStudentId']);
     Route::post('/update-student-details-by-admin', [ReportController::class, 'updateStudentDetailsByAdmin']);
+    Route::post('/update-student-details-by-admin-v1', [ReportController::class, 'updateStudentDetailsByAdminV1']);
     Route::post('/update-student-registration-status-by-admin', [ReportController::class, 'updateStudentRegistrationStatusByAdmin']);
     Route::get('/result-department-wise-report-list', [ReportController::class, 'resultDepartmentWiseReportList']);
     Route::get('/result-subject-wise-report-list', [ReportController::class, 'resultSubjectWiseReportList']);
     Route::get('/student-result-report', [ReportController::class, 'studentResultReport']);
     Route::get('/student-marks-details', [ReportController::class, 'studentMarksDetails']);
     Route::post('/student-marks-details', [ReportController::class, 'studentMarksDetails']);
+    Route::get('/student-registration-download', [ReportController::class, 'studentRegistrationDownload']);
+    Route::post('/student-registration-download', [ReportController::class, 'studentRegistrationDownload']);
 });
 
 Route::prefix('review')->middleware('authenticate')->group(function () {

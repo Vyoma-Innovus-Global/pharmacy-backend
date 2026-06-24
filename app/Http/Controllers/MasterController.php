@@ -950,5 +950,54 @@ class MasterController extends Controller
         }
     }
 
+    /**
+     * Get council board list.
+     *
+     * Calls: public.fn_get_council_board_list()
+     */
+    public function councilBoardList(Request $request)
+    {
+        try {
+            $result = DB::select('SELECT public.fn_get_council_board_list() AS data');
 
-}
+            if (empty($result)) {
+                return response()->json([
+                    'error' => true,
+                    'message' => 'No council board list found.',
+                ], 404);
+            }
+
+            $raw = $result[0]->data ?? null;
+
+            if ($raw === null) {
+                return response()->json([
+                    'error' => true,
+                    'message' => 'No council board list found.',
+                ], 404);
+            }
+
+            $boardList = is_string($raw) ? json_decode($raw, true) : (array) $raw;
+
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                return response()->json([
+                    'error' => true,
+                    'message' => 'Failed to parse council board list from database.',
+                ], 500);
+            }
+
+            return response()->json([
+                'error' => false,
+                'message' => 'Data found',
+                'data' => $boardList,
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => true,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+
+    }

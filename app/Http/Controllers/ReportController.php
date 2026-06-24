@@ -172,6 +172,10 @@ class ReportController extends Controller
                 ?? $studentData['student_id']
                 ?? $studentData['s_id']
                 ?? (int) $studentId;
+            $studentData['boardId'] = $studentData['boardId']
+                ?? $studentData['board_id']
+                ?? $studentData['p_boardid']
+                ?? null;
             $studentData['instregistrationstatus'] = $studentData['instregistrationstatus']
                 ?? $studentData['inst_registration_status']
                 ?? null;
@@ -333,6 +337,190 @@ class ReportController extends Controller
                     $payload['sub_division'],
                     $payload['municipality_block'],
                     $payload['board_name'],
+                    $payload['last_institute'],
+                    $payload['passing_year'],
+                    $payload['aggregate_marks'],
+                    $payload['marks_obtained'],
+                    $payload['percentage'],
+                    $payload['physics_full_marks'],
+                    $payload['chemistry_full_marks'],
+                    $payload['biology_math_full_marks'],
+                    $payload['physics_marks'],
+                    $payload['chemistry_marks'],
+                    $payload['biology_math_marks'],
+                    $payload['other_qualification'],
+                    $payload['citizenship_document'],
+                    $payload['caste_document'],
+                    $payload['physically_challenged_document'],
+                    $payload['aadhar_document'],
+                    $payload['kanyashree_document'],
+                    $payload['kanyashree_number'],
+                    $payload['pwd_document'],
+                    $payload['is_pwd'] === null ? null : (int) $payload['is_pwd'],
+                ]
+            );
+
+            $raw = $result[0]->data ?? null;
+            $responseData = is_string($raw) ? json_decode($raw, true) : (array) $raw;
+
+            if (json_last_error() !== JSON_ERROR_NONE || $raw === null) {
+                return response()->json([
+                    'error' => true,
+                    'message' => 'Failed to parse student update response from database.',
+                ], 500);
+            }
+
+            return response()->json([
+                'error' => false,
+                'message' => 'Student details updated',
+                'data' => $responseData,
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => true,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Update registered student details by admin using board id.
+     *
+     * Calls: public.fn_updatestudentdetailsbyadmin_v1(...)
+     */
+    public function updateStudentDetailsByAdminV1(Request $request)
+    {
+        $input = function (...$keys) use ($request) {
+            foreach ($keys as $key) {
+                if ($key !== null && $request->has($key)) {
+                    return $request->input($key);
+                }
+            }
+
+            return null;
+        };
+
+        $payload = [
+            'student_id' => $input('student_id', 'studentId', 'p_studentid'),
+            'admin_user_id' => $input('admin_user_id', 'adminUserId', 'p_adminuserid'),
+            'admin_user_type' => $input('admin_user_type', 'adminUserType', 'p_adminusertype'),
+            'first_name' => $input('first_name', 'firstName', 'p_firstname'),
+            'middle_name' => $input('middle_name', 'middleName', 'p_middlename'),
+            'last_name' => $input('last_name', 'lastName', 'p_lastname'),
+            'father_name' => $input('father_name', 'fatherName', 'p_fathername'),
+            'mother_name' => $input('mother_name', 'motherName', 'p_mothername'),
+            'date_of_birth' => $input('date_of_birth', 'dateOfBirth', 'p_dob'),
+            'gender' => $input('gender', null, 'p_gender'),
+            'phone' => $input('phone', null, 'p_phone'),
+            'email' => $input('email', null, 'p_email'),
+            'aadhar_no' => $input('aadhar_no', 'aadharNo', 'p_aadharno'),
+            'caste' => $input('caste', null, 'p_caste'),
+            'address' => $input('address', null, 'p_address'),
+            'police_station' => $input('police_station', 'policeStation', 'p_ps'),
+            'post_office' => $input('post_office', 'postOffice', 'p_po'),
+            'pin' => $input('pin', null, 'p_pin'),
+            'is_married' => $input('is_married', 'isMarried', 'p_ismarried'),
+            'is_kanyashree' => $input('is_kanyashree', 'isKanyashree', 'p_iskanyashree'),
+            'photo' => $input('photo', null, 'p_photo'),
+            'signature' => $input('signature', 'sign', 'p_sign'),
+            'guardian_name' => $input('guardian_name', 'guardianName', 'p_guardianname'),
+            'guardian_relation' => $input('guardian_relation', 'guardianRelation', 'p_guardianrelation'),
+            'citizenship' => $input('citizenship', null, 'p_citizenship'),
+            'state' => $input('state', null, 'p_state'),
+            'district' => $input('district', null, 'p_district'),
+            'sub_division' => $input('sub_division', 'subDivision', 'p_subdivision'),
+            'municipality_block' => $input('municipality_block', 'municipalityBlock', 'p_municipalityblock'),
+            'board_id' => $input('board_id', 'boardId', 'p_boardid'),
+            'last_institute' => $input('last_institute', 'lastInstitute', 'p_lastinstitute'),
+            'passing_year' => $input('passing_year', 'passingYear', 'p_passingyear'),
+            'aggregate_marks' => $input('aggregate_marks', 'aggregateMarks', 'p_aggregatemarks'),
+            'marks_obtained' => $input('marks_obtained', 'marksObtained', 'p_marksobtained'),
+            'percentage' => $input('percentage', null, 'p_percentage'),
+            'physics_full_marks' => $input('physics_full_marks', 'physicsFullMarks', 'p_physicsfullmarks'),
+            'chemistry_full_marks' => $input('chemistry_full_marks', 'chemistryFullMarks', 'p_chemistryfullmarks'),
+            'biology_math_full_marks' => $input('biology_math_full_marks', 'biologyMathFullMarks', 'p_biomathfullmarks'),
+            'physics_marks' => $input('physics_marks', 'physicsMarks', 'p_physicsmarks'),
+            'chemistry_marks' => $input('chemistry_marks', 'chemistryMarks', 'p_chemistrymarks'),
+            'biology_math_marks' => $input('biology_math_marks', 'biologyMathMarks', 'p_biomathmarks'),
+            'other_qualification' => $input('other_qualification', 'otherQualification', 'p_otherqualification'),
+            'citizenship_document' => $input('citizenship_document', 'citizenshipDocument', 'p_citizenshipdoc'),
+            'caste_document' => $input('caste_document', 'casteDocument', 'p_castdoc'),
+            'physically_challenged_document' => $input('physically_challenged_document', 'physicallyChallengedDocument', 'p_pccertificatedoc'),
+            'aadhar_document' => $input('aadhar_document', 'aadharDocument', 'p_aadhardoc'),
+            'kanyashree_document' => $input('kanyashree_document', 'kanyashreeDocument', 'p_kanyashreedoc'),
+            'kanyashree_number' => $input('kanyashree_number', 'kanyashreeNumber', 'kanyashreeId', 'p_kanyashreenumber'),
+            'pwd_document' => $input('pwd_document', 'pwdDocument', 'p_pwddoc'),
+            'is_pwd' => $input('is_pwd', 'isPwd', 's_pwd', 'p_ispwd'),
+        ];
+
+        $payload['pwd_document'] = $payload['pwd_document'] ?? $payload['physically_challenged_document'];
+        $payload['is_pwd'] = $payload['is_pwd'] ?? ($payload['pwd_document'] ? 1 : 0);
+
+        $validator = Validator::make($payload, [
+            'student_id' => 'required|integer',
+            'admin_user_id' => 'required|integer',
+            'admin_user_type' => 'required|integer',
+            'board_id' => 'required|integer',
+            'date_of_birth' => 'nullable|string',
+            'is_married' => 'nullable|integer',
+            'is_kanyashree' => 'nullable|integer',
+            'is_pwd' => 'nullable|integer',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'error' => true,
+                'message' => $validator->errors(),
+            ], 422);
+        }
+
+        try {
+            $payload = $this->storeUploadedStudentUpdateFiles($request, $payload);
+
+            $result = DB::select(
+                'SELECT public.fn_updatestudentdetailsbyadmin_v1(
+                    ?::bigint, ?::bigint, ?::bigint,
+                    ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar,
+                    ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar,
+                    ?::varchar, ?::smallint, ?::smallint, ?::varchar, ?::varchar,
+                    ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar,
+                    ?::bigint, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar,
+                    ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar,
+                    ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar,
+                    ?::varchar, ?::varchar, ?::smallint
+                ) AS data',
+                [
+                    (int) $payload['student_id'],
+                    (int) $payload['admin_user_id'],
+                    (int) $payload['admin_user_type'],
+                    $payload['first_name'],
+                    $payload['middle_name'],
+                    $payload['last_name'],
+                    $payload['father_name'],
+                    $payload['mother_name'],
+                    $payload['date_of_birth'],
+                    $payload['gender'],
+                    $payload['phone'],
+                    $payload['email'],
+                    $payload['aadhar_no'],
+                    $payload['caste'],
+                    $payload['address'],
+                    $payload['police_station'],
+                    $payload['post_office'],
+                    $payload['pin'],
+                    $payload['is_married'] === null ? null : (int) $payload['is_married'],
+                    $payload['is_kanyashree'] === null ? null : (int) $payload['is_kanyashree'],
+                    $payload['photo'],
+                    $payload['signature'],
+                    $payload['guardian_name'],
+                    $payload['guardian_relation'],
+                    $payload['citizenship'],
+                    $payload['state'],
+                    $payload['district'],
+                    $payload['sub_division'],
+                    $payload['municipality_block'],
+                    (int) $payload['board_id'],
                     $payload['last_institute'],
                     $payload['passing_year'],
                     $payload['aggregate_marks'],
@@ -848,6 +1036,98 @@ class ReportController extends Controller
                 'error' => false,
                 'message' => 'Data found',
                 'data' => $marksData,
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => true,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Get student registration download details by registration number.
+     *
+     * Calls: public.fn_downlaodstudentregitration_registrationid(
+     *   p_registrationnumber, p_usertypeid, p_userid
+     * )
+     */
+    public function studentRegistrationDownload(Request $request)
+    {
+        $registrationNumber = $request->input(
+            'registration_number',
+            $request->input('registrationNumber', $request->input('p_registrationnumber'))
+        );
+        $userTypeId = $request->input(
+            'user_type_id',
+            $request->input('userTypeId', $request->input('p_usertypeid'))
+        );
+        $userId = $request->input(
+            'user_id',
+            $request->input('userId', $request->input('p_userid'))
+        );
+
+        $validator = Validator::make([
+            'registration_number' => $registrationNumber,
+            'user_type_id' => $userTypeId,
+            'user_id' => $userId,
+        ], [
+            'registration_number' => 'required|string|max:50',
+            'user_type_id' => 'required|integer',
+            'user_id' => 'required|integer',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'error' => true,
+                'message' => $validator->errors(),
+            ], 422);
+        }
+
+        try {
+            $result = DB::select(
+                'SELECT public.fn_downlaodstudentregitration_registrationid(?::varchar, ?::int, ?::bigint) AS data',
+                [
+                    trim($registrationNumber),
+                    (int) $userTypeId,
+                    (int) $userId,
+                ]
+            );
+
+            if (empty($result)) {
+                return response()->json([
+                    'error' => true,
+                    'message' => 'No student registration download data found.',
+                ], 404);
+            }
+
+            $raw = $result[0]->data ?? null;
+
+            if ($raw === null) {
+                return response()->json([
+                    'error' => true,
+                    'message' => 'No student registration download data found.',
+                ], 404);
+            }
+
+            $registrationData = is_string($raw) ? json_decode($raw, true) : (array) $raw;
+
+            if (json_last_error() !== JSON_ERROR_NONE || empty($registrationData)) {
+                return response()->json([
+                    'error' => true,
+                    'message' => 'Failed to parse student registration download data from database.',
+                ], 500);
+            }
+
+            if (!empty($registrationData['photo']) && is_string($registrationData['photo'])) {
+                $registrationData['photoUrl'] = url('storage/' . ltrim($registrationData['photo'], '/'));
+            }
+
+            return response()->json([
+                'error' => false,
+                'message' => 'Data found',
+                'data' => $registrationData,
             ], 200);
 
         } catch (\Exception $e) {
