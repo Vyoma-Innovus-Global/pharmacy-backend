@@ -955,6 +955,239 @@ class ReportController extends Controller
     }
 
     /**
+     * Get result status counts for an institute.
+     *
+     * Calls: public.fn_getresulatstatuscount_inst(
+     *   p_instcode, p_examyear, p_semestername, p_department, p_userid, p_usertypeid
+     * )
+     */
+    public function resultStatusCountInst(Request $request)
+    {
+        $instCode = $request->input(
+            'inst_code',
+            $request->input('instCode', $request->input('p_instcode'))
+        );
+        $examYear = $request->input(
+            'exam_year',
+            $request->input('examYear', $request->input('p_examyear'))
+        );
+        $semesterName = $request->input(
+            'semester_name',
+            $request->input('semesterName', $request->input('p_semestername'))
+        );
+        $department = $request->input(
+            'department',
+            $request->input('p_department')
+        );
+        $userId = $request->input(
+            'user_id',
+            $request->input('userId', $request->input('p_userid'))
+        );
+        $userTypeId = $request->input(
+            'user_type_id',
+            $request->input('userTypeId', $request->input('p_usertypeid'))
+        );
+
+        $validator = Validator::make([
+            'inst_code' => $instCode,
+            'exam_year' => $examYear,
+            'semester_name' => $semesterName,
+            'department' => $department,
+            'user_id' => $userId,
+            'user_type_id' => $userTypeId,
+        ], [
+            'inst_code' => 'nullable|string|max:50',
+            'exam_year' => 'required|string|max:20',
+            'semester_name' => 'required|string|max:50',
+            'department' => 'required|string|max:50',
+            'user_id' => 'required|integer',
+            'user_type_id' => 'required|integer',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'error' => true,
+                'message' => $validator->errors(),
+            ], 422);
+        }
+
+        try {
+            $result = DB::select(
+                'SELECT public.fn_getresulatstatuscount_inst(?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::bigint, ?::int) AS data',
+                [
+                    $instCode !== null && $instCode !== '' ? trim($instCode) : null,
+                    trim($examYear),
+                    trim($semesterName),
+                    trim($department),
+                    (int) $userId,
+                    (int) $userTypeId,
+                ]
+            );
+
+            if (empty($result)) {
+                return response()->json([
+                    'error' => true,
+                    'message' => 'No result status count data found.',
+                ], 404);
+            }
+
+            $raw = $result[0]->data ?? null;
+
+            if ($raw === null) {
+                return response()->json([
+                    'error' => true,
+                    'message' => 'No result status count data found.',
+                ], 404);
+            }
+
+            $statusCountData = is_string($raw) ? json_decode($raw, true) : (array) $raw;
+
+            if (json_last_error() !== JSON_ERROR_NONE || !is_array($statusCountData)) {
+                return response()->json([
+                    'error' => true,
+                    'message' => 'Failed to parse result status count data from database.',
+                ], 500);
+            }
+
+            return response()->json([
+                'error' => false,
+                'message' => 'Data found',
+                'data' => $statusCountData,
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => true,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Get paginated result status details for an institute.
+     *
+     * Calls: public.fn_getresulatstatusdetails_inst(
+     *   p_instcode, p_examyear, p_semestername, p_department,
+     *   p_page_no, p_limit, p_userid, p_usertypeid
+     * )
+     */
+    public function resultStatusDetailsInst(Request $request)
+    {
+        $instCode = $request->input(
+            'inst_code',
+            $request->input('instCode', $request->input('p_instcode'))
+        );
+        $examYear = $request->input(
+            'exam_year',
+            $request->input('examYear', $request->input('p_examyear'))
+        );
+        $semesterName = $request->input(
+            'semester_name',
+            $request->input('semesterName', $request->input('p_semestername'))
+        );
+        $department = $request->input(
+            'department',
+            $request->input('p_department')
+        );
+        $pageNo = $request->input(
+            'page_no',
+            $request->input('pageNo', $request->input('p_page_no'))
+        );
+        $limit = $request->input(
+            'limit',
+            $request->input('p_limit')
+        );
+        $userId = $request->input(
+            'user_id',
+            $request->input('userId', $request->input('p_userid'))
+        );
+        $userTypeId = $request->input(
+            'user_type_id',
+            $request->input('userTypeId', $request->input('p_usertypeid'))
+        );
+
+        $validator = Validator::make([
+            'inst_code' => $instCode,
+            'exam_year' => $examYear,
+            'semester_name' => $semesterName,
+            'department' => $department,
+            'page_no' => $pageNo,
+            'limit' => $limit,
+            'user_id' => $userId,
+            'user_type_id' => $userTypeId,
+        ], [
+            'inst_code' => 'nullable|string|max:50',
+            'exam_year' => 'required|string|max:20',
+            'semester_name' => 'required|string|max:50',
+            'department' => 'required|string|max:50',
+            'page_no' => 'required|integer|min:1',
+            'limit' => 'required|integer|min:1',
+            'user_id' => 'required|integer',
+            'user_type_id' => 'required|integer',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'error' => true,
+                'message' => $validator->errors(),
+            ], 422);
+        }
+
+        try {
+            $result = DB::select(
+                'SELECT public.fn_getresulatstatusdetails_inst(?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::integer, ?::integer, ?::bigint, ?::int) AS data',
+                [
+                    $instCode !== null && $instCode !== '' ? trim($instCode) : null,
+                    trim($examYear),
+                    trim($semesterName),
+                    trim($department),
+                    (int) $pageNo,
+                    (int) $limit,
+                    (int) $userId,
+                    (int) $userTypeId,
+                ]
+            );
+
+            if (empty($result)) {
+                return response()->json([
+                    'error' => true,
+                    'message' => 'No result status details found.',
+                ], 404);
+            }
+
+            $raw = $result[0]->data ?? null;
+
+            if ($raw === null) {
+                return response()->json([
+                    'error' => true,
+                    'message' => 'No result status details found.',
+                ], 404);
+            }
+
+            $statusDetailsData = is_string($raw) ? json_decode($raw, true) : (array) $raw;
+
+            if (is_string($raw) && json_last_error() !== JSON_ERROR_NONE) {
+                return response()->json([
+                    'error' => true,
+                    'message' => 'Failed to parse result status details from database.',
+                ], 500);
+            }
+
+            return response()->json([
+                'error' => false,
+                'message' => 'Data found',
+                'data' => $statusDetailsData,
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => true,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
      * Get student marks details by registration number.
      *
      * Calls: public.fn_getstudentmarksdetails(
