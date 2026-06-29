@@ -841,33 +841,82 @@ class StudentController extends Controller
             $sess_year = $request->sess_year;
             $reg_status = $request->reg_status;
 
-            $students = Registerstudent::when($i_code, function ($query) use ($i_code) {
-                return $query->where('s_inst_code', $i_code);
-            })
-                ->where('is_active', 1)
-                ->where('is_registration_payment', 1)
+            $students = DB::table('tbl_student_master as sm')
+                ->leftJoin('pharmacy_register_student_final as prsf', 'prsf.s_appl_reg_no', '=', 'sm.sm_reg_no')
+                ->leftJoin('registration_certificate_issue as rci', function ($join) {
+                    $join->on('rci.reg_no', '=', 'sm.sm_reg_no')
+                         ->on('rci.sess_year', '=', 'sm.sm_session_year');
+                })
+                ->when($i_code, function ($query) use ($i_code) {
+                    return $query->where('sm.sm_inst_code', $i_code);
+                })
+                ->where('sm.sm_is_active', 1)
                 ->when($reg_status === 'ACTIVE', function ($query) {
-                    return $query->where('s_registration_cancel', 0)->whereBetween('s_part1_status', [1, 8]);
+                    return $query->where(function ($q) {
+                        $q->where(function ($q1) {
+                            $q1->where('sm.sm_registration_cancel', 0)
+                               ->where(function ($sub) {
+                                   $sub->whereBetween('sm.sm_part1_status', [1, 8])
+                                       ->orWhereNull('sm.sm_part1_status')
+                                       ->orWhere('sm.sm_part1_status', '');
+                               });
+                        })->orWhere(function ($q2) {
+                            $q2->where('prsf.s_registration_cancel', 0)
+                               ->where(function ($sub) {
+                                   $sub->whereBetween('prsf.s_part1_status', [1, 8])
+                                       ->orWhereNull('prsf.s_part1_status')
+                                       ->orWhere('prsf.s_part1_status', '');
+                               });
+                        });
+                    });
                 })
                 ->when($reg_status === 'CANCELLED', function ($query) {
-                    return $query->where('s_registration_cancel', 1)->where('s_part1_status', 9);
+                    return $query->where(function ($q) {
+                        $q->where(function ($q1) {
+                            $q1->where('sm.sm_registration_cancel', 1)
+                               ->where('sm.sm_part1_status', 9);
+                        })->orWhere(function ($q2) {
+                            $q2->where('prsf.s_registration_cancel', 1)
+                               ->where('prsf.s_part1_status', 9);
+                        });
+                    });
                 })
                 ->when(empty($reg_status), function ($query) {
-                    return $query->where('s_registration_cancel', 0)->whereBetween('s_part1_status', [1, 8]);
+                    return $query->where(function ($q) {
+                        $q->where(function ($q1) {
+                            $q1->where('sm.sm_registration_cancel', 0)
+                               ->where(function ($sub) {
+                                   $sub->whereBetween('sm.sm_part1_status', [1, 8])
+                                       ->orWhereNull('sm.sm_part1_status')
+                                       ->orWhere('sm.sm_part1_status', '');
+                               });
+                        })->orWhere(function ($q2) {
+                            $q2->where('prsf.s_registration_cancel', 0)
+                               ->where(function ($sub) {
+                                   $sub->whereBetween('prsf.s_part1_status', [1, 8])
+                                       ->orWhereNull('prsf.s_part1_status')
+                                       ->orWhere('prsf.s_part1_status', '');
+                               });
+                        });
+                    });
                 })
-                ->where('s_appl_sess_year', $sess_year)
+                ->where('sm.sm_session_year', $sess_year)
                 ->select(
-                    's_id',
-                    's_appl_reg_no',
-                    's_appl_reg_year',
-                    's_candidate_name',
-                    's_appl_form_num',
-                    's_inst_code',
-                    's_reg_cancel_reason',
-                    'admission_type'
+                    'sm.sm_id as s_id',
+                    'sm.sm_reg_no as s_appl_reg_no',
+                    'sm.sm_appl_reg_year as s_appl_reg_year',
+                    'sm.sm_full_name as s_candidate_name',
+                    'sm.sm_form_no as s_appl_form_num',
+                    'sm.sm_inst_code as s_inst_code',
+                    'sm.sm_reg_cancel_reason as s_reg_cancel_reason',
+                    'sm.sm_admission_type as admission_type',
+                    'rci.reg_issued_on',
+                    DB::raw('CASE WHEN sm.sm_is_registration_payment = 1 OR prsf.is_registration_payment = 1 THEN 1 ELSE 0 END as is_registration_payment')
                 )
-                ->orderBy('s_inst_code', 'asc')
-                ->get();
+                ->orderBy('sm.sm_inst_code', 'asc')
+                ->get()
+                ->unique('s_appl_form_num')
+                ->values();
 
             return response()->json([
                 'status' => 'success',
@@ -956,25 +1005,50 @@ class StudentController extends Controller
             $i_code = $request->i_code;
             $sess_year = $request->sess_year;
 
-            $students = Registerstudent::when($i_code, function ($query) use ($i_code) {
-                return $query->where('s_inst_code', $i_code);
-            })
-                ->where('is_active', 1)
-                ->where('is_registration_payment', 1)
-                ->whereBetween('s_part1_status', [2, 8])
-                ->where('s_appl_sess_year', $sess_year)
+            $students = DB::table('tbl_student_master as sm')
+                ->leftJoin('pharmacy_register_student_final as prsf', 'prsf.s_appl_reg_no', '=', 'sm.sm_reg_no')
+                ->leftJoin('registration_certificate_issue as rci', function ($join) {
+                    $join->on('rci.reg_no', '=', 'sm.sm_reg_no')
+                         ->on('rci.sess_year', '=', 'sm.sm_session_year');
+                })
+                ->when($i_code, function ($query) use ($i_code) {
+                    return $query->where('sm.sm_inst_code', $i_code);
+                })
+                ->where('sm.sm_is_active', 1)
+                ->where(function ($q) {
+                    $q->where(function ($q1) {
+                        $q1->where('sm.sm_registration_cancel', 0)
+                           ->where(function ($sub) {
+                               $sub->whereBetween('sm.sm_part1_status', [1, 8])
+                                   ->orWhereNull('sm.sm_part1_status')
+                                   ->orWhere('sm.sm_part1_status', '');
+                           });
+                    })->orWhere(function ($q2) {
+                        $q2->where('prsf.s_registration_cancel', 0)
+                           ->where(function ($sub) {
+                               $sub->whereBetween('prsf.s_part1_status', [1, 8])
+                                   ->orWhereNull('prsf.s_part1_status')
+                                   ->orWhere('prsf.s_part1_status', '');
+                           });
+                    });
+                })
+                ->where('sm.sm_session_year', $sess_year)
                 ->select(
-                    's_id',
-                    's_appl_reg_no',
-                    's_appl_reg_year',
-                    's_candidate_name',
-                    's_appl_form_num',
-                    's_inst_code',
-                    's_reg_cancel_reason',
-                    'admission_type'
+                    'sm.sm_id as s_id',
+                    'sm.sm_reg_no as s_appl_reg_no',
+                    'sm.sm_appl_reg_year as s_appl_reg_year',
+                    'sm.sm_full_name as s_candidate_name',
+                    'sm.sm_form_no as s_appl_form_num',
+                    'sm.sm_inst_code as s_inst_code',
+                    'sm.sm_reg_cancel_reason as s_reg_cancel_reason',
+                    'sm.sm_admission_type as admission_type',
+                    'rci.reg_issued_on',
+                    DB::raw('CASE WHEN sm.sm_is_registration_payment = 1 OR prsf.is_registration_payment = 1 THEN 1 ELSE 0 END as is_registration_payment')
                 )
-                ->orderBy('s_inst_code', 'asc')
-                ->get();
+                ->orderBy('sm.sm_inst_code', 'asc')
+                ->get()
+                ->unique('s_appl_form_num')
+                ->values();
 
             return response()->json([
                 'status' => 'success',
@@ -1071,101 +1145,44 @@ class StudentController extends Controller
         $sess_yr = $request->sess_yr;
         $reg_numbers = $request->reg_numbers;
         $issue_date = $request->issue_date; 
-        $st_tbl = 'pharmacy_register_student_final';
-        $inst_tbl = 'institute_master';
         $certificate_type = $request->certificate_type;
 
         try {
-            
-            if($certificate_type == 'original'){
-                // Step 1: Check existing issue records
-                $issueRecords = DB::table('registration_certificate_issue')
-                    ->whereIn('reg_no', $reg_numbers)
-                    ->where('sess_year', $sess_yr)
-                    ->where('certificate_type', $certificate_type)
-                    ->get()
-                    ->keyBy('reg_no');
-                
-                $notIssued = [];
-                foreach ($reg_numbers as $reg_no) {
-                    if (!isset($issueRecords[$reg_no]) || empty($issueRecords[$reg_no]->reg_issued_on)) {
-                        $notIssued[] = $reg_no;
-                    }
-                }
-    
+            $pg_array = '{' . implode(',', $reg_numbers) . '}';
+            $db_res = DB::select(
+                'SELECT public.fn_generate_registration_certificates(?, ?::varchar[], ?, ?) AS data',
+                [$sess_yr, $pg_array, $issue_date, $certificate_type]
+            );
 
-                // Step 2: If any record has no issue date and user didn't provide it  stop
-                if (!empty($notIssued) && empty($issue_date)) {
-                    return response()->json([
-                        'error' => true,
-                        'message' => 'Following registration numbers have no issue date. Please provide an issue date to create their records.',
-                        'missing_reg_nos' => $notIssued,
-                    ], 200);
-                }
+            $res = json_decode($db_res[0]->data ?? '{}');
 
-                // Step 3: If issue_date provided, insert missing records
-                if (!empty($notIssued) && !empty($issue_date)) {
-                    foreach ($notIssued as $reg_no) {
-                        
-                        if (isset($issueRecords[$reg_no])) {
-                            continue;
-                        } else {
-                            DB::table('registration_certificate_issue')->insert([
-                                'sess_year' => $sess_yr,
-                                'reg_year' => explode('-', $sess_yr)[1],
-                                'inst_code' => DB::table($st_tbl)->where('s_appl_reg_no', $reg_no)->value('s_inst_code'),
-                                'dept_code' => 'PHARM',
-                                'reg_no' => $reg_no,
-                                'reg_issued_on' => $issue_date,
-                                'certificate_type' => $certificate_type,
-                                'is_download' => 1,
-                            ]);
-                        }
-                        
-                    }
-                }
+            if (!empty($res->error)) {
+                $statusCode = ($certificate_type == 'duplicate' && empty($issue_date)) ? 400 : 200;
+                return response()->json([
+                    'error' => true,
+                    'message' => $res->message ?? '',
+                    'missing_reg_nos' => $res->missing_reg_nos ?? null,
+                ], $statusCode);
+            }
 
-                $students = DB::table($st_tbl . ' as s')
-                ->select([
-                    's.s_appl_form_num',
-                    's.s_appl_reg_no',
-                    's.s_first_name',
-                    's.s_middle_name',
-                    's.s_last_name',
-                    's.s_photo',
-                    's.s_sign',
-                    's.s_inst_code',
-                    'i.i_code',
-                    'i.i_name',
-                    's.s_father_name',
-                    's.s_appl_sess_year',
-                    'rci.reg_issued_on'
-                ])
-                ->join($inst_tbl . ' as i', 'i.i_code', '=', 's.s_inst_code')
-                ->join('registration_certificate_issue as rci', 'rci.reg_no', '=', 's.s_appl_reg_no')
-                ->whereIn('s.s_appl_reg_no', $reg_numbers)
-                ->where('s.s_appl_sess_year', $sess_yr)
-                ->distinct()
-				->orderby('s.s_appl_reg_no','ASC')
-                ->get();
+            $students = collect($res->students ?? []);
 
+            if ($students->isEmpty()) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'No students found.',
+                ], 404);
+            }
 
-                if ($students->isEmpty()) {
-                    return response()->json([
-                        'status' => 'error',
-                        'message' => 'No students found.',
-                    ], 404);
-                }
+            // Step 5: Group by institute
+            $groupedByInstitute = $students->groupBy('s_inst_code');
+            $savedFiles = [];
+            ini_set('memory_limit', '1024M');
+            ini_set('max_execution_time', 0);
 
-                // Step 5: Group by institute
-                $groupedByInstitute = $students->groupBy('s_inst_code');
-                $savedFiles = [];
-                ini_set('memory_limit', '1024M');
-                ini_set('max_execution_time', 0);
-
+            if ($certificate_type == 'original') {
                 foreach ($groupedByInstitute as $inst_code => $studentGroup) {
-                    #$certificates = [];
-					$allHtml = '';
+                    $allHtml = '';
                     foreach ($studentGroup as $result) {
                         $certInfo = [
                             'st_form_number' => $result->s_appl_form_num,
@@ -1179,20 +1196,17 @@ class StudentController extends Controller
                             'st_profile_img' => $result->s_photo,
                             'st_profile_sign' => $result->s_sign,
                             'reg_issued_on' => $result->reg_issued_on,
-                            'certificate_type'=>"original"
+                            'certificate_type' => "original"
                         ];
-
-                        #$certificates[] = $certInfo;
-						$html = view('registration-certificate', ['data' => $certInfo])->render();
-						$allHtml .= $html;
+                        $html = view('registration-certificate', ['data' => $certInfo])->render();
+                        $allHtml .= $html;
                     }
 
                     // Step 6: Generate PDF
                     $pdf = PDF::loadHTML($allHtml)->setPaper('a4', 'portrait');
-                
 
                     $fileName = 'PHARM-REG_CERTIFICATE-' . $inst_code . '-' . $sess_yr . '.pdf';
-                    $filePath = storage_path('app/public/reg_certificates/' . $sess_yr . '/' . $fileName);
+                    $filePath = public_path('storage/reg_certificates/' . $sess_yr . '/' . $fileName);
 
                     if (!file_exists(dirname($filePath))) {
                         mkdir(dirname($filePath), 0777, true);
@@ -1202,78 +1216,16 @@ class StudentController extends Controller
                     unset($pdf);
                     gc_collect_cycles();
 
-                    $savedFiles[] = $filePath;
+                    $savedFiles[] = url('storage/reg_certificates/' . $sess_yr . '/' . $fileName);
                 }
-
-                
 
                 return response()->json([
                     'status' => 'success',
                     'message' => 'Registration Certificates Generated Successfully.',
                     'files' => $savedFiles,
                 ], 200);
-            }
-            elseif($certificate_type == 'duplicate'){
 
-                // Step 2: If any record has no issue date and user didn't provide it → stop
-                if (empty($issue_date)) {
-                    return response()->json([
-                        'error' => true,
-                        'message' => 'Issue date must be given',
-                    ], 400);
-                }
-
-                // Step 3: If issue_date provided, insert missing records
-                if (!empty($issue_date)) {
-                    foreach ($reg_numbers as $reg_no) {  
-                            DB::table('registration_certificate_issue')->insert([
-                                'sess_year' => $sess_yr,
-                                'reg_year' => explode('-', $sess_yr)[1],
-                                'inst_code' => DB::table($st_tbl)->where('s_appl_reg_no', $reg_no)->value('s_inst_code'),
-                                'dept_code' => 'PHARM',
-                                'reg_no' => $reg_no,
-                                'reg_issued_on' => $issue_date,
-                                'certificate_type' => $certificate_type,
-                                'is_download' => 1,
-                            ]);
-                    }
-                }
-
-                $students = DB::table($st_tbl . ' as s')
-                ->select([
-                    's.s_appl_form_num',
-                    's.s_appl_reg_no',
-                    's.s_first_name',
-                    's.s_middle_name',
-                    's.s_last_name',
-                    's.s_photo',
-                    's.s_sign',
-                    's.s_inst_code',
-                    'i.i_code',
-                    'i.i_name',
-                    's.s_father_name',
-                    's.s_appl_sess_year',
-                    'rci.reg_issued_on'
-                ])
-                ->join($inst_tbl . ' as i', 'i.i_code', '=', 's.s_inst_code')
-                ->join('registration_certificate_issue as rci', 'rci.reg_no', '=', 's.s_appl_reg_no')
-                ->whereIn('s.s_appl_reg_no', $reg_numbers)
-                ->where('s.s_appl_sess_year', $sess_yr)
-                ->distinct()
-                ->get();
-
-
-                if ($students->isEmpty()) {
-                    return response()->json([
-                        'status' => 'error',
-                        'message' => 'No students found.',
-                    ], 404);
-                }
-
-                // Step 5: Group by institute
-                $groupedByInstitute = $students->groupBy('s_inst_code');
-                $savedFiles = [];
-                ini_set('memory_limit', '1024M');
+            } elseif ($certificate_type == 'duplicate') {
                 ini_set('max_execution_time', 300);
 
                 foreach ($groupedByInstitute as $inst_code => $studentGroup) {
@@ -1291,9 +1243,8 @@ class StudentController extends Controller
                             'st_profile_img' => $result->s_photo,
                             'st_profile_sign' => $result->s_sign,
                             'reg_issued_on' => $result->reg_issued_on,
-                            'certificate_type'=>"duplicate"
+                            'certificate_type' => "duplicate"
                         ];
-
                         $certificates[] = $certInfo;
                     }
 
@@ -1301,8 +1252,8 @@ class StudentController extends Controller
                     $pdf = PDF::loadView('registration-certificate', ['student' => $certificates])
                         ->setPaper('a4', 'portrait');
 
-                    $fileName = 'PHARM-REG_CERTIFICATE-' . $inst_code . '-' . $sess_yr .'-'.$reg_numbers[0]. '.pdf';
-                    $filePath = storage_path('app/public/reg_certificates/' . $sess_yr . '/' . $fileName);
+                    $fileName = 'PHARM-REG_CERTIFICATE-' . $inst_code . '-' . $sess_yr . '-' . $reg_numbers[0] . '.pdf';
+                    $filePath = public_path('storage/reg_certificates/' . $sess_yr . '/' . $fileName);
 
                     if (!file_exists(dirname($filePath))) {
                         mkdir(dirname($filePath), 0777, true);
@@ -1312,10 +1263,8 @@ class StudentController extends Controller
                     unset($pdf);
                     gc_collect_cycles();
 
-                    $savedFiles[] = $filePath;
+                    $savedFiles[] = url('storage/reg_certificates/' . $sess_yr . '/' . $fileName);
                 }
-
-            
 
                 return response()->json([
                     'status' => 'success',
@@ -1323,10 +1272,6 @@ class StudentController extends Controller
                     'files' => $savedFiles,
                 ], 200);
             }
-            
-
-            
-            
 
         } catch (\Exception $e) {
             Log::error('Error generating registration certificates: ' . $e->getMessage());
@@ -1337,79 +1282,61 @@ class StudentController extends Controller
         }
     }
 
-   public function printRegistrationCertificateSingle($reg_num, $sess_yr)
-{
-    
-    $st_tbl = 'pharmacy_register_student_final';
-    $inst_tbl = 'institute_master';
-    $certificate_type = 'original';
+    public function printRegistrationCertificateSingle($reg_num, $sess_yr)
+    {
+        try {
+            $pg_array = '{' . $reg_num . '}';
+            $db_res = DB::select(
+                'SELECT public.fn_generate_registration_certificates(?, ?::varchar[], ?, ?) AS data',
+                [$sess_yr, $pg_array, null, 'original']
+            );
 
-    try {
-        $students = DB::table($st_tbl)
-            ->select([
-                's_appl_form_num',
-                's_appl_reg_no',
-                's_first_name',
-                's_middle_name',
-                's_last_name',
-                's_photo',
-                's_sign',
-                's_inst_code',
-                'i_code',
-                'i_name',
-                's_father_name',
-                's_appl_sess_year',
-                'rci.reg_issued_on'
-            ])
-            ->join($inst_tbl, 'i_code', '=', 's_inst_code')
-            ->join('registration_certificate_issue as rci', 'rci.reg_no', '=', 'pharmacy_register_student_final.s_appl_reg_no')
-            ->where('s_appl_reg_no', $reg_num)
-            ->where('s_appl_sess_year', $sess_yr)
-            ->get();
+            $res = json_decode($db_res[0]->data ?? '{}');
+            $students = collect($res->students ?? []);
 
-        if ($students->isEmpty()) {
+            if ($students->isEmpty()) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'No students found'
+                ], 404);
+            }
+
+            $groupedByInstitute = $students->groupBy('s_inst_code');
+            foreach ($groupedByInstitute as $inst_code => $studentGroup) {
+
+                foreach ($studentGroup as $result) {
+                    $certificates = [
+                        'st_form_number' => $result->s_appl_form_num,
+                        'st_reg_number' => $result->s_appl_reg_no,
+                        'st_session' => $result->s_appl_sess_year,
+                        'st_full_name' => trim($result->s_first_name . ' ' . $result->s_middle_name . ' ' . $result->s_last_name),
+                        'st_gur_name' => $result->s_father_name,
+                        'st_institute' => $result->s_inst_code,
+                        'st_institute_name' => $result->i_name,
+                        'st_course' => 'PHARMACY (PHARM)',
+                        'st_profile_img' => $result->s_photo,
+                        'st_profile_sign' => $result->s_sign,
+                        'reg_issued_on' => $result->reg_issued_on,
+                        'certificate_type' => "original"
+                    ];
+                }
+                $pdf = PDF::loadView('registration-certificate-single', [
+                    'data' => $certificates
+                ])->setPaper('a4', 'portrait');
+
+                $fileName = "PHARM-REG_CERTIFICATE-{$inst_code}-{$sess_yr}.pdf";
+
+                return $pdf->stream($fileName);
+            }
+        } catch (\Exception $e) {
+            Log::error('Error generating certificate: ' . $e->getMessage());
+
             return response()->json([
                 'status' => 'error',
-                'message' => 'No students found'
-            ], 404);
+                'message' => $e->getMessage(),
+            ], 500);
         }
-
-        $groupedByInstitute = $students->groupBy('s_inst_code');
-        foreach ($groupedByInstitute as $inst_code => $studentGroup) {
-
-            foreach ($studentGroup as $result) {
-                $certificates = [
-                    'st_form_number' => $result->s_appl_form_num,
-                    'st_reg_number' => $result->s_appl_reg_no,
-                    'st_session' => $result->s_appl_sess_year,
-                    'st_full_name' => trim($result->s_first_name . ' ' . $result->s_middle_name . ' ' . $result->s_last_name),
-                    'st_gur_name' => $result->s_father_name,
-                    'st_institute' => $result->s_inst_code,
-                    'st_institute_name' => $result->i_name,
-                    'st_course' => 'PHARMACY (PHARM)',
-                    'st_profile_img' => $result->s_photo,
-                    'st_profile_sign' => $result->s_sign,
-                    'reg_issued_on' => $result->reg_issued_on,
-                    'certificate_type'=>"original"
-                ];
-            }
-            $pdf = PDF::loadView('registration-certificate-single', [
-                'data' => $certificates
-            ])->setPaper('a4', 'portrait');
-
-            $fileName = "PHARM-REG_CERTIFICATE-{$inst_code}-{$sess_yr}.pdf";
-
-            return $pdf->stream($fileName);
-        }
-    } catch (\Exception $e) {
-        Log::error('Error generating certificate: ' . $e->getMessage());
-
-        return response()->json([
-            'status' => 'error',
-            'message' => $e->getMessage(),
-        ], 500);
     }
-}
 
     public function downloadRegZip_bkp(Request $request)
         {
