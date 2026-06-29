@@ -99,6 +99,8 @@ Route::prefix('enrollment')->middleware('authenticate')->group(function () {
 Route::prefix('payment')->group(function () {
     Route::post('/save-pharmacy-payment-response', [PaymentController::class, 'savePharmacyPaymentResponse']);
     Route::post('/savePharmacyPaymentResponse', [PaymentController::class, 'savePharmacyPaymentResponse']);
+    Route::get('/pending-payment-details', [PaymentController::class, 'getPendingPaymentDetails']);
+    Route::get('/getPendingPaymentDetails', [PaymentController::class, 'getPendingPaymentDetails']);
 });
 
 Route::prefix('payment')->middleware('authenticate')->group(function () {

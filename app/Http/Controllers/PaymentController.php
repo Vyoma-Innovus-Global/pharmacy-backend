@@ -2039,6 +2039,30 @@ public function getPaymentDetailsByTransNo(Request $request, $transactionNo = nu
     }
 }
 
+public function getPendingPaymentDetails(Request $request)
+{
+    Log::channel('daily')->info('[Payment] fn_getpendingpaymentdetails INPUT', [
+        'ip' => $request->ip(),
+    ]);
+
+    try {
+        $result = DB::select('SELECT public.fn_getpendingpaymentdetails() AS data');
+
+        return $this->dbFunctionJsonResponse($result[0]->data ?? null, 'fn_getpendingpaymentdetails');
+    } catch (\Exception $e) {
+        Log::channel('daily')->error('[Payment] fn_getpendingpaymentdetails EXCEPTION', [
+            'message' => $e->getMessage(),
+            'line' => $e->getLine(),
+            'file' => $e->getFile(),
+        ]);
+
+        return response()->json([
+            'error' => true,
+            'message' => 'Failed to get pending payment details.',
+        ], 500);
+    }
+}
+
 private function dbFunctionJsonResponse($raw, string $functionName)
 {
     $decoded = $this->decodeDbFunctionJson($raw, $functionName);
