@@ -109,7 +109,7 @@
         <div class="certificate">
             <div class="header">
 			<div class="header-text" style="text-align: left;">
-                    <div class="left" style="margin-top:65px">
+                    <div class="left" style="margin-top:-11px">
                         <p style="font-size: 10px;margin-left:15px">{{$iCode}} - PHARM</p>
                         @if($certificateType=="duplicate")
                             <h2 style="text-decoration: underline;margin-left:300px;">DUPLICATE</h2>
@@ -132,7 +132,7 @@
                     
                 <div style="font-weight:bold;">
                     <div class="main-section" style="margin-top:145px"> 
-                                <div style="margin-top: 55px;">
+                                <div style="margin-top: 63px;">
                                     <span class="label"></span>
                                     <span style="text-align:center;margin-left:228px;font-size:16px;text-transform: uppercase;">{{ $student_name }}</span>
                                 </div>
@@ -147,16 +147,16 @@
                         </span>
                     </div>
 
-                    <div style="margin-top: 35px;">
+                    <div style="margin-top: 23px;">
                          
                         <span style="text-align:center;margin-left:270px;margin-top:10px">DIPLOMA COURSE IN PHARMACY</span>
                     </div>
-                    <div style="margin-top: 15px;">
+                    <div style="margin-top: 11px;">
                          
                         <span style=" text-align:center;margin-left:377px;margin-top:-4px">{{ $reg_no }} </span>
                     </div>
                     
-                    <div style="margin-top: 15px;">
+                    <div style="margin-top: 19px;">
                         
                         <span style=" text-align:center;margin-left:215px;margin-top:-4px">{{ $reg_year }}</span>
                     </div>
@@ -164,9 +164,9 @@
                     
             </div>
             <div>
-                <span style="margin-top: 15px;float:right;margin-right:110px"><img src="{{ public_path('assets/pharmacy-certi-sign.jpeg')}}" style="width:98px; height: 33px;"></span>
+                <span style="margin-top: 8px;float:right;margin-right:110px"><img src="{{ public_path('assets/pharmacy-certi-sign.jpeg')}}" style="width:98px; height: 33px;"></span>
             </div>
-            <div style="margin-top: 70px;display:flex;font-weight:bold;">            
+            <div style="margin-top: 64px;display:flex;font-weight:bold;">            
                 <span style="margin-left:125px">
                     {{ $regIssuedOn 
                         ? \Carbon\Carbon::createFromFormat('n-j-Y', ltrim($regIssuedOn, '0'))->format('jS F, Y') 
