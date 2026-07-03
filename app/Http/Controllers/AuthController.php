@@ -28,7 +28,7 @@ class AuthController extends Controller
     public function authenticate(Request $request)
     {
         $user_type = $request->input('user_type');
-        $normalized_user_type = (string)$user_type === '2' ? 'STUDENT' : $user_type;
+        $normalized_user_type = (string)$user_type === '15' ? 'STUDENT' : $user_type;
         $now = date('Y-m-d H:i:s');
         $today = date('Y-m-d');
         $otp_code = Config::get('app.env') === 'production' ? rand(1111, 9999) : 1234;
@@ -463,7 +463,7 @@ class AuthController extends Controller
 
         $login_phone = $request->user_phone;
         $login_otp = $request->security_code;
-        $normalized_user_type = (string)$request->user_type === '2' ? 'STUDENT' : $request->user_type;
+        $normalized_user_type = (string)$request->user_type === '15' ? 'STUDENT' : $request->user_type;
 
         $otp = Otp::where([
             'username' => $login_phone,
