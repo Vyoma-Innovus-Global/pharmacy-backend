@@ -1758,7 +1758,53 @@ public function generateStudentReviewOrderId(Request $request)
             ]
         );
 
-        return $this->dbFunctionJsonResponse($result[0]->data ?? null, 'fn_student_review_generateorderid');
+        $payload = $this->decodeDbFunctionJson($result[0]->data ?? null, 'fn_student_review_generateorderid');
+
+        if ($payload instanceof \Illuminate\Http\JsonResponse) {
+            return $payload;
+        }
+
+        $merchantId = env('SBI_MERCHANT_ID');
+        $actionUrl = env('SBI_PAYMENT_API');
+        $paymentKey = env('SBI_PAYMENT_KEY');
+        $orderId = $payload['order_id'] ?? $payload['orderId'] ?? null;
+        $paymentAmount = $payload['payment_amount'] ?? $payload['amount'] ?? $amount;
+        $requestParameter = $payload['requestParameter']
+            ?? $payload['request_parameter']
+            ?? $payload['paymentData']
+            ?? $payload['payment_data']
+            ?? null;
+
+        if (!$requestParameter && $merchantId && $orderId && $paymentAmount !== null) {
+            $baseUrl = rtrim(env('APP_URL'), '/') . '/student/review-payment/';
+            $successUrl = "{$baseUrl}success";
+            $failUrl = "{$baseUrl}faill";
+            $marId = '5';
+            $otherData = $payload['other_data']
+                ?? $payload['otherData']
+                ?? "{$studentId}_{$examYear}_{$paymentTypeId}_{$purpose}";
+
+            $requestParameter = "{$merchantId}|DOM|IN|INR|{$paymentAmount}|{$otherData}|{$successUrl}|{$failUrl}|SBIEPAY|{$orderId}|{$marId}|NB|ONLINE|ONLINE";
+        }
+
+        $payload['encryptTrans'] = ($paymentKey && $requestParameter)
+            ? sbiEncrypt($requestParameter)
+            : ($payload['encryptTrans'] ?? $payload['EncryptTrans'] ?? $payload['transaction_id'] ?? null);
+        $payload['merchIdVal'] = $merchantId;
+        $payload['actionUrl'] = $actionUrl;
+        $payload['gatewaySubmitUrl'] = rtrim(env('APP_URL'), '/') . '/student-payment/submit';
+        $payload['payment_api'] = $actionUrl;
+        $payload['merchant_id'] = $merchantId;
+
+        Log::channel('daily')->info('[Payment] fn_student_review_generateorderid OUTPUT', [
+            'order_id' => $orderId,
+            'payment_amount' => $paymentAmount,
+            'merchant_id' => $merchantId,
+            'action_url' => $actionUrl,
+            'encrypted_length' => strlen((string) $payload['encryptTrans']),
+        ]);
+
+        return response()->json($payload, 200);
     } catch (\Exception $e) {
         Log::channel('daily')->error('[Payment] fn_student_review_generateorderid EXCEPTION', [
             'message' => $e->getMessage(),
