@@ -293,6 +293,8 @@ Route::prefix('review')->middleware('authenticate')->group(function () {
 
     Route::get('/list', [ReviewController::class, 'getReviewList']);
     Route::post('/student-review-subjects', [ReviewController::class, 'getStudentReviewSubject']);
+    Route::post('/save-pharmacy-review-subject', [ReviewController::class, 'savePharmacyReviewSubject']);
+    Route::post('/savePharmacyReviewSubject', [ReviewController::class, 'savePharmacyReviewSubject']);
     Route::post('/student-review-apply', [ReviewController::class, 'applyForReview']);
     Route::post('/review-payment', [PaymentController::class, 'reviewPayment']);
     Route::get('/review-receipt', [ReviewController::class, 'reviewReceipt'])->withoutMiddleware('authenticate');

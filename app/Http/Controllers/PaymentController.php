@@ -1934,6 +1934,10 @@ public function savePharmacyPaymentResponse(Request $request)
     $bankRef = $request->input('bank_ref', $request->input('bank_ref_no', $request->input('p_bank_ref')));
     $challanId = $request->input('challan_id', $request->input('challan_id_no', $request->input('p_challan_id')));
     $remarks = $request->input('remarks', $request->input('p_remarks'));
+    $paymentType = $request->input(
+        'payment_type',
+        $request->input('payment_type_id', $request->input('p_payment_type'))
+    );
 
     $validator = Validator::make([
         'order_id' => $orderId,
@@ -1949,6 +1953,7 @@ public function savePharmacyPaymentResponse(Request $request)
         'bank_ref' => $bankRef,
         'challan_id' => $challanId,
         'remarks' => $remarks,
+        'payment_type' => $paymentType,
     ], [
         'order_id' => 'required|string|max:100',
         'merchant_id' => 'required|string|max:100',
@@ -1963,6 +1968,7 @@ public function savePharmacyPaymentResponse(Request $request)
         'bank_ref' => 'nullable|string|max:100',
         'challan_id' => 'nullable|string|max:100',
         'remarks' => 'nullable|string',
+        'payment_type' => 'required|integer',
     ]);
 
     if ($validator->fails()) {
@@ -1980,12 +1986,13 @@ public function savePharmacyPaymentResponse(Request $request)
         'payment_status' => $paymentStatus,
         'amount' => $amount,
         'currency' => $currency,
+        'payment_type' => $paymentType,
         'ip' => $request->ip(),
     ]);
 
     try {
         $result = DB::select(
-            'SELECT public.fn_savepharmacypaymentresponse(?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::double precision, ?::varchar, ?::varchar, ?::timestamp, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::text) AS data',
+            'SELECT public.fn_savepharmacypaymentresponse(?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::double precision, ?::varchar, ?::varchar, ?::timestamp, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::text, ?::integer) AS data',
             [
                 $orderId,
                 $merchantId,
@@ -2000,6 +2007,7 @@ public function savePharmacyPaymentResponse(Request $request)
                 $bankRef,
                 $challanId,
                 $remarks,
+                (int) $paymentType,
             ]
         );
 

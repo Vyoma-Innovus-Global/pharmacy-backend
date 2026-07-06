@@ -1011,6 +1011,145 @@ class ReviewController extends Controller
         ], 200);
     }
 
-    
+    public function savePharmacyReviewSubject(Request $request)
+    {
+        $items = $request->json()->all();
+
+        if (isset($items['subjects']) && is_array($items['subjects'])) {
+            $items = $items['subjects'];
+        } elseif (isset($items['data']) && is_array($items['data'])) {
+            $items = $items['data'];
+        }
+
+        if (!is_array($items)) {
+            return response()->json([
+                'error' => true,
+                'message' => 'Request body must be a JSON array of review subject objects.',
+            ], 422);
+        }
+
+        if (empty($items)) {
+            return response()->json([
+                'error' => true,
+                'message' => 'At least one review subject is required.',
+            ], 422);
+        }
+
+        if (array_keys($items) !== range(0, count($items) - 1)) {
+            return response()->json([
+                'error' => true,
+                'message' => 'Request body must be a JSON array of review subject objects.',
+            ], 422);
+        }
+
+        $normalized = [];
+
+        foreach ($items as $index => $item) {
+            if (!is_array($item)) {
+                return response()->json([
+                    'error' => true,
+                    'message' => "Item {$index} must be an object.",
+                ], 422);
+            }
+
+            $row = [
+                'student_id' => $item['student_id'] ?? $item['studentId'] ?? $item['p_student_id'] ?? null,
+                'reg_no' => $item['reg_no'] ?? $item['regNo'] ?? $item['registration_number'] ?? $item['registrationNumber'] ?? $item['p_reg_no'] ?? null,
+                'semester' => $item['semester'] ?? $item['part_id'] ?? $item['partId'] ?? $item['p_semester'] ?? null,
+                'exam_year' => $item['exam_year'] ?? $item['examYear'] ?? $item['p_exam_year'] ?? null,
+                'inst_code' => $item['inst_code'] ?? $item['instCode'] ?? $item['institute_code'] ?? $item['instituteCode'] ?? $item['p_inst_code'] ?? null,
+                'subject_code' => $item['subject_code'] ?? $item['subjectCode'] ?? $item['SubjectCode'] ?? $item['p_subject_code'] ?? null,
+                'order_id' => $item['order_id'] ?? $item['orderId'] ?? $item['p_order_id'] ?? null,
+                'subject_name' => $item['subject_name'] ?? $item['subjectName'] ?? $item['SubjectName'] ?? $item['p_subject_name'] ?? null,
+                'create_by' => $item['create_by'] ?? $item['createBy'] ?? $item['admin_user_id'] ?? $item['adminUserId'] ?? $item['p_create_by'] ?? null,
+            ];
+
+            $validator = Validator::make($row, [
+                'student_id' => 'required|integer',
+                'reg_no' => 'required|string|max:50',
+                'semester' => 'required|integer',
+                'exam_year' => 'required|integer',
+                'inst_code' => 'required|string|max:50',
+                'subject_code' => 'required|string|max:50',
+                'order_id' => 'required|string|max:100',
+                'subject_name' => 'required|string|max:255',
+                'create_by' => 'required|integer',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'error' => true,
+                    'message' => "Validation failed for item {$index}.",
+                    'data' => $validator->errors(),
+                ], 422);
+            }
+
+            $normalized[] = $row;
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $responses = [];
+
+            foreach ($normalized as $index => $row) {
+                $result = DB::select(
+                    'SELECT public.fn_save_pharmacy_review_subject(?::bigint, ?::varchar, ?::integer, ?::integer, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::bigint) AS data',
+                    [
+                        (int) $row['student_id'],
+                        trim($row['reg_no']),
+                        (int) $row['semester'],
+                        (int) $row['exam_year'],
+                        trim($row['inst_code']),
+                        trim($row['subject_code']),
+                        trim($row['order_id']),
+                        trim($row['subject_name']),
+                        (int) $row['create_by'],
+                    ]
+                );
+
+                $responses[] = [
+                    'index' => $index,
+                    'subject_code' => $row['subject_code'],
+                    'response' => $this->decodeReviewSubjectFunctionJson($result[0]->data ?? null),
+                ];
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'error' => false,
+                'message' => 'Review subjects saved successfully.',
+                'data' => $responses,
+            ], 200);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::channel('daily')->error('[Review] fn_save_pharmacy_review_subject EXCEPTION', [
+                'message' => $e->getMessage(),
+                'line' => $e->getLine(),
+                'file' => $e->getFile(),
+            ]);
+
+            return response()->json([
+                'error' => true,
+                'message' => 'Failed to save review subjects.',
+                'details' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    private function decodeReviewSubjectFunctionJson($raw)
+    {
+        if ($raw === null) {
+            return null;
+        }
+
+        if (is_string($raw)) {
+            $decoded = json_decode($raw, true);
+            return json_last_error() === JSON_ERROR_NONE ? $decoded : $raw;
+        }
+
+        return (array) $raw;
+    }
 
 }
