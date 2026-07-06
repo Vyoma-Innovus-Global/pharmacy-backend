@@ -281,6 +281,8 @@ Route::prefix('reports')->group(function () {
     Route::post('/result-status-details-inst', [ReportController::class, 'resultStatusDetailsInst']);
     Route::get('/student-marks-details', [ReportController::class, 'studentMarksDetails']);
     Route::post('/student-marks-details', [ReportController::class, 'studentMarksDetails']);
+    Route::get('/review-details-by-registration-number', [ReportController::class, 'reviewDetailsListByStudentRegistrationNumber']);
+    Route::post('/review-details-by-registration-number', [ReportController::class, 'reviewDetailsListByStudentRegistrationNumber']);
     Route::get('/student-registration-download', [ReportController::class, 'studentRegistrationDownload']);
     Route::post('/student-registration-download', [ReportController::class, 'studentRegistrationDownload']);
 });

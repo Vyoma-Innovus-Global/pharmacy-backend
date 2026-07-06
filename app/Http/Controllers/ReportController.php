@@ -1371,6 +1371,101 @@ class ReportController extends Controller
         }
     }
 
+    /**
+     * Get review details list by student registration number.
+     *
+     * Calls: public.fn_getreviewdetailslistbystudentregistartionnumber(
+     *   p_registrationnumber, p_examyear, p_partid, p_adminuserid
+     * )
+     */
+    public function reviewDetailsListByStudentRegistrationNumber(Request $request)
+    {
+        $registrationNumber = $request->input(
+            'registration_number',
+            $request->input('registrationNumber', $request->input('p_registrationnumber'))
+        );
+        $examYear = $request->input(
+            'exam_year',
+            $request->input('examYear', $request->input('p_examyear'))
+        );
+        $partId = $request->input(
+            'part_id',
+            $request->input('partId', $request->input('p_partid'))
+        );
+        $adminUserId = $request->input(
+            'admin_user_id',
+            $request->input('adminUserId', $request->input('p_adminuserid'))
+        );
+
+        $validator = Validator::make([
+            'registration_number' => $registrationNumber,
+            'exam_year' => $examYear,
+            'part_id' => $partId,
+            'admin_user_id' => $adminUserId,
+        ], [
+            'registration_number' => 'required|string|max:50',
+            'exam_year' => 'required|string|max:20',
+            'part_id' => 'required|string|max:50',
+            'admin_user_id' => 'required|integer',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'error' => true,
+                'message' => $validator->errors(),
+            ], 422);
+        }
+
+        try {
+            $result = DB::select(
+                'SELECT public.fn_getreviewdetailslistbystudentregistartionnumber(?::varchar, ?::varchar, ?::varchar, ?::bigint) AS data',
+                [
+                    trim($registrationNumber),
+                    trim($examYear),
+                    trim($partId),
+                    (int) $adminUserId,
+                ]
+            );
+
+            if (empty($result)) {
+                return response()->json([
+                    'error' => true,
+                    'message' => 'No review details found for the given registration number.',
+                ], 404);
+            }
+
+            $raw = $result[0]->data ?? null;
+
+            if ($raw === null) {
+                return response()->json([
+                    'error' => true,
+                    'message' => 'No review details found.',
+                ], 404);
+            }
+
+            $reviewData = is_string($raw) ? json_decode($raw, true) : (array) $raw;
+
+            if (json_last_error() !== JSON_ERROR_NONE || empty($reviewData)) {
+                return response()->json([
+                    'error' => true,
+                    'message' => 'Failed to parse review details from database.',
+                ], 500);
+            }
+
+            return response()->json([
+                'error' => false,
+                'message' => 'Data found',
+                'data' => $reviewData,
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => true,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
 
 
 
