@@ -1704,6 +1704,75 @@ public function generateStudentOrderId(Request $request)
     }
 }
 
+public function generateStudentReviewOrderId(Request $request)
+{
+    $studentId = $request->input('student_id', $request->input('studentId', $request->input('p_student_id')));
+    $examYear = $request->input('exam_year', $request->input('examYear', $request->input('p_exam_year')));
+    $paymentTypeId = $request->input('payment_type_id', $request->input('paymentTypeId', $request->input('p_payment_type_id')));
+    $amount = $request->input('amount', $request->input('payment_amount', $request->input('p_amount')));
+    $purpose = $request->input(
+        'purpose',
+        $request->input('payment_purpose', $request->input('purpouse', $request->input('p_purpouse')))
+    );
+
+    $validator = Validator::make([
+        'student_id' => $studentId,
+        'exam_year' => $examYear,
+        'payment_type_id' => $paymentTypeId,
+        'amount' => $amount,
+        'purpose' => $purpose,
+    ], [
+        'student_id' => 'required|integer',
+        'exam_year' => 'required|string|max:20',
+        'payment_type_id' => 'required|integer',
+        'amount' => 'required|integer|min:0',
+        'purpose' => 'required|string|max:100',
+    ]);
+
+    if ($validator->fails()) {
+        return response()->json([
+            'error' => true,
+            'message' => 'Validation failed.',
+            'data' => $validator->errors(),
+        ], 422);
+    }
+
+    Log::channel('daily')->info('[Payment] fn_student_review_generateorderid INPUT', [
+        'student_id' => $studentId,
+        'exam_year' => $examYear,
+        'payment_type_id' => $paymentTypeId,
+        'amount' => $amount,
+        'purpose' => $purpose,
+        'ip' => $request->ip(),
+    ]);
+
+    try {
+        $result = DB::select(
+            'SELECT public.fn_student_review_generateorderid(?::bigint, ?::varchar, ?::integer, ?::integer, ?::varchar) AS data',
+            [
+                (int) $studentId,
+                trim($examYear),
+                (int) $paymentTypeId,
+                (int) $amount,
+                trim($purpose),
+            ]
+        );
+
+        return $this->dbFunctionJsonResponse($result[0]->data ?? null, 'fn_student_review_generateorderid');
+    } catch (\Exception $e) {
+        Log::channel('daily')->error('[Payment] fn_student_review_generateorderid EXCEPTION', [
+            'message' => $e->getMessage(),
+            'line' => $e->getLine(),
+            'file' => $e->getFile(),
+        ]);
+
+        return response()->json([
+            'error' => true,
+            'message' => 'Failed to generate student review order id.',
+        ], 500);
+    }
+}
+
 public function getStudentPaymentTypeByStudentId(Request $request)
 {
     $studentId = $request->input('student_id', $request->input('p_student_id'));
