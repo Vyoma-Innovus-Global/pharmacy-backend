@@ -285,6 +285,8 @@ Route::prefix('reports')->group(function () {
     Route::post('/student-marks-details', [ReportController::class, 'studentMarksDetails']);
     Route::get('/review-details-by-registration-number', [ReportController::class, 'reviewDetailsListByStudentRegistrationNumber']);
     Route::post('/review-details-by-registration-number', [ReportController::class, 'reviewDetailsListByStudentRegistrationNumber']);
+    Route::get('/student-review-details-by-council', [ReportController::class, 'studentReviewDetailsListByCouncil']);
+    Route::post('/student-review-details-by-council', [ReportController::class, 'studentReviewDetailsListByCouncil']);
     Route::get('/student-registration-download', [ReportController::class, 'studentRegistrationDownload']);
     Route::post('/student-registration-download', [ReportController::class, 'studentRegistrationDownload']);
 });
@@ -293,6 +295,8 @@ Route::prefix('review')->middleware('authenticate')->group(function () {
 
     Route::get('/list', [ReviewController::class, 'getReviewList']);
     Route::post('/student-review-subjects', [ReviewController::class, 'getStudentReviewSubject']);
+    Route::post('/teacher-list-of-review-subject', [ReviewController::class, 'getTeacherListOfReviewSubject']);
+    Route::get('/teacher-list-of-review-subject', [ReviewController::class, 'getTeacherListOfReviewSubject']);
     Route::post('/save-pharmacy-review-subject', [ReviewController::class, 'savePharmacyReviewSubject']);
     Route::post('/savePharmacyReviewSubject', [ReviewController::class, 'savePharmacyReviewSubject']);
     Route::post('/student-review-apply', [ReviewController::class, 'applyForReview']);

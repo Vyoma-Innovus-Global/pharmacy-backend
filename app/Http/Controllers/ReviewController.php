@@ -27,7 +27,7 @@ use App\Models\Answersheetmasking;
 
 class ReviewController extends Controller
 {
-    
+
     public function getStudentReviewSubject(Request $request)
     {
         try {
@@ -149,6 +149,93 @@ class ReviewController extends Controller
                 'error' => true,
                 'message' => $e->getMessage(),
             ], 400);
+        }
+    }
+
+    /**
+     * Get teacher list for a review subject.
+     *
+     * Calls: public.fn_get_teacherlistofreviewsubject(
+     *   p_studentid, p_examyear, p_partid, p_subjectcode, p_instcode
+     * )
+     */
+    public function getTeacherListOfReviewSubject(Request $request)
+    {
+        $studentId = $request->input('student_id', $request->input('p_studentid'));
+        $examYear = $request->input('exam_year', $request->input('p_examyear'));
+        $partId = $request->input('part_id', $request->input('p_partid', $request->input('part_sem')));
+        $subjectCode = $request->input('subject_code', $request->input('p_subjectcode'));
+        $instCode = $request->input('inst_code', $request->input('p_instcode', $request->input('instcode')));
+
+        $validator = Validator::make([
+            'student_id' => $studentId,
+            'exam_year' => $examYear,
+            'part_id' => $partId,
+            'subject_code' => $subjectCode,
+            'inst_code' => $instCode,
+        ], [
+            'student_id' => 'required|integer',
+            'exam_year' => 'required|string|max:20',
+            'part_id' => 'required|string|max:20',
+            'subject_code' => 'required|string|max:50',
+            'inst_code' => 'required|string|max:50',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'error' => true,
+                'message' => $validator->errors(),
+            ], 422);
+        }
+
+        try {
+            $result = DB::select(
+                'SELECT public.fn_get_teacherlistofreviewsubject(?::bigint, ?::varchar, ?::varchar, ?::varchar, ?::varchar) AS data',
+                [
+                    (int) $studentId,
+                    trim((string) $examYear),
+                    trim((string) $partId),
+                    trim((string) $subjectCode),
+                    trim((string) $instCode),
+                ]
+            );
+
+            if (empty($result)) {
+                return response()->json([
+                    'error' => true,
+                    'message' => 'No teacher data found.',
+                ], 404);
+            }
+
+            $raw = $result[0]->data ?? null;
+
+            if ($raw === null) {
+                return response()->json([
+                    'error' => true,
+                    'message' => 'No teacher data found.',
+                ], 404);
+            }
+
+            $teacherData = is_string($raw) ? json_decode($raw, true) : (array) $raw;
+
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                return response()->json([
+                    'error' => true,
+                    'message' => 'Failed to parse teacher list from database.',
+                ], 500);
+            }
+
+            return response()->json([
+                'error' => false,
+                'message' => 'Data found',
+                'data' => $teacherData,
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => true,
+                'message' => $e->getMessage(),
+            ], 500);
         }
     }
 
@@ -473,7 +560,7 @@ class ReviewController extends Controller
             'error' => false,
             'message' => 'No Data available'
         ], 200);
-        
+
         } catch (\Exception $e) {
             return response()->json(['error' => $e->getMessage()], 500);
         }
@@ -696,7 +783,7 @@ class ReviewController extends Controller
                 "marks"=> $final_marks,
                 "rev_marks"=> $final_rev_marks,
                 "max_marks"=> $max_marks,
-                
+
             ];
         });
 
@@ -749,7 +836,7 @@ class ReviewController extends Controller
         $inst_code      = $other['inst_code'];
         $evaluator_type = $other['evaluator_type'];
 
-        
+
         $evaluator_type = $other['evaluator_type'];
 
         $type           = explode('_', $mark_type)[1];
@@ -833,7 +920,7 @@ class ReviewController extends Controller
                         ['pams_subject_code', '=', $subject]
                     ])->count() ;
 
-       
+
         $evaluator_type = $request->evaluator_type;
 
         $type           = explode('_', $marks_type)[1];
@@ -926,7 +1013,7 @@ class ReviewController extends Controller
 
             $examener_save_status   = $item->is_final_examiner;
             $is_final_scrutinizer   =   $item->is_final_scrutinizer;
-           
+
 
             $evaluator = strtolower($evaluator_type);
             $total_candidate++;
@@ -1004,7 +1091,7 @@ class ReviewController extends Controller
             ], 200);
         }
 
-       
+
         return response()->json([
             'error' => false,
             'message' => 'No Data available'
