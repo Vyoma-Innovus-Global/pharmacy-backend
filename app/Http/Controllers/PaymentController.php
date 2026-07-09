@@ -1326,7 +1326,7 @@ private function handleStudentPaymentCallback(Request $request, bool $expectedSu
         Log::channel('daily')->info(
             '[Payment] student CALLBACK received',
             array_merge(['expected_success' => $expectedSuccess], $this->paymentCallbackMeta($request))
-        );
+        );  
 
         $encryptedData = $request->input('encData')
             ?? $request->input('EncryptTrans')
@@ -1776,15 +1776,15 @@ public function generateStudentReviewOrderId(Request $request)
             ?? null;
 
         if (!$requestParameter && $merchantId && $orderId && $paymentAmount !== null) {
-            $baseUrl = rtrim(env('APP_URL'), '/') . '/student/review-payment/';
-            $successUrl = "{$baseUrl}success";
-            $failUrl = "{$baseUrl}faill";
+            $baseUrl = rtrim(env('APP_URL'), '/') . '/student-payment/';
+            $successUrl = "{$baseUrl}success";  
+            $failUrl = "{$baseUrl}fail";
             $marId = '5';
             $otherData = $payload['other_data']
                 ?? $payload['otherData']
                 ?? "{$studentId}_{$examYear}_{$paymentTypeId}_{$purpose}";
 
-            $requestParameter = "{$merchantId}|DOM|IN|INR|{$paymentAmount}|{$otherData}|{$successUrl}|{$failUrl}|SBIEPAY|{$orderId}|{$marId}|NB|ONLINE|ONLINE";
+            $requestParameter = "{$merchantId}|DOM|IN|INR|{$paymentAmount}|{$otherData}|{$successUrl}|{$failUrl}|SBIEPAY|{$orderId}|{$marId}|NB|ONLINE|ONLINE,pWhMnIEMc4q6hKdi2Fx50Ii8CKAoSIqv9ScSpwuMHM4=";
         }
 
         $payload['encryptTrans'] = ($paymentKey && $requestParameter)
