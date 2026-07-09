@@ -1466,6 +1466,115 @@ class ReportController extends Controller
         }
     }
 
+    /**
+     * Get student review details list by council.
+     *
+     * Calls: public.fn_getstudentreviewdetailslistbycouncil(
+     *   p_examyear, p_semester, p_instcode, p_page_no, p_page_size, p_adminuserid
+     * )
+     */
+    public function studentReviewDetailsListByCouncil(Request $request)
+    {
+        $examYear = $request->input(
+            'exam_year',
+            $request->input('examYear', $request->input('p_examyear'))
+        );
+        $semester = $request->input(
+            'semester',
+            $request->input('p_semester')
+        );
+        $instCode = $request->input(
+            'inst_code',
+            $request->input('instCode', $request->input('p_instcode'))
+        );
+        $pageNo = $request->input(
+            'page_no',
+            $request->input('pageNo', $request->input('p_page_no', 1))
+        );
+        $pageSize = $request->input(
+            'page_size',
+            $request->input('pageSize', $request->input('p_page_size', 10))
+        );
+        $adminUserId = $request->input(
+            'admin_user_id',
+            $request->input('adminUserId', $request->input('p_adminuserid'))
+        );
+
+        $validator = Validator::make([
+            'exam_year' => $examYear,
+            'semester' => $semester,
+            'inst_code' => $instCode,
+            'page_no' => $pageNo,
+            'page_size' => $pageSize,
+            'admin_user_id' => $adminUserId,
+        ], [
+            'exam_year' => 'required|string|max:20',
+            'semester' => 'required|string|max:50',
+            'inst_code' => 'required|string|max:50',
+            'page_no' => 'required|integer|min:1',
+            'page_size' => 'required|integer|min:1|max:500',
+            'admin_user_id' => 'required|integer',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'error' => true,
+                'message' => $validator->errors(),
+            ], 422);
+        }
+
+        try {
+            $result = DB::select(
+                'SELECT public.fn_getstudentreviewdetailslistbycouncil(?::varchar, ?::varchar, ?::varchar, ?::int, ?::int, ?::bigint) AS data',
+                [
+                    trim($examYear),
+                    trim($semester),
+                    trim($instCode),
+                    (int) $pageNo,
+                    (int) $pageSize,
+                    (int) $adminUserId,
+                ]
+            );
+
+            if (empty($result)) {
+                return response()->json([
+                    'error' => true,
+                    'message' => 'No student review details found.',
+                ], 404);
+            }
+
+            $raw = $result[0]->data ?? null;
+
+            if ($raw === null) {
+                return response()->json([
+                    'error' => true,
+                    'message' => 'No student review details found.',
+                ], 404);
+            }
+
+            $reviewData = is_string($raw) ? json_decode($raw, true) : (array) $raw;
+
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                return response()->json([
+                    'error' => true,
+                    'message' => 'Failed to parse student review details from database.',
+                ], 500);
+            }
+
+            return response()->json([
+                'error' => false,
+                'message' => 'Data found',
+                'data' => $reviewData,
+            ], 200);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => true,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
 
 
 
