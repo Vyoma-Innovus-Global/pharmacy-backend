@@ -1133,4 +1133,104 @@ class AdminTeacherController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * @OA\Post(
+     *     path="/api/admin/get-review-evaluator-subject-allocation-summary",
+     *     tags={"Admin - Teacher"},
+     *     summary="Get review evaluator subject allocation summary",
+     *     description="Calls fn_admin_getreview_evaluatorsubjectallocationsummary.",
+     *     security={{"token": {}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"admin_user_id", "user_type_id", "inst_code", "evaluator_type_id", "department_id", "exam_year", "semester"},
+     *             @OA\Property(property="admin_user_id", type="integer", format="int64", example=887),
+     *             @OA\Property(property="user_type_id", type="integer", format="int64", example=9),
+     *             @OA\Property(property="inst_code", type="string", example="JCG"),
+     *             @OA\Property(property="evaluator_type_id", type="integer", example=3),
+     *             @OA\Property(property="department_id", type="integer", example=1),
+     *             @OA\Property(property="exam_year", type="string", example="2025"),
+     *             @OA\Property(property="semester", type="string", example="Part-I")
+     *         )
+     *     ),
+     *     @OA\Response(response=200, description="Review allocation summary retrieved successfully"),
+     *     @OA\Response(response=400, description="Validation failed"),
+     *     @OA\Response(response=404, description="No data returned"),
+     *     @OA\Response(response=500, description="Internal server error")
+     * )
+     */
+    public function getReviewEvaluatorSubjectAllocationSummary(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'admin_user_id' => 'required|integer',
+            'user_type_id' => 'required|integer',
+            'inst_code' => 'required|string|max:255',
+            'evaluator_type_id' => 'required|integer',
+            'department_id' => 'required|integer',
+            'exam_year' => 'required|string|max:255',
+            'semester' => 'required|string|max:255',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'version' => '1.0',
+                'status' => 0,
+                'message' => 'Validation failed: ' . $validator->errors()->first(),
+                'data' => [],
+            ], 400);
+        }
+
+        try {
+            $parameters = $validator->validated();
+            $result = DB::selectOne(
+                'SELECT public.fn_admin_getreview_evaluatorsubjectallocationsummary(?, ?, ?, ?, ?, ?, ?) AS result',
+                [
+                    $parameters['admin_user_id'],
+                    $parameters['user_type_id'],
+                    $parameters['inst_code'],
+                    $parameters['evaluator_type_id'],
+                    $parameters['department_id'],
+                    $parameters['exam_year'],
+                    $parameters['semester'],
+                ]
+            );
+
+            if (!$result || $result->result === null) {
+                return response()->json([
+                    'version' => '1.0',
+                    'status' => 0,
+                    'message' => 'No data returned from database function',
+                    'data' => [],
+                ], 404);
+            }
+
+            $data = json_decode($result->result, true, 512, JSON_THROW_ON_ERROR);
+
+            return response()->json([
+                'version' => '1.0',
+                'status' => 1,
+                'message' => 'Review evaluator subject allocation summary retrieved successfully',
+                'data' => $data ?? [],
+            ]);
+        } catch (\JsonException $e) {
+            Log::error('Invalid review evaluator allocation summary JSON', ['exception' => $e]);
+
+            return response()->json([
+                'version' => '1.0',
+                'status' => 0,
+                'message' => 'Failed to parse database response',
+                'data' => [],
+            ], 500);
+        } catch (\Throwable $e) {
+            Log::error('Failed to get review evaluator allocation summary', ['exception' => $e]);
+
+            return response()->json([
+                'version' => '1.0',
+                'status' => 0,
+                'message' => 'Internal server error',
+                'data' => [],
+            ], 500);
+        }
+    }
 }
