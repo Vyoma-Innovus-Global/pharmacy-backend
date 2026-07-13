@@ -1233,4 +1233,295 @@ class AdminTeacherController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * @OA\Post(
+     *     path="/api/admin/save-review-teacher-assign-subject",
+     *     tags={"Admin - Teacher"},
+     *     summary="Assign a review subject to a teacher",
+     *     description="Calls fn_admin_savereviewteacherassignsubject.",
+     *     security={{"token": {}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"assignments"},
+     *             @OA\Property(
+     *                 property="assignments",
+     *                 type="array",
+     *                 @OA\Items(
+     *                     required={"student_id", "student_reg_no", "teacher_id", "semester_id", "subject_code", "entry_user_id", "teacher_inst_code"},
+     *                     @OA\Property(property="student_id", type="integer", format="int64", example=9432),
+     *                     @OA\Property(property="student_reg_no", type="string", example="PHARM242500625"),
+     *                     @OA\Property(property="teacher_id", type="integer", format="int64", example=887),
+     *                     @OA\Property(property="semester_id", type="string", example="Part-I"),
+     *                     @OA\Property(property="subject_code", type="string", example="SOPH"),
+     *                     @OA\Property(property="entry_user_id", type="integer", format="int64", example=890),
+     *                     @OA\Property(property="teacher_inst_code", type="string", example="BPS")
+     *                 )
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(response=200, description="Assignment processed successfully"),
+     *     @OA\Response(response=400, description="Validation failed"),
+     *     @OA\Response(response=500, description="Internal server error")
+     * )
+     */
+    public function saveReviewTeacherAssignSubject(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'assignments' => 'required|array|min:1',
+            'assignments.*.student_id' => 'required|integer|min:1',
+            'assignments.*.student_reg_no' => 'required|string|max:100',
+            'assignments.*.teacher_id' => 'required|integer|min:1',
+            'assignments.*.semester_id' => 'required|string|max:50',
+            'assignments.*.subject_code' => 'required|string|max:50',
+            'assignments.*.entry_user_id' => 'required|integer|min:1',
+            'assignments.*.teacher_inst_code' => 'required|string|max:20',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'version' => '1.0',
+                'status' => 0,
+                'message' => 'Validation failed: ' . $validator->errors()->first(),
+                'data' => [],
+            ], 400);
+        }
+
+        $assignments = $validator->validated()['assignments'];
+        $results = [];
+        $success = 0;
+        $failed = 0;
+
+        foreach ($assignments as $index => $assignment) {
+            try {
+                $result = DB::selectOne(
+                    'SELECT public.fn_admin_savereviewteacherassignsubject(?::bigint, ?::varchar, ?::bigint, ?::varchar, ?::varchar, ?::bigint, ?::varchar) AS result',
+                    [
+                        (int) $assignment['student_id'],
+                        trim($assignment['student_reg_no']),
+                        (int) $assignment['teacher_id'],
+                        trim($assignment['semester_id']),
+                        strtoupper(trim($assignment['subject_code'])),
+                        (int) $assignment['entry_user_id'],
+                        strtoupper(trim($assignment['teacher_inst_code'])),
+                    ]
+                );
+
+                if (! $result || $result->result === null) {
+                    throw new \RuntimeException('No response returned from database function');
+                }
+
+                $data = is_string($result->result)
+                    ? json_decode($result->result, true, 512, JSON_THROW_ON_ERROR)
+                    : (array) $result->result;
+                $errorCode = (int) ($data['p_errorcode'] ?? 1);
+                $isSuccessful = $errorCode === 0;
+
+                if ($isSuccessful) {
+                    $success++;
+                } else {
+                    $failed++;
+                }
+                $results[] = [
+                    'index' => $index,
+                    'student_id' => (int) $assignment['student_id'],
+                    'student_reg_no' => $assignment['student_reg_no'],
+                    'teacher_id' => (int) $assignment['teacher_id'],
+                    'subject_code' => strtoupper(trim($assignment['subject_code'])),
+                    'status' => $isSuccessful ? 'success' : 'failed',
+                    'result' => $data,
+                ];
+            } catch (\Throwable $exception) {
+                $failed++;
+                Log::channel('daily')->error('[Admin Teacher] Review assignment item failed', [
+                    'index' => $index,
+                    'student_id' => $assignment['student_id'],
+                    'message' => $exception->getMessage(),
+                ]);
+
+                $results[] = [
+                    'index' => $index,
+                    'student_id' => (int) $assignment['student_id'],
+                    'student_reg_no' => $assignment['student_reg_no'],
+                    'teacher_id' => (int) $assignment['teacher_id'],
+                    'subject_code' => strtoupper(trim($assignment['subject_code'])),
+                    'status' => 'failed',
+                    'message' => $exception->getMessage(),
+                ];
+            }
+        }
+
+        return response()->json([
+            'version' => '1.0',
+            'status' => $failed === 0 ? 1 : 0,
+            'message' => $failed === 0
+                ? 'All review teacher subjects assigned successfully'
+                : 'Review teacher subject assignment completed with failures',
+            'data' => [
+                'total' => count($assignments),
+                'success' => $success,
+                'failed' => $failed,
+                'results' => $results,
+            ],
+        ]);
+    }
+
+    /**
+     * @OA\Post(
+     *     path="/api/admin/get-review-evaluator-inst-allocation-summary",
+     *     tags={"Admin - Teacher"},
+     *     summary="Get review evaluator institute allocation summary",
+     *     description="Calls fn_admin_getreviewevaluatorinstallocationsummary.",
+     *     security={{"token": {}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"admin_user_id", "user_type_id", "evaluator_type_id", "exam_year", "semester"},
+     *             @OA\Property(property="admin_user_id", type="integer", format="int64", example=887),
+     *             @OA\Property(property="user_type_id", type="integer", format="int64", example=9),
+     *             @OA\Property(property="evaluator_type_id", type="integer", example=3),
+     *             @OA\Property(property="exam_year", type="string", example="2025"),
+     *             @OA\Property(property="semester", type="string", example="Part-I")
+     *         )
+     *     ),
+     *     @OA\Response(response=200, description="Review institute allocation summary retrieved"),
+     *     @OA\Response(response=400, description="Validation failed"),
+     *     @OA\Response(response=500, description="Internal server error")
+     * )
+     */
+    public function getReviewEvaluatorInstAllocationSummary(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'admin_user_id' => 'required|integer',
+            'user_type_id' => 'required|integer',
+            'evaluator_type_id' => 'required|integer',
+            'exam_year' => 'required|string|max:20',
+            'semester' => 'required|string|max:50',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'error' => true,
+                'message' => $validator->errors(),
+            ], 422);
+        }
+
+        $parameters = $validator->validated();
+
+        Log::channel('daily')->info('[getReviewEvaluatorInstAllocationSummary] INPUT', [
+            'admin_user_id' => (int) $parameters['admin_user_id'],
+            'user_type_id' => (int) $parameters['user_type_id'],
+            'evaluator_type_id' => (int) $parameters['evaluator_type_id'],
+            'exam_year' => trim($parameters['exam_year']),
+            'semester' => trim($parameters['semester']),
+            'ip' => $request->ip(),
+            'timestamp' => now()->toDateTimeString(),
+        ]);
+
+        try {
+            $result = DB::select(
+                'SELECT public.fn_admin_getreviewevaluatorinstallocationsummary(
+                    ?::bigint, ?::bigint, ?::integer, ?::varchar, ?::varchar
+                ) AS data',
+                [
+                    (int) $parameters['admin_user_id'],
+                    (int) $parameters['user_type_id'],
+                    (int) $parameters['evaluator_type_id'],
+                    trim($parameters['exam_year']),
+                    trim($parameters['semester']),
+                ]
+            );
+
+            Log::channel('daily')->info('[getReviewEvaluatorInstAllocationSummary] SP RAW RESPONSE', [
+                'result' => $result,
+            ]);
+
+            if (empty($result)) {
+                return response()->json([
+                    'version' => '1.0',
+                    'status' => 1,
+                    'message' => 'No data found.',
+                    'data' => [
+                        'internal_institutes' => [],
+                        'external_institutes' => [],
+                        'other_institutes' => [],
+                    ],
+                ], 404);
+            }
+
+            $raw = $result[0]->data ?? null;
+            $rows = is_string($raw) ? json_decode($raw, true) : (array) $raw;
+
+            if (is_string($raw) && json_last_error() !== JSON_ERROR_NONE) {
+                return response()->json([
+                    'version' => '1.0',
+                    'status' => 1,
+                    'message' => 'Failed to parse response from database.',
+                    'data' => null,
+                ], 500);
+            }
+
+            $grouped = [
+                1 => [],
+                2 => [],
+                3 => [],
+            ];
+
+            foreach ($rows as $row) {
+                $typeId = (int) ($row['assignedEvaluatorTypeId'] ?? 0);
+                $instId = $row['assignedInstId'] ?? null;
+                $deptId = $row['assignedDepartmentId'] ?? null;
+
+                if (! isset($grouped[$typeId])) {
+                    $grouped[$typeId] = [];
+                }
+
+                if ($instId !== null && ! isset($grouped[$typeId][$instId])) {
+                    $grouped[$typeId][$instId] = [
+                        'inst_id' => $instId,
+                        'inst_code' => $row['assignedInstCode'] ?? null,
+                        'inst_name' => $row['assignedInstName'] ?? null,
+                        'pending_department' => (int) ($row['pending_department'] ?? 0),
+                        'departments' => [],
+                    ];
+                }
+
+                if ($instId !== null && $deptId !== null) {
+                    $grouped[$typeId][$instId]['departments'][] = [
+                        'dept_id' => $deptId,
+                        'dept_code' => $row['assignedDepartmentCode'] ?? null,
+                        'total_subjects' => (int) ($row['totalSubjects'] ?? 0),
+                        'total_pending_subjects' => (int) ($row['totalPendingSubjects'] ?? 0),
+                    ];
+                }
+            }
+
+            $response = [
+                'version' => '1.0',
+                'status' => 0,
+                'message' => 'Data fetch successfully',
+                'data' => [
+                    'internal_institutes' => array_values($grouped[1] ?? []),
+                    'external_institutes' => array_values($grouped[2] ?? []),
+                    'other_institutes' => array_values($grouped[3] ?? []),
+                ],
+            ];
+
+            Log::channel('daily')->info('[getReviewEvaluatorInstAllocationSummary] OUTPUT (200)', $response);
+
+            return response()->json($response, 200);
+        } catch (\Throwable $exception) {
+            Log::channel('daily')->error('[getReviewEvaluatorInstAllocationSummary] EXCEPTION', [
+                'message' => $exception->getMessage(),
+                'file' => $exception->getFile(),
+                'line' => $exception->getLine(),
+            ]);
+
+            return response()->json([
+                'error' => true,
+                'message' => $exception->getMessage(),
+            ], 500);
+        }
+    }
 }

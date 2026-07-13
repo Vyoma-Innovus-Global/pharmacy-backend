@@ -385,6 +385,10 @@ Route::prefix('admin')->middleware('authenticate')->group(function () {
     Route::post('/delete-teacher', [AdminTeacherController::class, 'deleteTeacherInfo']);
     Route::post('/get-evaluator-subject-allocation-summary', [AdminTeacherController::class, 'getEvaluatorSubjectAllocationSummary']);
     Route::post('/get-review-evaluator-subject-allocation-summary', [AdminTeacherController::class, 'getReviewEvaluatorSubjectAllocationSummary']);
+    Route::post('/get-review-evaluator-inst-allocation-summary', [AdminTeacherController::class, 'getReviewEvaluatorInstAllocationSummary']);
+    Route::post('/get-review-student-marks-info', [StudentMarksController::class, 'getReviewStudentMarksInfo']);
+    Route::post('/save-review-teacher-assign-subject', [AdminTeacherController::class, 'saveReviewTeacherAssignSubject']);
+    Route::post('/save-review-subject-marks', [AdminStudentMarksController::class, 'saveReviewSubjectMarks']);
     Route::post('/save-student-marks', [AdminStudentMarksController::class, 'saveStudentMarks']);
     Route::post('/institute-wise-summary', [AdminInstituteWiseSummaryController::class, 'getInstituteWiseSummary']);
     Route::post('/examiner-wise-summary', [AdminInstituteWiseSummaryController::class, 'getExaminerWiseSummary']);

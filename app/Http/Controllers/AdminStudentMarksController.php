@@ -344,4 +344,146 @@ class AdminStudentMarksController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * @OA\Post(
+     *     path="/api/admin/save-review-subject-marks",
+     *     tags={"Admin - Student Marks"},
+     *     summary="Save review subject marks in bulk",
+     *     description="Loops through the marks array and calls fn_save_review_subject_marks for each item.",
+     *     security={{"token": {}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"marks"},
+     *             @OA\Property(
+     *                 property="marks",
+     *                 type="array",
+     *                 @OA\Items(
+     *                     required={"student_id", "reg_no", "semester", "exam_year", "subject_code", "marks", "exam_status", "marks_status", "teacher_id"},
+     *                     @OA\Property(property="student_id", type="integer", format="int64", example=9432),
+     *                     @OA\Property(property="reg_no", type="string", example="PHARM242500625"),
+     *                     @OA\Property(property="semester", type="string", example="Part-I"),
+     *                     @OA\Property(property="exam_year", type="integer", example=2025),
+     *                     @OA\Property(property="subject_code", type="string", example="SOPH"),
+     *                     @OA\Property(property="marks", type="integer", example=65),
+     *                     @OA\Property(property="exam_status", type="string", example="PRESENT"),
+     *                     @OA\Property(property="marks_status", type="string", example="SUBMITTED"),
+     *                     @OA\Property(property="teacher_id", type="integer", format="int64", example=887)
+     *                 )
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(response=200, description="Review marks processed"),
+     *     @OA\Response(response=400, description="Validation failed"),
+     *     @OA\Response(response=500, description="Internal server error")
+     * )
+     */
+    public function saveReviewSubjectMarks(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'marks' => 'required|array|min:1',
+            'marks.*.student_id' => 'required|integer|min:1',
+            'marks.*.reg_no' => 'required|string|max:100',
+            'marks.*.semester' => 'required|string|max:50',
+            'marks.*.exam_year' => 'required|integer',
+            'marks.*.subject_code' => 'required|string|max:50',
+            'marks.*.marks' => 'required|integer|min:0',
+            'marks.*.exam_status' => 'required|string|max:50',
+            'marks.*.marks_status' => 'required|string|max:50',
+            'marks.*.teacher_id' => 'required|integer|min:1',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'version' => '1.0',
+                'status' => 0,
+                'message' => 'Validation failed: ' . $validator->errors()->first(),
+                'data' => [],
+            ], 400);
+        }
+
+        $marksItems = $validator->validated()['marks'];
+        $results = [];
+        $success = 0;
+        $failed = 0;
+
+        foreach ($marksItems as $index => $marksItem) {
+            try {
+                $result = DB::selectOne(
+                    'SELECT public.fn_save_review_subject_marks(?::bigint, ?::varchar, ?::varchar, ?::integer, ?::varchar, ?::integer, ?::varchar, ?::varchar, ?::bigint) AS result',
+                    [
+                        (int) $marksItem['student_id'],
+                        trim($marksItem['reg_no']),
+                        trim($marksItem['semester']),
+                        (int) $marksItem['exam_year'],
+                        strtoupper(trim($marksItem['subject_code'])),
+                        (int) $marksItem['marks'],
+                        strtoupper(trim($marksItem['exam_status'])),
+                        strtoupper(trim($marksItem['marks_status'])),
+                        (int) $marksItem['teacher_id'],
+                    ]
+                );
+
+                if (! $result || $result->result === null) {
+                    throw new \RuntimeException('No response returned from database function');
+                }
+
+                $data = is_string($result->result)
+                    ? json_decode($result->result, true, 512, JSON_THROW_ON_ERROR)
+                    : (array) $result->result;
+                $errorCode = (int) ($data['p_errorcode'] ?? 1);
+                $isSuccessful = $errorCode === 0;
+
+                if ($isSuccessful) {
+                    $success++;
+                } else {
+                    $failed++;
+                }
+
+                $results[] = [
+                    'index' => $index,
+                    'student_id' => (int) $marksItem['student_id'],
+                    'reg_no' => $marksItem['reg_no'],
+                    'subject_code' => strtoupper(trim($marksItem['subject_code'])),
+                    'status' => $isSuccessful ? 'success' : 'failed',
+                    'result' => $data,
+                ];
+            } catch (\Throwable $exception) {
+                $failed++;
+                Log::channel('daily')->error('[Admin Student Marks] Review marks item failed', [
+                    'index' => $index,
+                    'student_id' => $marksItem['student_id'],
+                    'message' => $exception->getMessage(),
+                ]);
+
+                $results[] = [
+                    'index' => $index,
+                    'student_id' => (int) $marksItem['student_id'],
+                    'reg_no' => $marksItem['reg_no'],
+                    'subject_code' => strtoupper(trim($marksItem['subject_code'])),
+                    'status' => 'failed',
+                    'message' => 'Failed to save review marks',
+                ];
+            }
+        }
+
+        $overallStatus = $failed === 0 ? 1 : ($success > 0 ? 2 : 0);
+
+        return response()->json([
+            'version' => '1.0',
+            'status' => $overallStatus,
+            'message' => $failed === 0
+                ? "All {$success} review marks saved successfully"
+                : ($success > 0
+                    ? "Partial success: {$success} succeeded, {$failed} failed"
+                    : "All {$failed} review marks failed to save"),
+            'data' => [
+                'total' => count($marksItems),
+                'success' => $success,
+                'failed' => $failed,
+                'results' => $results,
+            ],
+        ]);
+    }
 }

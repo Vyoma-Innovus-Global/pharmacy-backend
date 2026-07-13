@@ -236,4 +236,110 @@ class StudentMarksController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * @OA\Post(
+     *     path="/api/admin/get-review-student-marks-info",
+     *     tags={"Admin - Student Marks"},
+     *     summary="Get review student marks information",
+     *     description="Calls fn_admin_getreviewstudentmarksinfo. Use student_id 0 to retrieve all matching students.",
+     *     security={{"token": {}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"admin_user_id", "student_id", "inst_code", "dept_code", "subject_code", "exam_year", "semester"},
+     *             @OA\Property(property="admin_user_id", type="integer", format="int64", example=887),
+     *             @OA\Property(property="student_id", type="integer", format="int64", example=0),
+     *             @OA\Property(property="inst_code", type="string", example="AIHE"),
+     *             @OA\Property(property="dept_code", type="string", example="PHARM"),
+     *             @OA\Property(property="subject_code", type="string", example="SOPH"),
+     *             @OA\Property(property="exam_year", type="string", example="2025"),
+     *             @OA\Property(property="semester", type="string", example="Part-I")
+     *         )
+     *     ),
+     *     @OA\Response(response=200, description="Review student marks retrieved successfully"),
+     *     @OA\Response(response=400, description="Validation failed"),
+     *     @OA\Response(response=500, description="Internal server error")
+     * )
+     */
+    public function getReviewStudentMarksInfo(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'admin_user_id' => 'required|integer',
+            'student_id' => 'required|integer|min:0',
+            'inst_code' => 'required|string|max:20',
+            'dept_code' => 'required|string|max:20',
+            'subject_code' => 'required|string|max:50',
+            'exam_year' => 'required|string|max:20',
+            'semester' => 'required|string|max:20',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'version' => '1.0',
+                'status' => 0,
+                'message' => 'Validation failed: ' . $validator->errors()->first(),
+                'data' => [],
+            ], 400);
+        }
+
+        $parameters = $validator->validated();
+
+        try {
+            $result = DB::selectOne(
+                'SELECT public.fn_admin_getreviewstudentmarksinfo(?::bigint, ?::bigint, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar) AS result',
+                [
+                    (int) $parameters['admin_user_id'],
+                    (int) $parameters['student_id'],
+                    strtoupper(trim($parameters['inst_code'])),
+                    strtoupper(trim($parameters['dept_code'])),
+                    strtoupper(trim($parameters['subject_code'])),
+                    trim($parameters['exam_year']),
+                    trim($parameters['semester']),
+                ]
+            );
+
+            if (! $result || $result->result === null) {
+                return response()->json([
+                    'version' => '1.0',
+                    'status' => 1,
+                    'message' => 'No review student marks found',
+                    'data' => [],
+                ]);
+            }
+
+            $data = is_string($result->result)
+                ? json_decode($result->result, true, 512, JSON_THROW_ON_ERROR)
+                : (array) $result->result;
+
+            return response()->json([
+                'version' => '1.0',
+                'status' => 1,
+                'message' => 'Review student marks retrieved successfully',
+                'data' => $data,
+            ]);
+        } catch (\JsonException $exception) {
+            Log::channel('daily')->error('[Student Marks] Invalid review marks JSON', [
+                'message' => $exception->getMessage(),
+            ]);
+
+            return response()->json([
+                'version' => '1.0',
+                'status' => 0,
+                'message' => 'Failed to parse database response',
+                'data' => [],
+            ], 500);
+        } catch (\Throwable $exception) {
+            Log::channel('daily')->error('[Student Marks] Review marks query failed', [
+                'message' => $exception->getMessage(),
+            ]);
+
+            return response()->json([
+                'version' => '1.0',
+                'status' => 0,
+                'message' => 'Internal server error',
+                'data' => [],
+            ], 500);
+        }
+    }
 }
