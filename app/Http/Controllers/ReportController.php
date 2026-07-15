@@ -14,6 +14,96 @@ use Illuminate\Support\Facades\Validator;
 class ReportController extends Controller
 {
     /**
+     * Get student details list for an institute admin.
+     *
+     * Calls: public.fn_getstudentdetailslistbyinstrituteadmin(
+     *   p_department, p_instcode, p_academicseason
+     * )
+     */
+    public function studentDetailsListByInstituteAdmin(Request $request)
+    {
+        $department = $request->input('department', $request->input('p_department'));
+        $instCode = $request->input(
+            'inst_code',
+            $request->input('p_instcode', $request->input('instcode'))
+        );
+        $academicSeason = $request->input(
+            'academic_season',
+            $request->input(
+                'academic_session',
+                $request->input(
+                    'p_academicseason',
+                    $request->input('academicseason', $request->input('sess_yr'))
+                )
+            )
+        );
+
+        $validator = Validator::make([
+            'department' => $department,
+            'inst_code' => $instCode,
+            'academic_season' => $academicSeason,
+        ], [
+            'department' => 'required|string|max:50',
+            'inst_code' => 'required|string|max:50',
+            'academic_season' => 'required|string|max:20',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'error' => true,
+                'message' => $validator->errors(),
+            ], 422);
+        }
+
+        try {
+            $result = DB::selectOne(
+                'SELECT public.fn_getstudentdetailslistbyinstrituteadmin(?::varchar, ?::varchar, ?::varchar) AS data',
+                [trim($department), trim($instCode), trim($academicSeason)]
+            );
+
+            $raw = $result->data ?? null;
+
+            if ($raw === null) {
+                return response()->json([
+                    'error' => true,
+                    'message' => 'No student data found.',
+                ], 404);
+            }
+
+            if (is_string($raw)) {
+                $studentData = json_decode($raw, true);
+
+                if (json_last_error() !== JSON_ERROR_NONE) {
+                    return response()->json([
+                        'error' => true,
+                        'message' => 'Failed to parse student data from database.',
+                    ], 500);
+                }
+            } else {
+                $studentData = json_decode(json_encode($raw), true);
+            }
+
+            if (empty($studentData)) {
+                return response()->json([
+                    'error' => true,
+                    'message' => 'No student data found.',
+                ], 404);
+            }
+
+            return response()->json([
+                'error' => false,
+                'message' => 'Data found',
+                'data' => $studentData,
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => true,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
      * Get registered student details list for an institute admin.
      *
      * Calls: public.fn_getregistredstudentdetailslistbyinstrituteadmin(
