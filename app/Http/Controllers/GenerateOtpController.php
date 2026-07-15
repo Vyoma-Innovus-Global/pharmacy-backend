@@ -14,6 +14,8 @@ use App\Mail\OtpMail;
 
 class GenerateOtpController extends Controller
 {
+    public const OTP_EMAIL_SENDING_ENABLED = true; // Set to true to enable email sending in production
+    public const OTP_SMS_SENDING_ENABLED = true; // Set to true to enable SMS sending in production
     private const SMS_ONLY_USER_TYPES = [9, 10, 11, 15];
     private const EMAIL_ONLY_USER_TYPES = [8, 13];
 
@@ -153,13 +155,19 @@ class GenerateOtpController extends Controller
             try {
                 if (in_array($userTypeId, self::SMS_ONLY_USER_TYPES, true) && $phone) {
                     $otpSendTo = $phone;
-                    Log::channel('daily')->info('[generate] SMS send attempt', [
-                        'phone' => $this->maskContact($phone),
-                        'user_type_id' => $userTypeId,
-                    ]);
-                    $smsResponse = send_sms($phone, $smsMessage);
-                    $smsSent = true;
-                    $this->logSmsResponse('[generate] SMS sent', $phone, $smsResponse);
+                    if ($this->isOtpSmsSendingEnabled()) {
+                        Log::channel('daily')->info('[generate] SMS send attempt', [
+                            'phone' => $this->maskContact($phone),
+                            'user_type_id' => $userTypeId,
+                        ]);
+                        $smsResponse = send_sms($phone, $smsMessage);
+                        $smsSent = true;
+                        $this->logSmsResponse('[generate] SMS sent', $phone, $smsResponse);
+                    } else {
+                        Log::channel('daily')->warning('[generate] SMS sending blocked', [
+                            'phone' => $this->maskContact($phone),
+                        ]);
+                    }
                 } elseif (in_array($userTypeId, self::SMS_ONLY_USER_TYPES, true)) {
                     Log::channel('daily')->warning('[generate] SMS skipped: phone missing', ['user_type_id' => $userTypeId]);
                 }
@@ -176,13 +184,19 @@ class GenerateOtpController extends Controller
                 if ($userTypeId === 12) {
                     if ($phone) {
                         $otpSendTo = $phone;
-                        Log::channel('daily')->info('[generate] SMS send attempt (type 12)', [
-                            'phone' => $this->maskContact($phone),
-                            'user_type_id' => $userTypeId,
-                        ]);
-                        $smsResponse = send_sms($phone, $smsMessage);
-                        $smsSent = true;
-                        $this->logSmsResponse('[generate] SMS sent (type 12)', $phone, $smsResponse);
+                        if ($this->isOtpSmsSendingEnabled()) {
+                            Log::channel('daily')->info('[generate] SMS send attempt (type 12)', [
+                                'phone' => $this->maskContact($phone),
+                                'user_type_id' => $userTypeId,
+                            ]);
+                            $smsResponse = send_sms($phone, $smsMessage);
+                            $smsSent = true;
+                            $this->logSmsResponse('[generate] SMS sent (type 12)', $phone, $smsResponse);
+                        } else {
+                            Log::channel('daily')->warning('[generate] SMS sending blocked (type 12)', [
+                                'phone' => $this->maskContact($phone),
+                            ]);
+                        }
                     } else {
                         Log::channel('daily')->warning('[generate] SMS skipped (type 12): phone missing');
                     }
@@ -204,8 +218,10 @@ class GenerateOtpController extends Controller
             Log::channel('daily')->info('[generate] OUTPUT (200)', ['sms' => $smsSent, 'email' => $emailSent]);
 
             $emailDeliveryBlocked = (in_array($userTypeId, self::EMAIL_ONLY_USER_TYPES, true) || $userTypeId === 12) && !$this->isOtpEmailSendingEnabled();
+            $smsDeliveryBlocked   = (in_array($userTypeId, self::SMS_ONLY_USER_TYPES, true) || $userTypeId === 12) && !$this->isOtpSmsSendingEnabled();
+            $deliveryBlocked      = $emailDeliveryBlocked || $smsDeliveryBlocked;
 
-            if (!$smsSent && !$emailSent && !$emailDeliveryBlocked) {
+            if (!$smsSent && !$emailSent && !$deliveryBlocked) {
                 $hasDestination = !empty($otpSendTo);
 
                 return response()->json([
@@ -221,13 +237,13 @@ class GenerateOtpController extends Controller
 
             return response()->json([
                 'error'           => false,
-                'message'         => $emailDeliveryBlocked && !$smsSent
-                    ? 'OTP generated successfully. Email sending is currently blocked.'
+                'message'         => $deliveryBlocked && !$smsSent && !$emailSent
+                    ? 'OTP generated successfully. SMS/Email sending is currently blocked.'
                     : 'OTP Sent Successfully.',
                 'otp_expire_time' => now()->addMinutes(2)->format('Y-m-d H:i:s'),
                 'sent_via'        => ['sms' => $smsSent, 'email' => $emailSent],
                 'OTPSendTo'       => $otpSendTo,
-                'p_otp'           => $emailDeliveryBlocked && Config::get('app.env') !== 'production' ? $otp : null,
+                'p_otp'           => $deliveryBlocked && Config::get('app.env') !== 'production' ? $otp : null,
             ], 200);
 
         } catch (\Exception $e) {
@@ -498,25 +514,37 @@ class GenerateOtpController extends Controller
             $smsMessage = "{$otp} is your One Time Password (OTP). Don't share this with anyone. - WBSCTE&VE&SD";
 
             if (in_array($userTypeId, self::SMS_ONLY_USER_TYPES, true)) {
-                Log::channel('daily')->info('[updateOtpUsed] SMS send attempt', [
-                    'contact_no' => $this->maskContact($contactNo),
-                    'user_type_id' => $userTypeId,
-                ]);
-                $smsResponse = send_sms($contactNo, $smsMessage);
-                $smsSent = true;
-                $this->logSmsResponse('[updateOtpUsed] SMS sent', $contactNo, $smsResponse);
+                if ($this->isOtpSmsSendingEnabled()) {
+                    Log::channel('daily')->info('[updateOtpUsed] SMS send attempt', [
+                        'contact_no' => $this->maskContact($contactNo),
+                        'user_type_id' => $userTypeId,
+                    ]);
+                    $smsResponse = send_sms($contactNo, $smsMessage);
+                    $smsSent = true;
+                    $this->logSmsResponse('[updateOtpUsed] SMS sent', $contactNo, $smsResponse);
+                } else {
+                    Log::channel('daily')->warning('[updateOtpUsed] SMS sending blocked', [
+                        'contact_no' => $this->maskContact($contactNo),
+                    ]);
+                }
             }
             if (in_array($userTypeId, self::EMAIL_ONLY_USER_TYPES, true)) {
                 $emailSent = $this->sendOtpEmail($contactNo, $otp, $contactNo, '[updateOtpUsed]');
             }
             if ($userTypeId === 12) {
-                Log::channel('daily')->info('[updateOtpUsed] SMS send attempt (type 12)', [
-                    'contact_no' => $this->maskContact($contactNo),
-                    'user_type_id' => $userTypeId,
-                ]);
-                $smsResponse = send_sms($contactNo, $smsMessage);
-                $smsSent = true;
-                $this->logSmsResponse('[updateOtpUsed] SMS sent (type 12)', $contactNo, $smsResponse);
+                if ($this->isOtpSmsSendingEnabled()) {
+                    Log::channel('daily')->info('[updateOtpUsed] SMS send attempt (type 12)', [
+                        'contact_no' => $this->maskContact($contactNo),
+                        'user_type_id' => $userTypeId,
+                    ]);
+                    $smsResponse = send_sms($contactNo, $smsMessage);
+                    $smsSent = true;
+                    $this->logSmsResponse('[updateOtpUsed] SMS sent (type 12)', $contactNo, $smsResponse);
+                } else {
+                    Log::channel('daily')->warning('[updateOtpUsed] SMS sending blocked (type 12)', [
+                        'contact_no' => $this->maskContact($contactNo),
+                    ]);
+                }
 
                 $emailSent = $this->sendOtpEmail($contactNo, $otp, $contactNo, '[updateOtpUsed] type 12');
             }
@@ -557,7 +585,12 @@ class GenerateOtpController extends Controller
 
     private function isOtpEmailSendingEnabled(): bool
     {
-        return filter_var(Config::get('mail.otp_email_sending_enabled', true), FILTER_VALIDATE_BOOLEAN);
+        return self::OTP_EMAIL_SENDING_ENABLED;
+    }
+
+    private function isOtpSmsSendingEnabled(): bool
+    {
+        return self::OTP_SMS_SENDING_ENABLED;
     }
 
     private function normalizeContact($contact): ?string

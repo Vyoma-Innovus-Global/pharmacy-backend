@@ -123,7 +123,7 @@ if (!function_exists('send_sms')) {
     function send_sms($phone_to, $sms_message)
     {
         // Enable SMS sending in all environments (change to false to disable in dev)
-        $is_send_otp = true; // Was: Config::get('app.env') == 'production' ? true : false;
+        $is_send_otp = \App\Http\Controllers\GenerateOtpController::OTP_SMS_SENDING_ENABLED; // Was: Config::get('app.env') == 'production' ? true : false;
         $maskedPhone = strlen($phone_to) > 4 ? str_repeat('*', strlen($phone_to) - 4) . substr($phone_to, -4) : $phone_to;
 
         if ($is_send_otp) {

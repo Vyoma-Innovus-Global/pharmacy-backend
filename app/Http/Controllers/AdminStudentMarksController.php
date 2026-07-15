@@ -369,6 +369,7 @@ class AdminStudentMarksController extends Controller
      *                     @OA\Property(property="marks", type="integer", example=65),
      *                     @OA\Property(property="exam_status", type="string", example="PRESENT"),
      *                     @OA\Property(property="marks_status", type="string", example="SUBMITTED"),
+     *                     @OA\Property(property="document", type="string", example="review_document.pdf", nullable=true),
      *                     @OA\Property(property="teacher_id", type="integer", format="int64", example=887)
      *                 )
      *             )
@@ -391,6 +392,7 @@ class AdminStudentMarksController extends Controller
             'marks.*.marks' => 'required|integer|min:0',
             'marks.*.exam_status' => 'required|string|max:50',
             'marks.*.marks_status' => 'required|string|max:50',
+            'marks.*.document' => 'nullable|string',
             'marks.*.teacher_id' => 'required|integer|min:1',
         ]);
 
@@ -411,7 +413,7 @@ class AdminStudentMarksController extends Controller
         foreach ($marksItems as $index => $marksItem) {
             try {
                 $result = DB::selectOne(
-                    'SELECT public.fn_save_review_subject_marks(?::bigint, ?::varchar, ?::varchar, ?::integer, ?::varchar, ?::integer, ?::varchar, ?::varchar, ?::bigint) AS result',
+                    'SELECT public.fn_save_review_subject_marks(?::bigint, ?::varchar, ?::varchar, ?::integer, ?::varchar, ?::integer, ?::varchar, ?::varchar, ?::varchar, ?::bigint) AS result',
                     [
                         (int) $marksItem['student_id'],
                         trim($marksItem['reg_no']),
@@ -421,6 +423,7 @@ class AdminStudentMarksController extends Controller
                         (int) $marksItem['marks'],
                         strtoupper(trim($marksItem['exam_status'])),
                         strtoupper(trim($marksItem['marks_status'])),
+                        $marksItem['document'] ?? null,
                         (int) $marksItem['teacher_id'],
                     ]
                 );

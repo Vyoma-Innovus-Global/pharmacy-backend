@@ -280,7 +280,7 @@ class ReportController extends Controller
             'student_id' => 'required|integer',
             'admin_user_id' => 'required|integer',
             'admin_user_type' => 'required|integer',
-           'date_of_birth' => 'nullable|string',
+            'date_of_birth' => 'nullable|string',
             'is_married' => 'nullable|integer',
             'is_kanyashree' => 'nullable|integer',
             'is_pwd' => 'nullable|integer',
@@ -757,13 +757,13 @@ class ReportController extends Controller
                 ->get();
 
 
-            
+
             $studentData = $students->map(function ($student) {
                 return [
                     'Department' => "PHARM",
                     's_reg_no' => $student->s_appl_reg_no,
                     's_reg_year' => $student->s_appl_sess_year,
-                    's_full_name' => $student->s_first_name." ".$student->s_middle_name." ".$student->s_last_name,
+                    's_full_name' => $student->s_first_name . " " . $student->s_middle_name . " " . $student->s_last_name,
                     's_father_name' => $student->s_father_name,
                     's_mother_name' => $student->s_mother_name,
                     's_dob' => $student->s_dob,
@@ -776,7 +776,7 @@ class ReportController extends Controller
                     'institute_code' => $student->s_inst_code,
                     'institute_name' => $student->i_name,
                     'adm_type' => $student->admission_type,
-                    "s_alloted_category"=> $student->s_alloted_category
+                    "s_alloted_category" => $student->s_alloted_category
                 ];
             });
 
@@ -793,7 +793,7 @@ class ReportController extends Controller
             ], 500);
         }
     }
-    
+
 
     public function resultReportList(Request $request)
     {
@@ -874,7 +874,8 @@ class ReportController extends Controller
             $totalStudents = $students->count();
 
             foreach ($students as $student) {
-                if (!$student->$creditColumn) continue;
+                if (!$student->$creditColumn)
+                    continue;
 
                 $passedPapers = explode(',', $student->$creditColumn); // e.g., ['p1','p2','p3']
 
@@ -898,20 +899,20 @@ class ReportController extends Controller
                 $resultData[] = [
                     'subject_code' => $subjectCode,
                     'subject_name' => $subject->subject_name,
-                    'pass_count'   => $passCount,
-                    'fail_count'   => $failCount,
+                    'pass_count' => $passCount,
+                    'fail_count' => $failCount,
                 ];
             }
 
             return response()->json([
-                'status'    => 'success',
+                'status' => 'success',
                 'exam_year' => $examYear,
-                'data'      => $resultData,
+                'data' => $resultData,
             ]);
 
         } catch (\Exception $e) {
             return response()->json([
-                'status'  => 'error',
+                'status' => 'error',
                 'message' => 'Error generating subject-wise report: ' . $e->getMessage()
             ], 500);
         }
@@ -927,13 +928,13 @@ class ReportController extends Controller
             $examYear = $request->exam_year;
 
             // Fetch student-wise results for the selected exam year
-            $results = DB::table($examYear.'_pharmacy_result_pone as r')
+            $results = DB::table($examYear . '_pharmacy_result_pone as r')
                 ->join('pharmacy_register_student_final as s', 's.s_appl_reg_no', '=', 'r.reg_number')
                 ->select(
                     'r.roll_number',
                     'r.reg_number',
                     's.s_candidate_name as full_name',
-					'r.grand_total as mark_obtained',
+                    'r.grand_total as mark_obtained',
                     'r.percentage',
                     'r.result_final as remark'
                 )
@@ -1470,7 +1471,7 @@ class ReportController extends Controller
      * Get student review details list by council.
      *
      * Calls: public.fn_getstudentreviewdetailslistbycouncil(
-     *   p_examyear, p_semester, p_instcode, p_page_no, p_page_size, p_adminuserid
+     *   p_examyear, p_semester, p_instcode, p_subjectcode, p_page_no, p_page_size, p_adminuserid
      * )
      */
     public function studentReviewDetailsListByCouncil(Request $request)
@@ -1478,6 +1479,10 @@ class ReportController extends Controller
         $examYear = $request->input(
             'exam_year',
             $request->input('examYear', $request->input('p_examyear'))
+        );
+        $subjectCode = $request->input(
+            'subject_code',
+            $request->input('subjectCode', $request->input('p_subjectcode'))
         );
         $semester = $request->input(
             'semester',
@@ -1504,13 +1509,15 @@ class ReportController extends Controller
             'exam_year' => $examYear,
             'semester' => $semester,
             'inst_code' => $instCode,
+            'subject_code' => $subjectCode,
             'page_no' => $pageNo,
             'page_size' => $pageSize,
             'admin_user_id' => $adminUserId,
         ], [
             'exam_year' => 'required|string|max:20',
             'semester' => 'required|string|max:50',
-            'inst_code' => 'required|string|max:50',
+            'inst_code' => 'nullable|string|max:50',
+            'subject_code' => 'nullable|string|max:50',
             'page_no' => 'required|integer|min:1',
             'page_size' => 'required|integer|min:1|max:500',
             'admin_user_id' => 'required|integer',
@@ -1525,11 +1532,12 @@ class ReportController extends Controller
 
         try {
             $result = DB::select(
-                'SELECT public.fn_getstudentreviewdetailslistbycouncil(?::varchar, ?::varchar, ?::varchar, ?::int, ?::int, ?::bigint) AS data',
+                'SELECT public.fn_getstudentreviewdetailslistbycouncil(?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::int, ?::int, ?::bigint) AS data',
                 [
                     trim($examYear),
                     trim($semester),
-                    trim($instCode),
+                    $instCode !== null && $instCode !== '' ? trim($instCode) : null,
+                    $subjectCode !== null && $subjectCode !== '' ? trim($subjectCode) : null,
                     (int) $pageNo,
                     (int) $pageSize,
                     (int) $adminUserId,
