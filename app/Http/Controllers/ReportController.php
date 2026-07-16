@@ -14,6 +14,222 @@ use Illuminate\Support\Facades\Validator;
 class ReportController extends Controller
 {
     /**
+     * Get student details list for an institute admin.
+     *
+     * Calls: public.fn_getstudentdetailslistbyinstrituteadmin(
+     *   p_department, p_instcode, p_academicseason
+     * )
+     */
+    public function studentDetailsListByInstituteAdmin(Request $request)
+    {
+        $department = $request->input('department', $request->input('p_department'));
+        $instCode = $request->input(
+            'inst_code',
+            $request->input('p_instcode', $request->input('instcode'))
+        );
+        $academicSeason = $request->input(
+            'academic_season',
+            $request->input(
+                'academic_session',
+                $request->input(
+                    'p_academicseason',
+                    $request->input('academicseason', $request->input('sess_yr'))
+                )
+            )
+        );
+
+        $validator = Validator::make([
+            'department' => $department,
+            'inst_code' => $instCode,
+            'academic_season' => $academicSeason,
+        ], [
+            'department' => 'required|string|max:50',
+            'inst_code' => 'required|string|max:50',
+            'academic_season' => 'required|string|max:20',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'error' => true,
+                'message' => $validator->errors(),
+            ], 422);
+        }
+
+        try {
+            $result = DB::selectOne(
+                'SELECT public.fn_getstudentdetailslistbyinstrituteadmin(?::varchar, ?::varchar, ?::varchar) AS data',
+                [trim($department), trim($instCode), trim($academicSeason)]
+            );
+
+            $raw = $result->data ?? null;
+
+            if ($raw === null) {
+                return response()->json([
+                    'error' => true,
+                    'message' => 'No student data found.',
+                ], 404);
+            }
+
+            if (is_string($raw)) {
+                $studentData = json_decode($raw, true);
+
+                if (json_last_error() !== JSON_ERROR_NONE) {
+                    return response()->json([
+                        'error' => true,
+                        'message' => 'Failed to parse student data from database.',
+                    ], 500);
+                }
+            } else {
+                $studentData = json_decode(json_encode($raw), true);
+            }
+
+            if (empty($studentData)) {
+                return response()->json([
+                    'error' => true,
+                    'message' => 'No student data found.',
+                ], 404);
+            }
+
+            return response()->json([
+                'error' => false,
+                'message' => 'Data found',
+                'data' => $studentData,
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => true,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Update a student's phone or Aadhaar details by institute admin.
+     *
+     * Calls: public.fn_updatestudentphoneoraadhaardetailsbyinstadmin(
+     *   p_studentid, p_adminuserid, p_adminusertype,
+     *   p_aadharnumber, p_phonenumber, p_aadhaardocument
+     * )
+     */
+    public function updateStudentPhoneOrAadhaarDetailsByInstAdmin(Request $request)
+    {
+        $input = function (...$keys) use ($request) {
+            foreach ($keys as $key) {
+                if ($request->has($key)) {
+                    return $request->input($key);
+                }
+            }
+
+            return null;
+        };
+
+        $payload = [
+            'student_id' => $input('student_id', 'studentId', 'p_studentid'),
+            'admin_user_id' => $input('admin_user_id', 'adminUserId', 'p_adminuserid'),
+            'admin_user_type' => $input('admin_user_type', 'adminUserType', 'p_adminusertype'),
+            'aadhaar_number' => $input(
+                'aadhaar_number',
+                'aadhar_number',
+                'aadhaarNumber',
+                'aadharNumber',
+                'p_aadharnumber'
+            ),
+            'phone_number' => $input('phone_number', 'phoneNumber', 'p_phonenumber'),
+            'aadhaar_document' => $input(
+                'aadhaar_document',
+                'aadhar_document',
+                'aadhaarDocument',
+                'aadharDocument',
+                'p_aadhaardocument'
+            ),
+        ];
+
+        $validator = Validator::make($payload, [
+            'student_id' => 'required|integer',
+            'admin_user_id' => 'required|integer',
+            'admin_user_type' => 'required|integer',
+            'aadhaar_number' => 'nullable|string|max:20',
+            'phone_number' => 'nullable|string|max:20',
+            'aadhaar_document' => 'nullable|string|max:2048',
+        ]);
+
+        $validator->after(function ($validator) use ($payload) {
+            if (
+                blank($payload['aadhaar_number'])
+                && blank($payload['phone_number'])
+                && blank($payload['aadhaar_document'])
+            ) {
+                $validator->errors()->add(
+                    'update_details',
+                    'At least one of aadhaar_number, phone_number, or aadhaar_document is required.'
+                );
+            }
+        });
+
+        if ($validator->fails()) {
+            return response()->json([
+                'error' => true,
+                'message' => $validator->errors(),
+            ], 422);
+        }
+
+        foreach (['aadhaar_number', 'phone_number', 'aadhaar_document'] as $field) {
+            if (is_string($payload[$field])) {
+                $payload[$field] = trim($payload[$field]);
+            }
+        }
+
+        try {
+            $result = DB::selectOne(
+                'SELECT public.fn_updatestudentphoneoraadhaardetailsbyinstadmin(
+                    ?::bigint, ?::bigint, ?::bigint, ?::varchar, ?::varchar, ?::varchar
+                ) AS data',
+                [
+                    (int) $payload['student_id'],
+                    (int) $payload['admin_user_id'],
+                    (int) $payload['admin_user_type'],
+                    $payload['aadhaar_number'],
+                    $payload['phone_number'],
+                    $payload['aadhaar_document'],
+                ]
+            );
+
+            $raw = $result->data ?? null;
+
+            if ($raw === null) {
+                return response()->json([
+                    'error' => true,
+                    'message' => 'No response received from the student update function.',
+                ], 500);
+            }
+
+            if (is_string($raw)) {
+                $responseData = json_decode($raw, true);
+
+                if (json_last_error() !== JSON_ERROR_NONE) {
+                    return response()->json([
+                        'error' => true,
+                        'message' => 'Failed to parse student update response from database.',
+                    ], 500);
+                }
+            } else {
+                $responseData = json_decode(json_encode($raw), true);
+            }
+
+            return response()->json([
+                'error' => false,
+                'message' => 'Student phone or Aadhaar details updated',
+                'data' => $responseData,
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => true,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
      * Get registered student details list for an institute admin.
      *
      * Calls: public.fn_getregistredstudentdetailslistbyinstrituteadmin(
