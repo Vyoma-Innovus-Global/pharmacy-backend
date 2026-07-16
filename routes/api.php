@@ -267,9 +267,9 @@ Route::prefix('marks-entry')->middleware('authenticate')->group(function () {
 //->middleware('authenticate')
 Route::prefix('reports')->group(function () {
     Route::post('/registered-student-report-list', [ReportController::class, 'registeredStudentReportList']);
-    Route::get('/student-details-by-institute-admin', [ReportController::class, 'studentDetailsListByInstituteAdmin']);
-    Route::post('/student-details-by-institute-admin', [ReportController::class, 'studentDetailsListByInstituteAdmin']);
-    Route::post('/update-student-phone-or-aadhaar-details-by-inst-admin', [ReportController::class, 'updateStudentPhoneOrAadhaarDetailsByInstAdmin']);
+    Route::get('/student-details-by-institute-admin', [ReportController::class, 'studentDetailsListByInstituteAdmin'])->middleware('authenticate');
+    Route::post('/student-details-by-institute-admin', [ReportController::class, 'studentDetailsListByInstituteAdmin'])->middleware('authenticate');
+    Route::post('/update-student-phone-or-aadhaar-details-by-inst-admin', [ReportController::class, 'updateStudentPhoneOrAadhaarDetailsByInstAdmin'])->middleware('authenticate');;
     Route::get('/registered-student-details-by-institute-admin', [ReportController::class, 'registeredStudentDetailsListByInstituteAdmin']);
     Route::post('/registered-student-details-by-institute-admin', [ReportController::class, 'registeredStudentDetailsListByInstituteAdmin']);
     Route::get('/registered-student-details-by-student-id', [ReportController::class, 'registeredStudentDetailsListByStudentId']);

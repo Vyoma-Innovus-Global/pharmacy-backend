@@ -667,6 +667,7 @@ class ReportController extends Controller
             'kanyashree_document' => $input('kanyashree_document', 'kanyashreeDocument', 'p_kanyashreedoc'),
             'kanyashree_number' => $input('kanyashree_number', 'kanyashreeNumber', 'kanyashreeId', 'p_kanyashreenumber'),
             'pwd_document' => $input('pwd_document', 'pwdDocument', 'p_pwddoc'),
+            'marks_document' => $input('marks_document', 'marksDocument', 'p_marksdocument'),
             'is_pwd' => $input('is_pwd', 'isPwd', 's_pwd', 'p_ispwd'),
         ];
 
@@ -704,7 +705,7 @@ class ReportController extends Controller
                     ?::bigint, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar,
                     ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar,
                     ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar,
-                    ?::varchar, ?::varchar, ?::smallint
+                    ?::varchar, ?::varchar, ?::varchar, ?::smallint
                 ) AS data',
                 [
                     (int) $payload['student_id'],
@@ -756,6 +757,7 @@ class ReportController extends Controller
                     $payload['kanyashree_document'],
                     $payload['kanyashree_number'],
                     $payload['pwd_document'],
+                    $payload['marks_document'],
                     $payload['is_pwd'] === null ? null : (int) $payload['is_pwd'],
                 ]
             );
@@ -818,6 +820,10 @@ class ReportController extends Controller
             'pwd_document' => [
                 'keys' => ['pwd_document', 'pwdDocument', 'ei_pwd_doc', 'p_pwddoc'],
                 'suffix' => 'pwd',
+            ],
+            'marks_document' => [
+                'keys' => ['marks_document', 'marksDocument', 'ei_marks_doc', 'p_marksdocument'],
+                'suffix' => 'marks',
             ],
         ];
 
