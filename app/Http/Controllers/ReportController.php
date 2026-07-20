@@ -682,6 +682,7 @@ class ReportController extends Controller
             'date_of_birth' => 'nullable|string',
             'is_married' => 'nullable|integer',
             'is_kanyashree' => 'nullable|integer',
+            'marks_document' => 'nullable|string|max:2048',
             'is_pwd' => 'nullable|integer',
         ]);
 
@@ -822,7 +823,7 @@ class ReportController extends Controller
                 'suffix' => 'pwd',
             ],
             'marks_document' => [
-                'keys' => ['marks_document', 'marksDocument', 'ei_marks_doc', 'p_marksdocument'],
+                'keys' => ['marks_document', 'marksDocument', 'ei_marks_document', 'p_marksdocument'],
                 'suffix' => 'marks',
             ],
         ];
