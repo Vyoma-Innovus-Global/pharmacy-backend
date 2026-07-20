@@ -279,6 +279,7 @@ Route::prefix('reports')->group(function () {
     Route::post('/update-student-details-by-admin', [ReportController::class, 'updateStudentDetailsByAdmin']);
     Route::post('/update-student-details-by-admin-v1', [ReportController::class, 'updateStudentDetailsByAdminV1']);
     Route::post('/update-student-registration-status-by-admin', [ReportController::class, 'updateStudentRegistrationStatusByAdmin']);
+    Route::post('/save-confirmation-status', [ReportController::class, 'saveConfirmationStatus']);
     Route::get('/result-department-wise-report-list', [ReportController::class, 'resultDepartmentWiseReportList']);
     Route::get('/result-subject-wise-report-list', [ReportController::class, 'resultSubjectWiseReportList']);
     Route::get('/student-result-report', [ReportController::class, 'studentResultReport']);

@@ -961,6 +961,85 @@ class ReportController extends Controller
         }
     }
 
+    /**
+     * Save a student's confirmation status.
+     *
+     * Calls: public.fn_save_confirmation_status(
+     *   p_studentid, p_adminuserid, p_adminusertype, p_isconfirm
+     * )
+     */
+    public function saveConfirmationStatus(Request $request)
+    {
+        $studentId = $request->input(
+            'student_id',
+            $request->input('studentId', $request->input('p_studentid'))
+        );
+        $adminUserId = $request->input(
+            'admin_user_id',
+            $request->input('adminUserId', $request->input('p_adminuserid'))
+        );
+        $adminUserType = $request->input(
+            'admin_user_type',
+            $request->input('adminUserType', $request->input('p_adminusertype'))
+        );
+        $isConfirm = $request->input(
+            'is_confirm',
+            $request->input('isConfirm', $request->input('p_isconfirm'))
+        );
+
+        $validator = Validator::make([
+            'student_id' => $studentId,
+            'admin_user_id' => $adminUserId,
+            'admin_user_type' => $adminUserType,
+            'is_confirm' => $isConfirm,
+        ], [
+            'student_id' => 'required|integer',
+            'admin_user_id' => 'required|integer',
+            'admin_user_type' => 'required|integer',
+            'is_confirm' => 'required|integer|in:0,1',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'error' => true,
+                'message' => $validator->errors(),
+            ], 422);
+        }
+
+        try {
+            $result = DB::selectOne(
+                'SELECT public.fn_save_confirmation_status(?::bigint, ?::bigint, ?::bigint, ?::smallint) AS data',
+                [
+                    (int) $studentId,
+                    (int) $adminUserId,
+                    (int) $adminUserType,
+                    (int) $isConfirm,
+                ]
+            );
+
+            $raw = $result->data ?? null;
+            $responseData = is_string($raw) ? json_decode($raw, true) : $raw;
+
+            if ($raw === null || (is_string($raw) && json_last_error() !== JSON_ERROR_NONE)) {
+                return response()->json([
+                    'error' => true,
+                    'message' => 'Failed to parse confirmation status response from database.',
+                ], 500);
+            }
+
+            return response()->json([
+                'error' => false,
+                'message' => 'Confirmation status saved successfully.',
+                'data' => $responseData,
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => true,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
     public function registeredStudentReportList(Request $request)
     {
         try {
