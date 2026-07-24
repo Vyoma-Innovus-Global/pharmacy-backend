@@ -303,6 +303,10 @@ Route::prefix('review')->middleware('authenticate')->group(function () {
     Route::post('/student-review-subjects', [ReviewController::class, 'getStudentReviewSubject']);
     Route::post('/teacher-list-of-review-subject', [ReviewController::class, 'getTeacherListOfReviewSubject']);
     Route::get('/teacher-list-of-review-subject', [ReviewController::class, 'getTeacherListOfReviewSubject']);
+    Route::get('/teacher-info-by-institute', [ReviewController::class, 'getTeacherInfoByInstitute']);
+    Route::post('/teacher-info-by-institute', [ReviewController::class, 'getTeacherInfoByInstitute']);
+    Route::get('/student-details-by-teacher', [ReviewController::class, 'getReviewStudentDetailsByTeacherId']);
+    Route::post('/student-details-by-teacher', [ReviewController::class, 'getReviewStudentDetailsByTeacherId']);
     Route::post('/save-pharmacy-review-subject', [ReviewController::class, 'savePharmacyReviewSubject']);
     Route::post('/savePharmacyReviewSubject', [ReviewController::class, 'savePharmacyReviewSubject']);
     Route::post('/student-review-apply', [ReviewController::class, 'applyForReview']);

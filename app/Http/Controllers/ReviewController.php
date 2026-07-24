@@ -239,6 +239,176 @@ class ReviewController extends Controller
         }
     }
 
+    /**
+     * Get teachers belonging to an institute.
+     *
+     * Calls: public.fn_get_teacherinfobyinst(p_instcode)
+     */
+    public function getTeacherInfoByInstitute(Request $request)
+    {
+        $instCode = $request->input(
+            'inst_code',
+            $request->input('p_instcode', $request->input('instcode'))
+        );
+
+        $validator = Validator::make([
+            'inst_code' => $instCode,
+        ], [
+            'inst_code' => 'required|string|max:50',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'error' => true,
+                'message' => 'Validation failed.',
+                'data' => $validator->errors(),
+            ], 422);
+        }
+
+        $instCode = strtoupper(trim((string) $instCode));
+
+        Log::channel('daily')->info('[Review] getTeacherInfoByInstitute INPUT', [
+            'inst_code' => $instCode,
+            'ip' => $request->ip(),
+        ]);
+
+        try {
+            $result = DB::selectOne(
+                'SELECT public.fn_get_teacherinfobyinst(?::varchar) AS data',
+                [$instCode]
+            );
+
+            $raw = $result->data ?? null;
+
+            if ($raw === null || $raw === '') {
+                $teachers = [];
+            } elseif (is_string($raw)) {
+                $teachers = json_decode($raw, true);
+
+                if (json_last_error() !== JSON_ERROR_NONE || ! is_array($teachers)) {
+                    Log::channel('daily')->error('[Review] getTeacherInfoByInstitute JSON decode failed', [
+                        'inst_code' => $instCode,
+                        'error' => json_last_error_msg(),
+                    ]);
+
+                    return response()->json([
+                        'error' => true,
+                        'message' => 'Failed to parse teacher information.',
+                        'data' => [],
+                    ], 500);
+                }
+            } else {
+                $teachers = json_decode(json_encode($raw), true);
+                $teachers = is_array($teachers) ? $teachers : [];
+            }
+
+            return response()->json([
+                'error' => false,
+                'message' => $teachers === [] ? 'No teachers found.' : 'Teacher information retrieved successfully.',
+                'data' => $teachers,
+            ]);
+        } catch (\Throwable $exception) {
+            Log::channel('daily')->error('[Review] getTeacherInfoByInstitute EXCEPTION', [
+                'inst_code' => $instCode,
+                'message' => $exception->getMessage(),
+                'line' => $exception->getLine(),
+                'file' => $exception->getFile(),
+            ]);
+
+            return response()->json([
+                'error' => true,
+                'message' => 'Failed to retrieve teacher information.',
+                'data' => [],
+            ], 500);
+        }
+    }
+
+    /**
+     * Get review-student details assigned to a teacher.
+     *
+     * Calls: public.fn_get_reviewstudentdetailsbyteacherid(p_teacherid)
+     */
+    public function getReviewStudentDetailsByTeacherId(Request $request)
+    {
+        $teacherId = $request->input(
+            'teacher_id',
+            $request->input('p_teacherid', $request->input('teacherid'))
+        );
+
+        $validator = Validator::make([
+            'teacher_id' => $teacherId,
+        ], [
+            'teacher_id' => 'required|integer|min:1',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'error' => true,
+                'message' => 'Validation failed.',
+                'data' => $validator->errors(),
+            ], 422);
+        }
+
+        $teacherId = (int) $teacherId;
+
+        Log::channel('daily')->info('[Review] getReviewStudentDetailsByTeacherId INPUT', [
+            'teacher_id' => $teacherId,
+            'ip' => $request->ip(),
+        ]);
+
+        try {
+            $result = DB::selectOne(
+                'SELECT public.fn_get_reviewstudentdetailsbyteacherid(?::bigint) AS data',
+                [$teacherId]
+            );
+
+            $raw = $result->data ?? null;
+
+            if ($raw === null || $raw === '') {
+                $students = [];
+            } elseif (is_string($raw)) {
+                $students = json_decode($raw, true);
+
+                if (json_last_error() !== JSON_ERROR_NONE || ! is_array($students)) {
+                    Log::channel('daily')->error('[Review] getReviewStudentDetailsByTeacherId JSON decode failed', [
+                        'teacher_id' => $teacherId,
+                        'error' => json_last_error_msg(),
+                    ]);
+
+                    return response()->json([
+                        'error' => true,
+                        'message' => 'Failed to parse review-student details.',
+                        'data' => [],
+                    ], 500);
+                }
+            } else {
+                $students = json_decode(json_encode($raw), true);
+                $students = is_array($students) ? $students : [];
+            }
+
+            return response()->json([
+                'error' => false,
+                'message' => $students === []
+                    ? 'No review students found.'
+                    : 'Review-student details retrieved successfully.',
+                'data' => $students,
+            ]);
+        } catch (\Throwable $exception) {
+            Log::channel('daily')->error('[Review] getReviewStudentDetailsByTeacherId EXCEPTION', [
+                'teacher_id' => $teacherId,
+                'message' => $exception->getMessage(),
+                'line' => $exception->getLine(),
+                'file' => $exception->getFile(),
+            ]);
+
+            return response()->json([
+                'error' => true,
+                'message' => 'Failed to retrieve review-student details.',
+                'data' => [],
+            ], 500);
+        }
+    }
+
 
     public function applyForReview(Request $request)
     {

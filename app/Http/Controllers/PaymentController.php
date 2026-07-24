@@ -2235,6 +2235,7 @@ public function verifyPendingPayments(Request $request)
         $results = [];
         $updated = 0;
         $failed = 0;
+        $notFound = 0;
 
         foreach ($pendingPayments as $pendingPayment) {
             $pendingOrderId = trim((string) ($pendingPayment['orderId'] ?? ''));
@@ -2261,24 +2262,17 @@ public function verifyPendingPayments(Request $request)
                     throw new \RuntimeException('No response received from SBI.');
                 }
 
-                Log::channel('daily')->info('[Payment] SBI pending payment status response', [
-                    'requested_order_id' => $pendingOrderId,
-                    'requested_amount' => $pendingAmount,
-                    'raw_response' => $rawResponse,
-                ]);
-
                 $payment = $this->parseSbiStatusResponse($rawResponse);
                 $responseMerchantId = trim((string) $payment['merchant_id']);
                 $responseOrderId = trim((string) $payment['order_id']);
                 $responseCurrency = strtoupper(trim((string) $payment['currency']));
                 $responseAmount = (float) $payment['amount'];
                 $status = strtoupper(trim((string) $payment['status']));
+                $gatewayMessage = strtoupper(trim((string) $payment['message']));
 
                 if (
                     ! hash_equals($merchantId, $responseMerchantId)
                     || ! hash_equals($pendingOrderId, $responseOrderId)
-                    || $responseCurrency !== 'INR'
-                    || abs($pendingAmount - $responseAmount) > 0.01
                 ) {
                     Log::channel('daily')->warning('[Payment] SBI pending payment response mismatch', [
                         'merchant_id' => [
@@ -2291,6 +2285,62 @@ public function verifyPendingPayments(Request $request)
                             'received' => $responseOrderId,
                             'matches' => hash_equals($pendingOrderId, $responseOrderId),
                         ],
+                        'parsed_response' => $payment,
+                        'raw_response' => $rawResponse,
+                    ]);
+
+                    throw new \RuntimeException('SBI merchant or order ID does not match the pending payment.');
+                }
+
+                if ($status === 'NO RECORDS FOUND' || $gatewayMessage === 'NO RECORDS FOUND') {
+                    $notFound++;
+
+                    Log::channel('daily')->notice('[Payment] SBI has no record for pending payment', [
+                        'order_id' => $pendingOrderId,
+                        'requested_amount' => $pendingAmount,
+                        'raw_response' => $rawResponse,
+                    ]);
+
+                    $saveResult = DB::selectOne(
+                        'SELECT public.fn_savepharmacypaymentresponse(?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::double precision, ?::varchar, ?::varchar, ?::timestamp, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::text, ?::integer) AS data',
+                        [
+                            $responseOrderId,
+                            $responseMerchantId,
+                            $payment['transaction_id'],
+                            'NRF',
+                            $pendingAmount,
+                            $payment['message'],
+                            $payment['bank_code'],
+                            $this->gatewayDate($payment['transaction_time']),
+                            'INR',
+                            $payment['payment_mode'],
+                            $payment['bank_reference'],
+                            $payment['challan_id'],
+                            $rawResponse,
+                            5,
+                        ]
+                    );
+
+                    $updated++;
+
+                    $results[] = [
+                        'order_id' => $pendingOrderId,
+                        'payment_status' => 'NRF',
+                        'updated' => true,
+                        'gateway_status' => 'NO_RECORD_FOUND',
+                        'message' => 'SBI has no transaction record for this order; saved as NRF.',
+                        'save_result' => $this->decodePaymentFunctionResult($saveResult->data ?? null),
+                    ];
+
+                    continue;
+                }
+
+                if (
+                    $responseCurrency !== 'INR'
+                    || abs($pendingAmount - $responseAmount) > 0.01
+                ) {
+                    Log::channel('daily')->warning('[Payment] SBI pending payment amount or currency mismatch', [
+                        'order_id' => $pendingOrderId,
                         'amount' => [
                             'expected' => $pendingAmount,
                             'received' => $responseAmount,
@@ -2305,7 +2355,7 @@ public function verifyPendingPayments(Request $request)
                         'raw_response' => $rawResponse,
                     ]);
 
-                    throw new \RuntimeException('SBI response does not match the pending payment.');
+                    throw new \RuntimeException('SBI amount or currency does not match the pending payment.');
                 }
 
                 if (! in_array($status, [
@@ -2369,6 +2419,7 @@ public function verifyPendingPayments(Request $request)
             'processed' => count($pendingPayments),
             'updated' => $updated,
             'failed' => $failed,
+            'not_found' => $notFound,
             'data' => $results,
         ]);
     } catch (\Throwable $exception) {
@@ -2417,14 +2468,28 @@ private function getSbiPaymentStatus(string $merchantId, string $orderId, float 
         'https://www.sbiepay.sbi/payagg/statusQuery/getStatusQuery'
     );
 
+    $payload = [
+        'queryRequest' => "|{$merchantId}|{$orderId}|{$amount}",
+        'aggregatorId' => 'SBIEPAY',
+        'merchantId' => $merchantId,
+    ];
+
+    Log::channel('daily')->info('[Payment] SBI status query REQUEST', [
+        'url' => $url,
+        'payload' => $payload,
+    ]);
+
     $response = Http::asForm()
         ->connectTimeout(10)
         ->timeout(60)
-        ->post($url, [
-            'queryRequest' => "|{$merchantId}|{$orderId}|{$amount}",
-            'aggregatorId' => 'SBIEPAY',
-            'merchantId' => $merchantId,
-        ]);
+        ->post($url, $payload);
+
+    Log::channel('daily')->info('[Payment] SBI status query RESPONSE', [
+        'order_id' => $orderId,
+        'http_status' => $response->status(),
+        'successful' => $response->successful(),
+        'body' => $response->body(),
+    ]);
 
     if (! $response->successful()) {
         throw new \RuntimeException(
