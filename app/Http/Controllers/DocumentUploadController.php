@@ -105,11 +105,11 @@ class DocumentUploadController extends Controller
         $fileField = $request->hasFile('file') ? 'file' : 'document';
 
         $validator = Validator::make($request->all(), [
-            $fileField => 'required|file|mimes:pdf,png,jpg,jpeg|max:200',
+            $fileField => 'required|file|mimes:pdf,png,jpg,jpeg|max:300',
         ], [
             "{$fileField}.required" => 'Please select a file to upload.',
             "{$fileField}.mimes" => 'Only PDF, PNG, JPG, and JPEG files are allowed.',
-            "{$fileField}.max" => 'File size must not exceed 200KB.',
+            "{$fileField}.max" => 'File size must not exceed 300KB.',
         ]);
 
         if ($validator->fails()) {
@@ -124,7 +124,7 @@ class DocumentUploadController extends Controller
                 $fileSizeBytes = $file->getSize();
 
                 $response['file_size'] = round($fileSizeBytes / 1024, 2) . ' KB';
-                $response['max_file_size'] = '200 KB';
+                $response['max_file_size'] = '300 KB';
             }
 
             return response()->json($response, 422);
@@ -410,7 +410,7 @@ class DocumentUploadController extends Controller
     {
         $filename = $this->buildFilename($file, $request);
 
-        $stored = Storage::disk('public')->putFileAs('uploads', $file, $filename);
+        $stored = $file->storeAs('uploads', $filename, 'public');
 
         if (!$stored) {
             throw new \RuntimeException('Unable to store uploaded document.');

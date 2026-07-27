@@ -669,6 +669,7 @@ class ReportController extends Controller
             'pwd_document' => $input('pwd_document', 'pwdDocument', 'p_pwddoc'),
             'marks_document' => $input('marks_document', 'marksDocument', 'p_marksdocument'),
             'is_pwd' => $input('is_pwd', 'isPwd', 's_pwd', 'p_ispwd'),
+            'is_science_passed' => $input('is_science_passed', 'isSciencePassed', 'p_issciencepassed'),
         ];
 
         $payload['pwd_document'] = $payload['pwd_document'] ?? $payload['physically_challenged_document'];
@@ -684,6 +685,7 @@ class ReportController extends Controller
             'is_kanyashree' => 'nullable|integer',
             'marks_document' => 'nullable|string|max:2048',
             'is_pwd' => 'nullable|integer',
+            'is_science_passed' => 'required|integer',
         ]);
 
         if ($validator->fails()) {
@@ -706,7 +708,7 @@ class ReportController extends Controller
                     ?::bigint, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar,
                     ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar,
                     ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar,
-                    ?::varchar, ?::varchar, ?::varchar, ?::smallint
+                    ?::varchar, ?::varchar, ?::varchar, ?::smallint, ?::smallint
                 ) AS data',
                 [
                     (int) $payload['student_id'],
@@ -760,6 +762,7 @@ class ReportController extends Controller
                     $payload['pwd_document'],
                     $payload['marks_document'],
                     $payload['is_pwd'] === null ? null : (int) $payload['is_pwd'],
+                    $payload['is_science_passed'] === null ? null : (int) $payload['is_science_passed'],
                 ]
             );
 
