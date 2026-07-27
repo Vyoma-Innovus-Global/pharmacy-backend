@@ -12,7 +12,13 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule): void
     {
-        // $schedule->command('inspire')->hourly();
+        if (config('services.pending_payments.cron_enabled')) {
+            $schedule->command('payments:verify-pending', [
+                '--limit' => config('services.pending_payments.cron_limit'),
+            ])
+                ->cron(config('services.pending_payments.cron_schedule'))
+                ->withoutOverlapping(30);
+        }
     }
 
     /**

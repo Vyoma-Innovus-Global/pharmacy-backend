@@ -31,4 +31,10 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    'pending_payments' => [
+        'cron_enabled' => env('PENDING_PAYMENT_CRON_ENABLED', true),
+        'cron_schedule' => env('PENDING_PAYMENT_CRON_SCHEDULE', '*/5 * * * *'),
+        'cron_limit' => (int) env('PENDING_PAYMENT_CRON_LIMIT', 100),
+    ],
+
 ];
