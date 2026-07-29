@@ -9,7 +9,6 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 use App\Models\Token;
 use App\Mail\OtpMail;
 
@@ -82,35 +81,19 @@ class GenerateOtpController extends Controller
      */
     public function generate(Request $request)
     {
-        $requestId = (string) Str::uuid();
-        $logger = Log::channel('daily')->withContext([
-            'otp_request_id' => $requestId,
-        ]);
-
-        $logger->info('[generate] Request received', [
-            'username' => trim((string) $request->input('username', '')),
-            'user_type_id' => $request->input('user_type_id'),
-            'ip' => $request->ip(),
-            'user_agent' => substr((string) $request->userAgent(), 0, 250),
-        ]);
-
         $validator = Validator::make($request->all(), [
             'username'     => 'required|string|max:100',
             'user_type_id' => 'required|integer',
         ]);
 
         if ($validator->fails()) {
-            $logger->warning('[generate] Validation failed', [
-                'errors' => $validator->errors()->toArray(),
-            ]);
-
             return response()->json(['error' => true, 'message' => $validator->errors()], 422);
         }
 
         $username   = trim($request->input('username'));
         $userTypeId = (int) $request->input('user_type_id');
 
-        $logger->info('[generate] INPUT', [
+        Log::channel('daily')->info('[generate] INPUT', [
             'username'     => $username,
             'user_type_id' => $userTypeId,
             'ip'           => $request->ip(),
@@ -118,35 +101,18 @@ class GenerateOtpController extends Controller
 
         try {
             // Step 1: Call fn_generateotp
-            $logger->info('[generate] Calling fn_generateotp');
             $result  = DB::select('SELECT public.fn_generateotp(?::varchar, ?::integer) AS data', [$username, $userTypeId]);
             $raw     = $result[0]->data ?? null;
             $otpData = is_string($raw) ? json_decode($raw, true) : (array) $raw;
 
-            // Never log the raw database result because it contains the OTP.
-            $logger->info('[generate] fn_generateotp completed', [
-                'has_result' => !empty($result),
-                'json_error' => is_string($raw) ? json_last_error_msg() : null,
-                'error_code' => $otpData['p_errorcode'] ?? null,
-                'has_otp' => !empty($otpData['p_otp']),
-            ]);
+            Log::channel('daily')->info('[generate] fn_generateotp', ['raw' => $raw, 'parsed' => $otpData]);
 
             if (empty($result) || json_last_error() !== JSON_ERROR_NONE) {
-                $logger->error('[generate] Invalid fn_generateotp response', [
-                    'has_result' => !empty($result),
-                    'json_error' => json_last_error_msg(),
-                ]);
-
                 return response()->json(['error' => true, 'message' => 'OTP generation failed.'], 500);
             }
 
             $errorCode = (int)($otpData['p_errorcode'] ?? -1);
             if ($errorCode !== 0) {
-                $logger->warning('[generate] OTP generation rejected', [
-                    'error_code' => $errorCode,
-                    'provider_message' => $otpData['p_message'] ?? null,
-                ]);
-
                 $errorMessages = [
                     200 => 'Invalid username or user type. Please check your credentials and try again.',
                     1   => 'OTP generation failed due to a server error. Please try again.',
@@ -160,10 +126,9 @@ class GenerateOtpController extends Controller
             // Step 2: Store OTP in Laravel Cache (2 min) — NOT in response
             $cacheKey = "otp_{$username}_{$userTypeId}";
             Cache::put($cacheKey, $otp, now()->addMinutes(2));
-            $logger->info('[generate] OTP cached', ['key' => $cacheKey]);
+            Log::channel('daily')->info('[generate] OTP cached', ['key' => $cacheKey]);
 
             // Step 3: Fetch admin contact details
-            $logger->info('[generate] Resolving contact details');
             $adminResult = DB::select('SELECT public.fn_getadmindetailsbyusername(?::varchar, ?::integer) AS data', [$username, $userTypeId]);
             $adminRaw    = $adminResult[0]->data ?? null;
             $adminData   = is_string($adminRaw) ? json_decode($adminRaw, true) : (array) $adminRaw;
@@ -172,7 +137,7 @@ class GenerateOtpController extends Controller
             $phone = $this->normalizeContact($adminData['contactNo'] ?? null);
             $name  = $adminData['fullName']  ?? $username;
 
-            $logger->info('[generate] Contact details resolved', [
+            Log::channel('daily')->info('[generate] Contact details resolved', [
                 'user_type_id' => $userTypeId,
                 'phone' => $phone ? $this->maskContact($phone) : null,
                 'email' => $email ? $this->maskEmail($email) : null,
@@ -191,7 +156,7 @@ class GenerateOtpController extends Controller
                 if (in_array($userTypeId, self::SMS_ONLY_USER_TYPES, true) && $phone) {
                     $otpSendTo = $phone;
                     if ($this->isOtpSmsSendingEnabled()) {
-                        $logger->info('[generate] SMS send attempt', [
+                        Log::channel('daily')->info('[generate] SMS send attempt', [
                             'phone' => $this->maskContact($phone),
                             'user_type_id' => $userTypeId,
                         ]);
@@ -199,19 +164,19 @@ class GenerateOtpController extends Controller
                         $smsSent = true;
                         $this->logSmsResponse('[generate] SMS sent', $phone, $smsResponse);
                     } else {
-                        $logger->warning('[generate] SMS sending blocked', [
+                        Log::channel('daily')->warning('[generate] SMS sending blocked', [
                             'phone' => $this->maskContact($phone),
                         ]);
                     }
                 } elseif (in_array($userTypeId, self::SMS_ONLY_USER_TYPES, true)) {
-                    $logger->warning('[generate] SMS skipped: phone missing', ['user_type_id' => $userTypeId]);
+                    Log::channel('daily')->warning('[generate] SMS skipped: phone missing', ['user_type_id' => $userTypeId]);
                 }
 
                 if (in_array($userTypeId, self::EMAIL_ONLY_USER_TYPES, true) && $email) {
                     $otpSendTo = $email;
                     $emailSent = $this->sendOtpEmail($email, $otp, $name, '[generate]');
                 } elseif (in_array($userTypeId, self::EMAIL_ONLY_USER_TYPES, true)) {
-                    $logger->warning('[generate] Email skipped: email missing', [
+                    Log::channel('daily')->warning('[generate] Email skipped: email missing', [
                         'has_email' => !empty($email),
                     ]);
                 }
@@ -220,7 +185,7 @@ class GenerateOtpController extends Controller
                     if ($phone) {
                         $otpSendTo = $phone;
                         if ($this->isOtpSmsSendingEnabled()) {
-                            $logger->info('[generate] SMS send attempt (type 12)', [
+                            Log::channel('daily')->info('[generate] SMS send attempt (type 12)', [
                                 'phone' => $this->maskContact($phone),
                                 'user_type_id' => $userTypeId,
                             ]);
@@ -228,33 +193,29 @@ class GenerateOtpController extends Controller
                             $smsSent = true;
                             $this->logSmsResponse('[generate] SMS sent (type 12)', $phone, $smsResponse);
                         } else {
-                            $logger->warning('[generate] SMS sending blocked (type 12)', [
+                            Log::channel('daily')->warning('[generate] SMS sending blocked (type 12)', [
                                 'phone' => $this->maskContact($phone),
                             ]);
                         }
                     } else {
-                        $logger->warning('[generate] SMS skipped (type 12): phone missing');
+                        Log::channel('daily')->warning('[generate] SMS skipped (type 12): phone missing');
                     }
                     if ($email) {
                         $otpSendTo = $otpSendTo ? "{$otpSendTo}, {$email}" : $email;
                         $emailSent = $this->sendOtpEmail($email, $otp, $name, '[generate] type 12');
                     } else {
-                        $logger->warning('[generate] Email skipped (type 12): email missing');
+                        Log::channel('daily')->warning('[generate] Email skipped (type 12): email missing');
                     }
                 }
-            } catch (\Throwable $e) {
-                $logger->error('[generate] Send failed', [
+            } catch (\Exception $e) {
+                Log::channel('daily')->error('[generate] Send failed', [
                     'error' => $e->getMessage(),
                     'exception' => get_class($e),
-                    'file' => $e->getFile(),
                     'line' => $e->getLine(),
                 ]);
             }
 
-            $logger->info('[generate] Delivery completed', [
-                'sms' => $smsSent,
-                'email' => $emailSent,
-            ]);
+            Log::channel('daily')->info('[generate] OUTPUT (200)', ['sms' => $smsSent, 'email' => $emailSent]);
 
             $emailDeliveryBlocked = (in_array($userTypeId, self::EMAIL_ONLY_USER_TYPES, true) || $userTypeId === 12) && !$this->isOtpEmailSendingEnabled();
             $smsDeliveryBlocked   = (in_array($userTypeId, self::SMS_ONLY_USER_TYPES, true) || $userTypeId === 12) && !$this->isOtpSmsSendingEnabled();
@@ -285,14 +246,8 @@ class GenerateOtpController extends Controller
                 'p_otp'           => $deliveryBlocked && Config::get('app.env') !== 'production' ? $otp : null,
             ], 200);
 
-        } catch (\Throwable $e) {
-            $logger->error('[generate] EXCEPTION', [
-                'message' => $e->getMessage(),
-                'exception' => get_class($e),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-            ]);
-
+        } catch (\Exception $e) {
+            Log::channel('daily')->error('[generate] EXCEPTION', ['message' => $e->getMessage(), 'line' => $e->getLine()]);
             return response()->json(['error' => true, 'message' => $e->getMessage()], 500);
         }
     }
@@ -652,25 +607,13 @@ class GenerateOtpController extends Controller
     private function logSmsResponse(string $message, string $phone, $smsResponse): void
     {
         $context = ['phone' => $this->maskContact($phone)];
-        $isFailure = false;
 
         if (is_object($smsResponse) && method_exists($smsResponse, 'status')) {
             $context['status'] = $smsResponse->status();
             $context['successful'] = method_exists($smsResponse, 'successful') ? $smsResponse->successful() : null;
             $context['body'] = method_exists($smsResponse, 'body') ? substr($smsResponse->body(), 0, 500) : null;
-            $isFailure = $context['successful'] === false;
-
-            $providerData = json_decode((string) $context['body'], true);
-            if (is_array($providerData) && strtolower((string) ($providerData['status'] ?? '')) === 'failure') {
-                $isFailure = true;
-            }
         } else {
             $context['response'] = $smsResponse;
-        }
-
-        if ($isFailure) {
-            Log::channel('daily')->error("{$message} - provider rejected request", $context);
-            return;
         }
 
         Log::channel('daily')->info($message, $context);

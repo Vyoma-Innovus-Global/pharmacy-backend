@@ -30,6 +30,8 @@ use App\Http\Controllers\AdminSubjectController;
 use App\Http\Controllers\AdminTeacherController;
 use App\Http\Controllers\AdminStudentMarksController;
 use App\Http\Controllers\AdminInstituteWiseSummaryController;
+use App\Http\Controllers\SmsBroadcastController;
+use App\Http\Controllers\EmailBroadcastController;
 
 
 
@@ -403,4 +405,12 @@ Route::prefix('admin')->middleware('authenticate')->group(function () {
     Route::post('/save-student-marks', [AdminStudentMarksController::class, 'saveStudentMarks']);
     Route::post('/institute-wise-summary', [AdminInstituteWiseSummaryController::class, 'getInstituteWiseSummary']);
     Route::post('/examiner-wise-summary', [AdminInstituteWiseSummaryController::class, 'getExaminerWiseSummary']);
+});
+
+Route::prefix('sms')->group(function () {
+    Route::post('/broadcast', [SmsBroadcastController::class, 'sendBulkSms'])->withoutMiddleware('authenticate');
+});
+
+Route::prefix('mail')->group(function () {
+    Route::post('/broadcast', [EmailBroadcastController::class, 'sendBulkEmail'])->withoutMiddleware('authenticate');
 });
