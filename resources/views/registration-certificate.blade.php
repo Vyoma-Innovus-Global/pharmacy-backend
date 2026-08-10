@@ -168,8 +168,8 @@
             </div>
             <div style="margin-top: 64px;display:flex;font-weight:bold;">            
                 <span style="margin-left:125px">
-                    {{ $regIssuedOn 
-                        ? \Carbon\Carbon::createFromFormat('n-j-Y', ltrim($regIssuedOn, '0'))->format('jS F, Y') 
+                    {{ !empty($regIssuedOn) 
+                        ? \Carbon\Carbon::parse($regIssuedOn)->format('d-m-Y') 
                         : '-' 
                     }}
                 </span>
