@@ -1338,6 +1338,65 @@ class StudentController extends Controller
         }
     }
 
+    public function printResultCertificateSingle(Request $request)
+    {
+        try {
+            $data = array_merge([
+                'serial_no' => $request->input('serial_no', 'P1/01191/11-24'),
+                'part_no' => $request->input('part_no', 'PART-I'),
+                'exam_date' => $request->input('exam_date', 'HELD IN NOVEMBER, 2024'),
+                'st_reg_number' => $request->input('st_reg_number', 'PHARM232400007'),
+                'st_roll' => $request->input('st_roll', 'PBCDAPHARM1'),
+                'st_number' => $request->input('st_number', '10000008'),
+                'st_profile_img' => $request->input('st_profile_img', null),
+                'st_full_name' => $request->input('st_full_name', 'SANDEEPAN SAHA'),
+                'st_gur_name' => $request->input('st_gur_name', 'PRANAB SAHA'),
+                'st_branch' => $request->input('st_branch', 'PHARMACY'),
+                'st_institute_name' => $request->input('st_institute_name', 'B.C.D.A. COLLEGE OF PHARMACY & TECHNOLOGY, CAMPUS-2'),
+                'theory_subjects' => $request->input('theory_subjects', [
+                    ['label' => 'PHARMACEUTICS', 'total' => '100', 'pass' => '40', 'obtained' => '49'],
+                    ['label' => 'PHARMACEUTICAL CHEMISTRY', 'total' => '100', 'pass' => '40', 'obtained' => '68'],
+                    ['label' => 'PHARMACOGNOSY', 'total' => '100', 'pass' => '40', 'obtained' => '54'],
+                    ['label' => 'HUMAN ANATOMY & PHYSIOLOGY', 'total' => '100', 'pass' => '40', 'obtained' => '51'],
+                    ['label' => 'SOCIAL PHARMACY', 'total' => '100', 'pass' => '40', 'obtained' => '64'],
+                ]),
+                'sessional_subjects' => $request->input('sessional_subjects', [
+                    ['label' => 'PHARMACEUTICS (PRACTICAL)', 'total' => '100', 'pass' => '40', 'obtained' => '96 *'],
+                    ['label' => 'PHARMACEUTICAL CHEMISTRY (PRACTICAL)', 'total' => '100', 'pass' => '40', 'obtained' => '98 *'],
+                    ['label' => 'PHARMACOGNOSY (PRACTICAL)', 'total' => '100', 'pass' => '40', 'obtained' => '94 *'],
+                    ['label' => 'HUMAN ANATOMY & PHYSIOLOGY (PRACTICAL)', 'total' => '100', 'pass' => '40', 'obtained' => '98 *'],
+                    ['label' => 'SOCIAL PHARMACY (PRACTICAL)', 'total' => '100', 'pass' => '40', 'obtained' => '91 *'],
+                ]),
+                'total_marks' => $request->input('total_marks', '1000'),
+                'obtained_marks' => $request->input('obtained_marks', '763'),
+                'back_papers' => $request->input('back_papers', 'NIL'),
+                'percentage' => $request->input('percentage', '76.3'),
+                'result_status' => $request->input('result_status', 'PASS'),
+                'cautionary_text' => $request->input('cautionary_text', '[*] => PASSED WITH DISTINCTION'),
+                'issue_date' => $request->input('issue_date', '13th June, 2025'),
+                'signature_img' => $request->input('signature_img', null),
+            ], $request->all());
+
+            $viewName = $request->input('view', 'result-certificate');
+
+            if ($request->has('html')) {
+                return view($viewName, ['data' => $data]);
+            }
+
+            $pdf = Pdf::loadView($viewName, ['data' => $data])
+                ->setPaper('a4', 'portrait');
+
+            return $pdf->stream("RESULT-CERTIFICATE-{$data['st_reg_number']}.pdf");
+        } catch (\Exception $e) {
+            Log::error('Error generating result certificate: ' . $e->getMessage());
+
+            return response()->json([
+                'status' => 'error',
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
     public function downloadRegZip_bkp(Request $request)
         {
             $sess_yr      = $request->sess_yr;

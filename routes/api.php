@@ -45,6 +45,7 @@ Route::post('/validate-security-code', [AuthController::class, 'validateSecurity
 Route::get('/check-status/{user_id}', [StudentController::class, 'checkRedirect']);
 Route::post('/print-reg-certificate', [StudentController::class, 'printRegistrationCertificate']);
 Route::get('/print-reg-certificate-single/{reg_num?}/{sess_yr?}', [StudentController::class, 'printRegistrationCertificateSingle']);
+Route::match(['get', 'post'], '/print-result-certificate-single', [StudentController::class, 'printResultCertificateSingle']);
 Route::post('/registration-report-download', [StudentController::class, 'regReportDownload']);
 Route::get('/download-reg-report-zip', [StudentController::class, 'downloadRegReportZip']);
 Route::get('/download-reg-zip', [StudentController::class, 'downloadRegZip']);

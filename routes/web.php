@@ -47,6 +47,7 @@ Route::prefix('student-payment')->group(function () {
 });
 
 Route::get('/paynow',[PaymentController::class, 'payment']);
+Route::match(['get', 'post'], '/print-result-certificate-single', [\App\Http\Controllers\StudentController::class, 'printResultCertificateSingle']);
 Route::get('/clear-all', function() {
     Artisan::call('route:clear');
     Artisan::call('view:clear');
