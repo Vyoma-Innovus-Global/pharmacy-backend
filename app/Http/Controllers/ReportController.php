@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Log;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 
 class ReportController extends Controller
@@ -486,7 +488,9 @@ class ReportController extends Controller
             'kanyashree_document' => $input('kanyashree_document', 'kanyashreeDocument', 'p_kanyashreedoc'),
             'kanyashree_number' => $input('kanyashree_number', 'kanyashreeNumber', 'kanyashreeId', 'p_kanyashreenumber'),
             'pwd_document' => $input('pwd_document', 'pwdDocument', 'p_pwddoc'),
+            'marks_document' => $input('marks_document', 'marksDocument', 'p_marksdocument'),
             'is_pwd' => $input('is_pwd', 'isPwd', 's_pwd', 'p_ispwd'),
+            'is_science_passed' => $input('is_science_passed', 'isSciencePassed', 'p_issciencepassed'),
         ];
 
         $payload['pwd_document'] = $payload['pwd_document'] ?? $payload['physically_challenged_document'];
@@ -499,7 +503,9 @@ class ReportController extends Controller
             'date_of_birth' => 'nullable|string',
             'is_married' => 'nullable|integer',
             'is_kanyashree' => 'nullable|integer',
+            'marks_document' => 'nullable|string|max:2048',
             'is_pwd' => 'nullable|integer',
+            'is_science_passed' => 'nullable|integer',
         ]);
 
         if ($validator->fails()) {
@@ -515,12 +521,14 @@ class ReportController extends Controller
             $result = DB::select(
                 'SELECT public.fn_updatestudentdetailsbyadmin(
                     ?::bigint, ?::bigint, ?::bigint,
-                    ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar,                    ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar,
+                    ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar,
+                    ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar,
                     ?::varchar, ?::smallint, ?::smallint, ?::varchar, ?::varchar,
                     ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar,
                     ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar,
                     ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar,
-                    ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::smallint
+                    ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar,
+                    ?::smallint, ?::smallint
                 ) AS data',
                 [
                     (int) $payload['student_id'],
@@ -572,7 +580,9 @@ class ReportController extends Controller
                     $payload['kanyashree_document'],
                     $payload['kanyashree_number'],
                     $payload['pwd_document'],
+                    $payload['marks_document'],
                     $payload['is_pwd'] === null ? null : (int) $payload['is_pwd'],
+                    $payload['is_science_passed'] === null ? null : (int) $payload['is_science_passed'],
                 ]
             );
 
@@ -1888,8 +1898,202 @@ class ReportController extends Controller
         }
     }
 
+    /**
+     * Download result certificate PDF for an institute or single student.
+     *
+     * Calls: public.fn_getresulatdownload_inst(
+     *   p_instcode, p_examyear, p_semestername, p_department, p_isduplicate, p_registrationnumber, p_userid, p_usertypeid
+     * )
+     */
+    public function resultCertificateDownloadInst(Request $request)
+    {
+        // Set resource limits immediately — before any DB/PDF work
+        @ini_set('memory_limit', '512M');
+        @set_time_limit(300);
 
+        $instCode = $request->input(
+            'inst_code',
+            $request->input('instCode', $request->input('p_instcode'))
+        );
+        $examYear = $request->input(
+            'exam_year',
+            $request->input('examYear', $request->input('p_examyear'))
+        );
+        $semesterName = $request->input(
+            'semester_name',
+            $request->input('semesterName', $request->input('p_semestername'))
+        );
+        $department = $request->input(
+            'department',
+            $request->input('p_department', $request->input('dept_code'))
+        );
+        $isDuplicate = $request->input(
+            'is_duplicate',
+            $request->input('isDuplicate', $request->input('p_isduplicate', 0))
+        );
+        $registrationNumber = $request->input(
+            'registration_number',
+            $request->input('registrationNumber', $request->input('reg_num', $request->input('p_registrationnumber')))
+        );
+        $userId = $request->input(
+            'user_id',
+            $request->input('userId', $request->input('p_userid'))
+        );
+        $userTypeId = $request->input(
+            'user_type_id',
+            $request->input('userTypeId', $request->input('p_usertypeid'))
+        );
 
+        $validator = Validator::make([
+            'inst_code' => $instCode,
+            'exam_year' => $examYear,
+            'semester_name' => $semesterName,
+            'department' => $department,
+            'is_duplicate' => $isDuplicate,
+            'registration_number' => $registrationNumber,
+            'user_id' => $userId,
+            'user_type_id' => $userTypeId,
+        ], [
+            'inst_code' => 'nullable|string|max:50',
+            'exam_year' => 'required|string|max:20',
+            'semester_name' => 'required|string|max:50',
+            'department' => 'required|string|max:50',
+            'is_duplicate' => 'nullable|integer',
+            'registration_number' => 'nullable|string|max:100',
+            'user_id' => 'required|integer',
+            'user_type_id' => 'required|integer',
+        ]);
 
+        if ($validator->fails()) {
+            return response()->json([
+                'error' => true,
+                'message' => $validator->errors(),
+            ], 422);
+        }
+
+        try {
+            $result = DB::select(
+                'SELECT public.fn_getresulatdownload_inst(?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::smallint, ?::varchar, ?::bigint, ?::int) AS data',
+                [
+                    $instCode !== null && $instCode !== '' ? trim($instCode) : null,
+                    trim($examYear),
+                    trim($semesterName),
+                    trim($department),
+                    $isDuplicate !== null && $isDuplicate !== '' ? (int) $isDuplicate : 0,
+                    $registrationNumber !== null && $registrationNumber !== '' ? trim($registrationNumber) : null,
+                    (int) $userId,
+                    (int) $userTypeId,
+                ]
+            );
+
+            if (empty($result) || !isset($result[0]->data) || $result[0]->data === null) {
+                return response()->json([
+                    'error' => false,
+                    'message' => 'No Data found.',
+                    'data' => [],
+                ], 200);
+            }
+
+            $raw = $result[0]->data;
+            $data = is_string($raw) ? json_decode($raw, true) : (array) $raw;
+
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                return response()->json([
+                    'error' => true,
+                    'message' => 'Failed to parse result certificate data from database.',
+                ], 500);
+            }
+
+            if (empty($data)) {
+                return response()->json([
+                    'error' => false,
+                    'message' => 'No result certificate data found.',
+                    'data' => [],
+                ], 200);
+            }
+
+            // Determine if PDF or JSON is requested based on Accept header or parameters
+            $acceptHeader = strtolower((string) $request->header('Accept', ''));
+            $format = strtolower((string) $request->input('format', $request->input('type', '')));
+
+            $isPdfRequested = str_contains($acceptHeader, 'application/pdf')
+                || $request->boolean('download_pdf')
+                || $request->boolean('download')
+                || $request->boolean('is_download')
+                || $request->boolean('pdf')
+                || $format === 'pdf'
+                || $request->has('html')
+                || $format === 'html';
+
+            // If PDF is not explicitly requested via Accept header or parameters, return JSON by default
+            if (!$isPdfRequested && $format !== 'pdf') {
+                return response()->json([
+                    'error' => false,
+                    'message' => 'Data found',
+                    'data' => $data,
+                ], 200);
+            }
+
+            // Normalize student list for Blade PDF view
+            $studentsList = [];
+            if (isset($data[0]) && is_array($data[0])) {
+                $studentsList = $data;
+            } elseif (is_array($data)) {
+                $studentsList = [$data];
+            }
+
+            // Inject partNumber and examDate into student records if missing
+            foreach ($studentsList as &$student) {
+                if (empty($student['partNumber']) && empty($student['part_no'])) {
+                    $student['partNumber'] = $semesterName;
+                }
+                if (empty($student['examDate']) && empty($student['exam_date'])) {
+                    $student['examDate'] = 'HELD IN ' . $examYear;
+                }
+            }
+            unset($student);
+
+            $viewName = 'result-certificate';
+            $viewData = [
+                'students' => $studentsList,
+                'data' => count($studentsList) === 1 ? $studentsList[0] : $studentsList,
+            ];
+
+            if ($request->has('html') || $format === 'html') {
+                return view($viewName, $viewData);
+            }
+
+            $regNo = $registrationNumber ?: ($studentsList[0]['registrationNumber'] ?? $studentsList[0]['st_reg_number'] ?? null);
+            $sessionYr = $request->input('session', $examYear ?: ($studentsList[0]['session'] ?? $studentsList[0]['examYear'] ?? $studentsList[0]['exam_year'] ?? null));
+
+            if (!empty($regNo) && count($studentsList) === 1) {
+                $fileName = !empty($sessionYr) ? "{$regNo}_{$sessionYr}.pdf" : "{$regNo}.pdf";
+            } else {
+                $fileName = !empty($instCode) ? "{$instCode}_{$sessionYr}.pdf" : "result_certificate.pdf";
+            }
+
+            // Single Dompdf call for all students — CSS is parsed once, not N times.
+            // The blade template uses only inline styles so selector matching is skipped entirely.
+            $pdf = Pdf::loadView($viewName, $viewData)
+                ->setPaper('a4', 'portrait')
+                ->setOption([
+                    'isHtml5ParserEnabled' => false,
+                    'isRemoteEnabled'      => false,
+                    'chroot'               => [public_path(), storage_path()],
+                    'defaultFont'          => 'Times New Roman',
+                ]);
+
+            return $pdf->stream($fileName);
+
+        } catch (\Exception $e) {
+            Log::error('Error in resultCertificateDownloadInst: ' . $e->getMessage());
+
+            return response()->json([
+                'error' => true,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
 
 }
+

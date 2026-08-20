@@ -94,7 +94,6 @@
 
 <body class="page-container">
         @php
-        //dd($data);
             $student_name = $data['st_full_name'];
             $student_image = $data['st_profile_img'];
             $parent_name = $data['st_gur_name'];
@@ -104,7 +103,30 @@
             $iCode = $data['st_institute'];
             $regIssuedOn = $data['reg_issued_on'];
             $certificateType = $data['certificate_type'];
-           
+
+            $resolved_image_path = null;
+            if (!empty($student_image)) {
+                $parsed_path = parse_url($student_image, PHP_URL_PATH);
+                $clean_path = $parsed_path !== false ? ltrim($parsed_path, '/') : ltrim($student_image, '/');
+                $relative_path = preg_replace('#^storage/#', '', $clean_path);
+
+                $candidate_paths = [
+                    public_path($clean_path),
+                    public_path('storage/' . $relative_path),
+                    public_path('storage/uploads/' . $relative_path),
+                    public_path('uploads/' . $relative_path),
+                    storage_path('app/public/' . $relative_path),
+                    storage_path('app/public/uploads/' . $relative_path),
+                    storage_path('app/' . $relative_path),
+                ];
+
+                foreach ($candidate_paths as $c_path) {
+                    if (!empty($c_path) && file_exists($c_path) && is_file($c_path)) {
+                        $resolved_image_path = $c_path;
+                        break;
+                    }
+                }
+            }
         @endphp
         <div class="certificate">
             <div class="header">
@@ -117,8 +139,8 @@
                     </div>
 					<div class="right" style="margin-right:35px;margin-top:30px">
 					<div class="image-sign">
-						@if(!empty($data['st_profile_img']) && file_exists(public_path('storage/' . $data['st_profile_img'])))
-							<img src="{{ public_path('storage/' . $data['st_profile_img']) }}" style="width: 97px; height: 131px; object-fit: cover;">
+						@if(!empty($resolved_image_path))
+							<img src="{{ $resolved_image_path }}" style="width: 97px; height: 131px; object-fit: cover;">
 						@else
 							<img src="" style="width: 97px; height: 131px; object-fit: cover;">
 						@endif

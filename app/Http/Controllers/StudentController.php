@@ -1181,8 +1181,16 @@ class StudentController extends Controller
             ini_set('max_execution_time', 0);
 
             if ($certificate_type == 'original') {
+                if (!empty($issue_date)) {
+                    DB::table('registration_certificate_issue')
+                        ->whereIn('reg_no', $reg_numbers)
+                        ->where('sess_year', $sess_yr)
+                        ->where('certificate_type', 'original')
+                        ->update(['reg_issued_on' => $issue_date]);
+                }
+
+                $allHtml = '';
                 foreach ($groupedByInstitute as $inst_code => $studentGroup) {
-                    $allHtml = '';
                     foreach ($studentGroup as $result) {
                         $certInfo = [
                             'st_form_number' => $result->s_appl_form_num,
@@ -1195,41 +1203,33 @@ class StudentController extends Controller
                             'st_course' => 'PHARMACY (PHARM)',
                             'st_profile_img' => $result->s_photo,
                             'st_profile_sign' => $result->s_sign,
-                            'reg_issued_on' => $result->reg_issued_on,
+                            'reg_issued_on' => !empty($issue_date) ? $issue_date : $result->reg_issued_on,
                             'certificate_type' => "original"
                         ];
                         $html = view('registration-certificate', ['data' => $certInfo])->render();
                         $allHtml .= $html;
                     }
-
-                    // Step 6: Generate PDF
-                    $pdf = PDF::loadHTML($allHtml)->setPaper('a4', 'portrait');
-
-                    $fileName = 'PHARM-REG_CERTIFICATE-' . $inst_code . '-' . $sess_yr . '.pdf';
-                    $filePath = public_path('storage/reg_certificates/' . $sess_yr . '/' . $fileName);
-
-                    if (!file_exists(dirname($filePath))) {
-                        mkdir(dirname($filePath), 0777, true);
-                    }
-
-                    $pdf->save($filePath);
-                    unset($pdf);
-                    gc_collect_cycles();
-
-                    $savedFiles[] = url('storage/reg_certificates/' . $sess_yr . '/' . $fileName);
                 }
 
-                return response()->json([
-                    'status' => 'success',
-                    'message' => 'Registration Certificates Generated Successfully.',
-                    'files' => $savedFiles,
-                ], 200);
+                // Generate and stream PDF directly in memory
+                $pdf = PDF::loadHTML($allHtml)->setPaper('a4', 'portrait');
+                $fileName = "PHARM-REG_CERTIFICATES-{$sess_yr}.pdf";
+
+                return $pdf->stream($fileName);
 
             } elseif ($certificate_type == 'duplicate') {
                 ini_set('max_execution_time', 300);
 
+                if (!empty($issue_date)) {
+                    DB::table('registration_certificate_issue')
+                        ->whereIn('reg_no', $reg_numbers)
+                        ->where('sess_year', $sess_yr)
+                        ->where('certificate_type', 'duplicate')
+                        ->update(['reg_issued_on' => $issue_date]);
+                }
+
+                $allHtml = '';
                 foreach ($groupedByInstitute as $inst_code => $studentGroup) {
-                    $certificates = [];
                     foreach ($studentGroup as $result) {
                         $certInfo = [
                             'st_form_number' => $result->s_appl_form_num,
@@ -1242,35 +1242,19 @@ class StudentController extends Controller
                             'st_course' => 'PHARMACY (PHARM)',
                             'st_profile_img' => $result->s_photo,
                             'st_profile_sign' => $result->s_sign,
-                            'reg_issued_on' => $result->reg_issued_on,
+                            'reg_issued_on' => !empty($issue_date) ? $issue_date : $result->reg_issued_on,
                             'certificate_type' => "duplicate"
                         ];
-                        $certificates[] = $certInfo;
+                        $html = view('registration-certificate', ['data' => $certInfo])->render();
+                        $allHtml .= $html;
                     }
-
-                    // Step 6: Generate PDF
-                    $pdf = PDF::loadView('registration-certificate', ['student' => $certificates])
-                        ->setPaper('a4', 'portrait');
-
-                    $fileName = 'PHARM-REG_CERTIFICATE-' . $inst_code . '-' . $sess_yr . '-' . $reg_numbers[0] . '.pdf';
-                    $filePath = public_path('storage/reg_certificates/' . $sess_yr . '/' . $fileName);
-
-                    if (!file_exists(dirname($filePath))) {
-                        mkdir(dirname($filePath), 0777, true);
-                    }
-
-                    $pdf->save($filePath);
-                    unset($pdf);
-                    gc_collect_cycles();
-
-                    $savedFiles[] = url('storage/reg_certificates/' . $sess_yr . '/' . $fileName);
                 }
 
-                return response()->json([
-                    'status' => 'success',
-                    'message' => 'Duplicate Registration Certificates Generated Successfully.',
-                    'files' => $savedFiles,
-                ], 200);
+                // Generate and stream PDF directly in memory
+                $pdf = PDF::loadHTML($allHtml)->setPaper('a4', 'portrait');
+                $fileName = "PHARM-REG_CERTIFICATE-DUPLICATE-{$sess_yr}.pdf";
+
+                return $pdf->stream($fileName);
             }
 
         } catch (\Exception $e) {
@@ -1282,16 +1266,29 @@ class StudentController extends Controller
         }
     }
 
-    public function printRegistrationCertificateSingle($reg_num, $sess_yr)
+    public function printRegistrationCertificateSingle(Request $request, $reg_num = null, $sess_yr = null)
     {
         try {
+            $reg_num = $reg_num ?? $request->route('reg_num') ?? $request->input('reg_num');
+            $sess_yr = $sess_yr ?? $request->route('sess_yr') ?? $request->input('sess_yr');
+            $issue_date = $request->input('issue_date');
+
             $pg_array = '{' . $reg_num . '}';
             $db_res = DB::select(
                 'SELECT public.fn_generate_registration_certificates(?, ?::varchar[], ?, ?) AS data',
-                [$sess_yr, $pg_array, null, 'original']
+                [$sess_yr, $pg_array, $issue_date, 'original']
             );
 
             $res = json_decode($db_res[0]->data ?? '{}');
+
+            if (!empty($res->error)) {
+                return response()->json([
+                    'error' => true,
+                    'message' => $res->message ?? '',
+                    'missing_reg_nos' => $res->missing_reg_nos ?? null,
+                ], 400);
+            }
+
             $students = collect($res->students ?? []);
 
             if ($students->isEmpty()) {
@@ -1299,6 +1296,22 @@ class StudentController extends Controller
                     'status' => 'error',
                     'message' => 'No students found'
                 ], 404);
+            }
+
+            if (!empty($issue_date)) {
+                DB::table('registration_certificate_issue')
+                    ->where('reg_no', $reg_num)
+                    ->where('sess_year', $sess_yr)
+                    ->where('certificate_type', 'original')
+                    ->update(['reg_issued_on' => $issue_date]);
+            }
+
+            // Return JSON if Accept header does not request application/pdf
+            if (!str_contains($request->header('Accept', ''), 'application/pdf')) {
+                return response()->json([
+                    'status' => 'success',
+                    'data' => $res
+                ], 200);
             }
 
             $groupedByInstitute = $students->groupBy('s_inst_code');
@@ -1316,7 +1329,7 @@ class StudentController extends Controller
                         'st_course' => 'PHARMACY (PHARM)',
                         'st_profile_img' => $result->s_photo,
                         'st_profile_sign' => $result->s_sign,
-                        'reg_issued_on' => $result->reg_issued_on,
+                        'reg_issued_on' => !empty($issue_date) ? $issue_date : $result->reg_issued_on,
                         'certificate_type' => "original"
                     ];
                 }
@@ -1420,7 +1433,8 @@ class StudentController extends Controller
             }
     }
 
-public function downloadRegZip(Request $request)
+    
+    public function downloadRegZip(Request $request)
     {
         $sess_yr   = $request->sess_yr;
         $inst_code = $request->inst_code;

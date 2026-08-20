@@ -64,6 +64,7 @@ Route::prefix('student')->middleware('authenticate')->group(function () {
     Route::post('/registration-list', [StudentController::class, 'registrationList']);
     Route::post('/generate-reg-numbers', [StudentController::class, 'generateRegNo']);
     Route::post('/cancel-reg-numbers', [StudentController::class, 'registrationCancel']);
+    Route::post('/send-registration-cancellation-mail', [EmailBroadcastController::class, 'sendRegistrationCancellationMail'])->withoutMiddleware('authenticate');
     Route::post('/print-registration-list', [StudentController::class, 'printRegistrationList']);
     Route::post('/registration-report-list', [StudentController::class, 'regReportList']);
 
@@ -298,7 +299,10 @@ Route::prefix('reports')->group(function () {
     Route::post('/student-review-details-by-council', [ReportController::class, 'studentReviewDetailsListByCouncil']);
     Route::get('/student-registration-download', [ReportController::class, 'studentRegistrationDownload']);
     Route::post('/student-registration-download', [ReportController::class, 'studentRegistrationDownload']);
+    Route::match(['get', 'post'], '/result-download-inst', [ReportController::class, 'resultCertificateDownloadInst']);
+    Route::match(['get', 'post'], '/result-certificate-download-inst', [ReportController::class, 'resultCertificateDownloadInst']);
 });
+Route::match(['get', 'post'], '/result-download-inst', [ReportController::class, 'resultCertificateDownloadInst']);
 
 Route::prefix('review')->middleware('authenticate')->group(function () {
 
@@ -414,4 +418,5 @@ Route::prefix('sms')->group(function () {
 
 Route::prefix('mail')->group(function () {
     Route::post('/broadcast', [EmailBroadcastController::class, 'sendBulkEmail'])->withoutMiddleware('authenticate');
+    Route::post('/send-registration-cancellation-mail', [EmailBroadcastController::class, 'sendRegistrationCancellationMail'])->withoutMiddleware('authenticate');
 });
