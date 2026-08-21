@@ -191,6 +191,224 @@
                 ]
             }
         },
+        "/api/admin/ra-institute-list": {
+            "post": {
+                "tags": [
+                    "Admin Institutes"
+                ],
+                "summary": "Get list of RA (Re-Admission) institutes",
+                "description": "Calls PostgreSQL stored function fn_get_ra_institute_list to retrieve all Re-Admission institutes.",
+                "operationId": "e483931f24617bdadcd750f062630794",
+                "responses": {
+                    "200": {
+                        "description": "Data fetched successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "version": {
+                                            "type": "string",
+                                            "example": "1.0"
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "example": 0
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Data fetch successfully"
+                                        },
+                                        "count": {
+                                            "type": "integer",
+                                            "example": 2
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "i_code": {
+                                                        "type": "string",
+                                                        "example": "RAIP"
+                                                    },
+                                                    "i_name": {
+                                                        "type": "string",
+                                                        "example": "RISHI AUROBINDO INSTITUTE"
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                },
+                "security": [
+                    {
+                        "token": []
+                    }
+                ]
+            }
+        },
+        "/api/admin/institute-wise-summary": {
+            "post": {
+                "tags": [
+                    "Admin - Reports"
+                ],
+                "summary": "Get institute wise summary",
+                "description": "Retrieve institute wise subject submission summary using fn_admin_getinstitutewisesummary",
+                "operationId": "265cfabc1a510675a3286f324d4ac1f0",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "user_id",
+                                    "semester_id",
+                                    "exam_year",
+                                    "inst_code",
+                                    "dept_code",
+                                    "subject_code",
+                                    "subject_category_id",
+                                    "mark_type"
+                                ],
+                                "properties": {
+                                    "user_id": {
+                                        "type": "integer",
+                                        "example": 1
+                                    },
+                                    "semester_id": {
+                                        "type": "integer",
+                                        "example": 1
+                                    },
+                                    "exam_year": {
+                                        "type": "integer",
+                                        "example": 2026
+                                    },
+                                    "inst_code": {
+                                        "type": "string",
+                                        "example": "JCG"
+                                    },
+                                    "dept_code": {
+                                        "type": "string",
+                                        "example": "PHARM"
+                                    },
+                                    "subject_code": {
+                                        "type": "string",
+                                        "example": "SOPHP"
+                                    },
+                                    "subject_category_id": {
+                                        "type": "integer",
+                                        "example": 2
+                                    },
+                                    "mark_type": {
+                                        "type": "integer",
+                                        "example": 1
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Success"
+                    },
+                    "422": {
+                        "description": "Validation error"
+                    }
+                },
+                "security": [
+                    {
+                        "token": []
+                    }
+                ]
+            }
+        },
+        "/api/admin/examiner-wise-summary": {
+            "post": {
+                "tags": [
+                    "Admin - Reports"
+                ],
+                "summary": "Get examiner wise summary",
+                "description": "Retrieve examiner wise subject submission summary using fn_admin_examinerwisesummary",
+                "operationId": "38f1fec0515960cf157e1d4db779eb05",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "semester_id",
+                                    "exam_year",
+                                    "inst_code",
+                                    "dept_code",
+                                    "subject_code",
+                                    "subject_category_id",
+                                    "mark_type",
+                                    "status"
+                                ],
+                                "properties": {
+                                    "semester_id": {
+                                        "type": "integer",
+                                        "example": 1
+                                    },
+                                    "exam_year": {
+                                        "type": "integer",
+                                        "example": 2025
+                                    },
+                                    "inst_code": {
+                                        "type": "string",
+                                        "example": "0"
+                                    },
+                                    "dept_code": {
+                                        "type": "string",
+                                        "example": "PHARM"
+                                    },
+                                    "subject_code": {
+                                        "type": "string",
+                                        "example": "0"
+                                    },
+                                    "subject_category_id": {
+                                        "type": "integer",
+                                        "example": 0
+                                    },
+                                    "mark_type": {
+                                        "type": "integer",
+                                        "example": 1
+                                    },
+                                    "status": {
+                                        "type": "integer",
+                                        "example": 1
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Success"
+                    },
+                    "422": {
+                        "description": "Validation error"
+                    }
+                },
+                "security": [
+                    {
+                        "token": []
+                    }
+                ]
+            }
+        },
         "/api/admin/semesters": {
             "post": {
                 "tags": [
@@ -465,6 +683,109 @@
                 ]
             }
         },
+        "/api/admin/save-review-subject-marks": {
+            "post": {
+                "tags": [
+                    "Admin - Student Marks"
+                ],
+                "summary": "Save review subject marks in bulk",
+                "description": "Loops through the marks array and calls fn_save_review_subject_marks for each item.",
+                "operationId": "c4373dface99cbdad30b9ccc3b2f4404",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "marks"
+                                ],
+                                "properties": {
+                                    "marks": {
+                                        "type": "array",
+                                        "items": {
+                                            "required": [
+                                                "student_id",
+                                                "reg_no",
+                                                "semester",
+                                                "exam_year",
+                                                "subject_code",
+                                                "marks",
+                                                "exam_status",
+                                                "marks_status",
+                                                "teacher_id"
+                                            ],
+                                            "properties": {
+                                                "student_id": {
+                                                    "type": "integer",
+                                                    "format": "int64",
+                                                    "example": 9432
+                                                },
+                                                "reg_no": {
+                                                    "type": "string",
+                                                    "example": "PHARM242500625"
+                                                },
+                                                "semester": {
+                                                    "type": "string",
+                                                    "example": "Part-I"
+                                                },
+                                                "exam_year": {
+                                                    "type": "integer",
+                                                    "example": 2025
+                                                },
+                                                "subject_code": {
+                                                    "type": "string",
+                                                    "example": "SOPH"
+                                                },
+                                                "marks": {
+                                                    "type": "integer",
+                                                    "example": 65
+                                                },
+                                                "exam_status": {
+                                                    "type": "string",
+                                                    "example": "PRESENT"
+                                                },
+                                                "marks_status": {
+                                                    "type": "string",
+                                                    "example": "SUBMITTED"
+                                                },
+                                                "document": {
+                                                    "type": "string",
+                                                    "example": "review_document.pdf",
+                                                    "nullable": true
+                                                },
+                                                "teacher_id": {
+                                                    "type": "integer",
+                                                    "format": "int64",
+                                                    "example": 887
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Review marks processed"
+                    },
+                    "400": {
+                        "description": "Validation failed"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                },
+                "security": [
+                    {
+                        "token": []
+                    }
+                ]
+            }
+        },
         "/api/admin/subject-categories": {
             "post": {
                 "tags": [
@@ -582,7 +903,7 @@
                     "Admin - Master Data"
                 ],
                 "summary": "Get all subjects for a department",
-                "description": "Retrieves all subjects for a specific department, semester, and subject category. Note: semester_id should be numeric string (1, 2, 3) from semester dropdown's semesterId field. Calls: fn_admin_getdeptallsubjects_v1",
+                "description": "Retrieves all subjects for a specific department, semester, and subject category. Calls: fn_admin_getdeptallsubjects_v1",
                 "operationId": "0f3fd6e83a2378a7d1827cdc9b933744",
                 "requestBody": {
                     "required": true,
@@ -607,9 +928,9 @@
                                         "example": "PHARM"
                                     },
                                     "semester_id": {
-                                        "description": "Semester ID as numeric string (1-6)",
-                                        "type": "string",
-                                        "example": "1"
+                                        "description": "Semester ID",
+                                        "type": "integer",
+                                        "example": 1
                                     },
                                     "subject_category_id": {
                                         "description": "Subject category ID (1=Theory, 2=Practical, etc.)",
@@ -702,6 +1023,56 @@
                                 }
                             }
                         }
+                    }
+                },
+                "security": [
+                    {
+                        "token": []
+                    }
+                ]
+            }
+        },
+        "/api/admin/subject-details": {
+            "post": {
+                "tags": [
+                    "Admin - Master Data"
+                ],
+                "summary": "Get subject details by semester and category",
+                "description": "Calls fn_admin_getsubjects_details.",
+                "operationId": "e7b1fab9a9cb612ecac2b413e073d501",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "semester_id",
+                                    "subject_category_id"
+                                ],
+                                "properties": {
+                                    "semester_id": {
+                                        "type": "integer",
+                                        "example": 1
+                                    },
+                                    "subject_category_id": {
+                                        "type": "integer",
+                                        "example": 1
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Subject details retrieved successfully"
+                    },
+                    "422": {
+                        "description": "Validation failed"
+                    },
+                    "500": {
+                        "description": "Internal server error"
                     }
                 },
                 "security": [
@@ -958,6 +1329,141 @@
                 ]
             }
         },
+        "/api/admin/get-marks-entered-teachers-info": {
+            "post": {
+                "tags": [
+                    "Admin - Teacher"
+                ],
+                "summary": "Get marks entered teachers information",
+                "description": "Retrieves teachers who have entered marks for the selected institute, department, subject, exam year, and semester. Calls: fn_admin_getmarksenteredteachersinfo",
+                "operationId": "235ee35df71c3497e26e74abca7c2754",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "admin_user_id",
+                                    "teacher_id",
+                                    "inst_code",
+                                    "dept_code",
+                                    "subject_code",
+                                    "exam_year",
+                                    "semester"
+                                ],
+                                "properties": {
+                                    "admin_user_id": {
+                                        "type": "integer",
+                                        "example": 1
+                                    },
+                                    "teacher_id": {
+                                        "type": "integer",
+                                        "example": 5
+                                    },
+                                    "inst_code": {
+                                        "type": "string",
+                                        "example": "JCG"
+                                    },
+                                    "dept_code": {
+                                        "type": "string",
+                                        "example": "PHARM"
+                                    },
+                                    "subject_code": {
+                                        "type": "string",
+                                        "example": "PHCE"
+                                    },
+                                    "exam_year": {
+                                        "type": "integer",
+                                        "example": 2025
+                                    },
+                                    "semester": {
+                                        "type": "integer",
+                                        "example": 1
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Marks entered teacher information retrieved successfully"
+                    },
+                    "400": {
+                        "description": "Validation failed"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                },
+                "security": [
+                    {
+                        "token": []
+                    }
+                ]
+            }
+        },
+        "/api/admin/delete-teacher": {
+            "post": {
+                "tags": [
+                    "Admin - Teacher"
+                ],
+                "summary": "Delete teacher information",
+                "description": "Deletes teacher information using fn_admin_deleteteacherinfo",
+                "operationId": "05e1834cc1217036dadb264cd9e27f93",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "teacher_id",
+                                    "admin_user_id"
+                                ],
+                                "properties": {
+                                    "teacher_id": {
+                                        "type": "integer",
+                                        "example": 914
+                                    },
+                                    "admin_user_id": {
+                                        "type": "integer",
+                                        "example": 2
+                                    },
+                                    "remarks": {
+                                        "type": "string",
+                                        "example": "not need"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Teacher delete processed"
+                    },
+                    "400": {
+                        "description": "Validation failed"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                },
+                "security": [
+                    {
+                        "token": []
+                    }
+                ]
+            }
+        },
         "/api/admin/get-evaluator-subject-allocation-summary": {
             "post": {
                 "tags": [
@@ -1127,13 +1633,601 @@
                 ]
             }
         },
+        "/api/admin/get-review-evaluator-subject-allocation-summary": {
+            "post": {
+                "tags": [
+                    "Admin - Teacher"
+                ],
+                "summary": "Get review evaluator subject allocation summary",
+                "description": "Calls fn_admin_getreview_evaluatorsubjectallocationsummary.",
+                "operationId": "8b213eda233af94ef9d8bc36a403d2c8",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "admin_user_id",
+                                    "user_type_id",
+                                    "inst_code",
+                                    "evaluator_type_id",
+                                    "department_id",
+                                    "exam_year",
+                                    "semester"
+                                ],
+                                "properties": {
+                                    "admin_user_id": {
+                                        "type": "integer",
+                                        "format": "int64",
+                                        "example": 887
+                                    },
+                                    "user_type_id": {
+                                        "type": "integer",
+                                        "format": "int64",
+                                        "example": 9
+                                    },
+                                    "inst_code": {
+                                        "type": "string",
+                                        "example": "JCG"
+                                    },
+                                    "evaluator_type_id": {
+                                        "type": "integer",
+                                        "example": 3
+                                    },
+                                    "department_id": {
+                                        "type": "integer",
+                                        "example": 1
+                                    },
+                                    "exam_year": {
+                                        "type": "string",
+                                        "example": "2025"
+                                    },
+                                    "semester": {
+                                        "type": "string",
+                                        "example": "Part-I"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Review allocation summary retrieved successfully"
+                    },
+                    "400": {
+                        "description": "Validation failed"
+                    },
+                    "404": {
+                        "description": "No data returned"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                },
+                "security": [
+                    {
+                        "token": []
+                    }
+                ]
+            }
+        },
+        "/api/admin/save-review-teacher-assign-subject": {
+            "post": {
+                "tags": [
+                    "Admin - Teacher"
+                ],
+                "summary": "Assign a review subject to a teacher",
+                "description": "Calls fn_admin_savereviewteacherassignsubject.",
+                "operationId": "0d339cac2173db75db4458eeff626f09",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "assignments"
+                                ],
+                                "properties": {
+                                    "assignments": {
+                                        "type": "array",
+                                        "items": {
+                                            "required": [
+                                                "student_id",
+                                                "student_reg_no",
+                                                "teacher_id",
+                                                "semester_id",
+                                                "subject_code",
+                                                "entry_user_id",
+                                                "teacher_inst_code"
+                                            ],
+                                            "properties": {
+                                                "student_id": {
+                                                    "type": "integer",
+                                                    "format": "int64",
+                                                    "example": 9432
+                                                },
+                                                "student_reg_no": {
+                                                    "type": "string",
+                                                    "example": "PHARM242500625"
+                                                },
+                                                "teacher_id": {
+                                                    "type": "integer",
+                                                    "format": "int64",
+                                                    "example": 887
+                                                },
+                                                "semester_id": {
+                                                    "type": "string",
+                                                    "example": "Part-I"
+                                                },
+                                                "subject_code": {
+                                                    "type": "string",
+                                                    "example": "SOPH"
+                                                },
+                                                "entry_user_id": {
+                                                    "type": "integer",
+                                                    "format": "int64",
+                                                    "example": 890
+                                                },
+                                                "teacher_inst_code": {
+                                                    "type": "string",
+                                                    "example": "BPS"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Assignment processed successfully"
+                    },
+                    "400": {
+                        "description": "Validation failed"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                },
+                "security": [
+                    {
+                        "token": []
+                    }
+                ]
+            }
+        },
+        "/api/admin/get-review-evaluator-inst-allocation-summary": {
+            "post": {
+                "tags": [
+                    "Admin - Teacher"
+                ],
+                "summary": "Get review evaluator institute allocation summary",
+                "description": "Calls fn_admin_getreviewevaluatorinstallocationsummary.",
+                "operationId": "a0666651c83b134d1b965985b2bf383b",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "admin_user_id",
+                                    "user_type_id",
+                                    "evaluator_type_id",
+                                    "exam_year",
+                                    "semester"
+                                ],
+                                "properties": {
+                                    "admin_user_id": {
+                                        "type": "integer",
+                                        "format": "int64",
+                                        "example": 887
+                                    },
+                                    "user_type_id": {
+                                        "type": "integer",
+                                        "format": "int64",
+                                        "example": 9
+                                    },
+                                    "evaluator_type_id": {
+                                        "type": "integer",
+                                        "example": 3
+                                    },
+                                    "exam_year": {
+                                        "type": "string",
+                                        "example": "2025"
+                                    },
+                                    "semester": {
+                                        "type": "string",
+                                        "example": "Part-I"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Review institute allocation summary retrieved"
+                    },
+                    "400": {
+                        "description": "Validation failed"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                },
+                "security": [
+                    {
+                        "token": []
+                    }
+                ]
+            }
+        },
+        "/api/enrollment/ra-student-list": {
+            "post": {
+                "tags": [
+                    "Enrollment"
+                ],
+                "summary": "Get list of RA (Re-Admission) students by institute code",
+                "description": "Calls PostgreSQL stored function fn_get_ra_student_list to retrieve all Re-Admission students for a given institute code.",
+                "operationId": "349fc4f4c0dd79f18c35fe730b7b2067",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "inst_code"
+                                ],
+                                "properties": {
+                                    "inst_code": {
+                                        "description": "Institute Code",
+                                        "type": "string",
+                                        "example": "RAIP"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Re-admission students fetched successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "version": {
+                                            "type": "string",
+                                            "example": "1.0"
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "example": 0
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Re-admission students fetched successfully"
+                                        },
+                                        "count": {
+                                            "type": "integer",
+                                            "example": 1
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "semester": {
+                                                        "type": "string",
+                                                        "example": "Part-I"
+                                                    },
+                                                    "studentRoll": {
+                                                        "type": "string",
+                                                        "example": "PRAIPPHARM1"
+                                                    },
+                                                    "studentNumber": {
+                                                        "type": "string",
+                                                        "example": "AD25009939"
+                                                    },
+                                                    "studentRegistrationNumber": {
+                                                        "type": "string",
+                                                        "example": "PHARM242507934"
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation failed"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                },
+                "security": [
+                    {
+                        "token": []
+                    }
+                ]
+            }
+        },
+        "/api/examinations/check-student-eligible-in-exam": {
+            "post": {
+                "tags": [
+                    "Examinations"
+                ],
+                "summary": "Check if a student is eligible in exam",
+                "description": "Calls PostgreSQL stored function fn_check_studenteligible_inexam_studentid to verify student eligibility, registration, roll number, and payment status for an exam.",
+                "operationId": "312988a09f07b766233e485ecc5f7e24",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "student_id",
+                                    "exam_year",
+                                    "semester"
+                                ],
+                                "properties": {
+                                    "student_id": {
+                                        "description": "Student ID",
+                                        "type": "integer",
+                                        "format": "int64",
+                                        "example": 1077
+                                    },
+                                    "exam_year": {
+                                        "description": "Examination Year",
+                                        "type": "string",
+                                        "example": "2026"
+                                    },
+                                    "semester": {
+                                        "description": "Semester / Part Name",
+                                        "type": "string",
+                                        "example": "Part-II"
+                                    },
+                                    "admin_user_id": {
+                                        "description": "Admin User ID (defaults to auth user / student ID)",
+                                        "type": "integer",
+                                        "format": "int64",
+                                        "example": 1077
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Student eligibility details retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "error": {
+                                            "type": "boolean",
+                                            "example": false
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "example": 0
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Student eligibility details fetched successfully."
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "Ispaid": {
+                                                    "type": "boolean",
+                                                    "example": null,
+                                                    "nullable": true
+                                                },
+                                                "Semester": {
+                                                    "type": "string",
+                                                    "example": "Part-II"
+                                                },
+                                                "StudentId": {
+                                                    "type": "integer",
+                                                    "example": 1077
+                                                },
+                                                "RollNumber": {
+                                                    "type": "string",
+                                                    "example": null,
+                                                    "nullable": true
+                                                },
+                                                "StudentName": {
+                                                    "type": "string",
+                                                    "example": "SARMIN MIDDEY"
+                                                },
+                                                "PayableAmount": {
+                                                    "type": "number",
+                                                    "example": null,
+                                                    "nullable": true
+                                                },
+                                                "EnrollmentType": {
+                                                    "type": "string",
+                                                    "example": "REGULAR"
+                                                },
+                                                "RegistrationNumber": {
+                                                    "type": "string",
+                                                    "example": "PHARM242501978"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation failed"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "404": {
+                        "description": "Student record not found"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                },
+                "security": [
+                    {
+                        "token": []
+                    }
+                ]
+            }
+        },
+        "/api/examinations/ra-details-by-registration-number": {
+            "post": {
+                "tags": [
+                    "Examinations"
+                ],
+                "summary": "Get reported against subject marks details by student registration number",
+                "description": "Calls PostgreSQL stored function fn_getradetailslistbystudentregistartionnumber to retrieve subject-wise internal/external marks and obtained marks for a reported against student.",
+                "operationId": "751723643a225a5ec13542160725bd54",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "registration_number",
+                                    "exam_year",
+                                    "part_id"
+                                ],
+                                "properties": {
+                                    "registration_number": {
+                                        "description": "Student Registration Number",
+                                        "type": "string",
+                                        "example": "PHARM242507934"
+                                    },
+                                    "exam_year": {
+                                        "description": "Exam Year",
+                                        "type": "string",
+                                        "example": "2026"
+                                    },
+                                    "part_id": {
+                                        "description": "Part / Semester Name (e.g. Part-I, Part-II)",
+                                        "type": "string",
+                                        "example": "Part-I"
+                                    },
+                                    "admin_user_id": {
+                                        "description": "Admin User ID (defaults to auth user / 1)",
+                                        "type": "integer",
+                                        "format": "int64",
+                                        "example": 1
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Reported against details fetched successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "version": {
+                                            "type": "string",
+                                            "example": "1.0"
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "example": 0
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Reported against details fetched successfully"
+                                        },
+                                        "count": {
+                                            "type": "integer",
+                                            "example": 5
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "subjectCode": {
+                                                        "type": "string",
+                                                        "example": "HUAP"
+                                                    },
+                                                    "subjectName": {
+                                                        "type": "string",
+                                                        "example": "THEORY"
+                                                    },
+                                                    "externalFullMarks": {
+                                                        "type": "number",
+                                                        "format": "double",
+                                                        "example": 80
+                                                    },
+                                                    "internalFullMarks": {
+                                                        "type": "number",
+                                                        "format": "double",
+                                                        "example": 20
+                                                    },
+                                                    "externalMarksObtained": {
+                                                        "type": "number",
+                                                        "format": "double",
+                                                        "example": 25
+                                                    },
+                                                    "internalMarksObtained": {
+                                                        "type": "number",
+                                                        "format": "double",
+                                                        "example": 16
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation failed"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                },
+                "security": [
+                    {
+                        "token": []
+                    }
+                ]
+            }
+        },
         "/api/generate-otp/send": {
             "post": {
                 "tags": [
                     "Authentication"
                 ],
                 "summary": "Generate and send OTP",
-                "description": "Generates OTP for admin users. Calls fn_generateotp to create OTP, then sends via SMS/Email based on user_type_id. Type 8→Email, Types 9/10/11→SMS, Type 12→Both. OTP expires in 2 minutes.",
+                "description": "Generates OTP for admin users. Calls fn_generateotp to create OTP, then sends via SMS/Email based on user_type_id. Type 8/13→Email, Types 9/10/11/15→SMS, Type 12→Both. OTP expires in 2 minutes.",
                 "operationId": "0008b5f83cf31135ebaac3ca99f6b1d5",
                 "requestBody": {
                     "required": true,
@@ -1151,7 +2245,7 @@
                                         "example": "AIE"
                                     },
                                     "user_type_id": {
-                                        "description": "User type: 8=Email, 9/10/11=SMS, 12=Both",
+                                        "description": "User type: 8/13=Email, 9/10/11/15=SMS, 12=Both",
                                         "type": "integer",
                                         "example": 8
                                     }
@@ -1193,6 +2287,11 @@
                                                 }
                                             },
                                             "type": "object"
+                                        },
+                                        "OTPSendTo": {
+                                            "type": "string",
+                                            "example": "admin@example.com",
+                                            "nullable": true
                                         }
                                     },
                                     "type": "object"
@@ -1668,6 +2767,83 @@
                     }
                 ]
             }
+        },
+        "/api/admin/get-review-student-marks-info": {
+            "post": {
+                "tags": [
+                    "Admin - Student Marks"
+                ],
+                "summary": "Get review student marks information",
+                "description": "Calls fn_admin_getreviewstudentmarksinfo. Use student_id 0 to retrieve all matching students.",
+                "operationId": "ebc9fcb86f5d088314dc48acda3e5dc5",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "admin_user_id",
+                                    "student_id",
+                                    "inst_code",
+                                    "dept_code",
+                                    "subject_code",
+                                    "exam_year",
+                                    "semester"
+                                ],
+                                "properties": {
+                                    "admin_user_id": {
+                                        "type": "integer",
+                                        "format": "int64",
+                                        "example": 887
+                                    },
+                                    "student_id": {
+                                        "type": "integer",
+                                        "format": "int64",
+                                        "example": 0
+                                    },
+                                    "inst_code": {
+                                        "type": "string",
+                                        "example": "AIHE"
+                                    },
+                                    "dept_code": {
+                                        "type": "string",
+                                        "example": "PHARM"
+                                    },
+                                    "subject_code": {
+                                        "type": "string",
+                                        "example": "SOPH"
+                                    },
+                                    "exam_year": {
+                                        "type": "string",
+                                        "example": "2025"
+                                    },
+                                    "semester": {
+                                        "type": "string",
+                                        "example": "Part-I"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Review student marks retrieved successfully"
+                    },
+                    "400": {
+                        "description": "Validation failed"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                },
+                "security": [
+                    {
+                        "token": []
+                    }
+                ]
+            }
         }
     },
     "components": {
@@ -1710,6 +2886,22 @@
         {
             "name": "Admin - Master Data",
             "description": "Master data endpoints (departments, subjects, semesters, etc.)"
+        },
+        {
+            "name": "Admin Institutes",
+            "description": "Admin Institutes"
+        },
+        {
+            "name": "Admin - Reports",
+            "description": "Admin - Reports"
+        },
+        {
+            "name": "Enrollment",
+            "description": "Enrollment"
+        },
+        {
+            "name": "Examinations",
+            "description": "Examinations"
         }
     ]
 }

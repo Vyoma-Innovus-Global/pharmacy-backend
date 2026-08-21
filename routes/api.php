@@ -73,10 +73,15 @@ Route::prefix('student')->middleware('authenticate')->group(function () {
     Route::post('/syllabus-tag', [StudentController::class, 'syllabusTagSubmit']);
     Route::post('/subject-list', [StudentController::class, 'subjectList']);
     Route::post('/submit-elective-subject', [StudentController::class, 'submitElectivePaper']);
+    Route::post('/check-student-eligible-in-exam', [ExaminationController::class, 'checkStudentEligibleInExam']);
+    Route::post('/check-exam-eligibility', [ExaminationController::class, 'checkStudentEligibleInExam']);
 });
 Route::prefix('enrollment')->middleware('authenticate')->group(function () {
     Route::post('/re-admission-list', [EnrollmentController::class, 're_admission_list']);
     Route::post('/re-admission-submit', [EnrollmentController::class, 're_admission_submit']);
+    Route::get('/ra-institute-list', [AdminInstituteController::class, 'getRaInstituteList']);
+    Route::post('/ra-institute-list', [AdminInstituteController::class, 'getRaInstituteList']);
+    Route::post('/ra-student-list', [EnrollmentController::class, 'getRaStudentList']);
     Route::post('/list', [EnrollmentController::class, 'list']);
 
     Route::post('/get-enrollment-fees-data', [PaymentController::class, 'getEnrollmentPaymentdata']);
@@ -213,6 +218,10 @@ Route::prefix('examinations')->middleware('authenticate')->group(function () {
     Route::get('/decoding-list', [ExaminationController::class, 'decodingList']);
 
     Route::get('/center-wise-students/{part_sem}/{exam_year}/{center_code}', [ExaminationController::class, 'getCenterWiseStudents'])->withoutMiddleware('authenticate');
+    Route::post('/check-student-eligible-in-exam', [ExaminationController::class, 'checkStudentEligibleInExam']);
+    Route::post('/check-student-eligible', [ExaminationController::class, 'checkStudentEligibleInExam']);
+    Route::post('/ra-details-by-registration-number', [ExaminationController::class, 'getRaDetailsListByStudentRegistrationNumber']);
+    Route::post('/ra-details-list-by-student-registration-number', [ExaminationController::class, 'getRaDetailsListByStudentRegistrationNumber']);
 });
 
 Route::prefix('answersheet')->middleware('authenticate')->group(function () {
@@ -387,6 +396,10 @@ Route::prefix('admin')->middleware('authenticate')->group(function () {
     Route::post('/institutes', [AdminInstituteController::class, 'getAllInstitutes']);
     Route::get('/institute-list', [AdminInstituteController::class, 'getInstituteList']);
     Route::post('/institute-list', [AdminInstituteController::class, 'getInstituteList']);
+    Route::get('/ra-institute-list', [AdminInstituteController::class, 'getRaInstituteList']);
+    Route::post('/ra-institute-list', [AdminInstituteController::class, 'getRaInstituteList']);
+    Route::post('/ra-student-list', [EnrollmentController::class, 'getRaStudentList']);
+    Route::post('/ra-details-by-registration-number', [ExaminationController::class, 'getRaDetailsListByStudentRegistrationNumber']);
     Route::post('/semesters', [AdminSemesterController::class, 'getAllSemesters']);
     Route::post('/subject-categories', [AdminSubjectCategoryController::class, 'getAllSubjectCategories']);
     Route::post('/departments', [AdminDepartmentController::class, 'getDepartmentsByInst']);

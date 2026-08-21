@@ -13,6 +13,7 @@ use App\Exports\printingInstruction;
 use App\Exports\packingSlipDownload;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\CenterWiseStudentsExport;
+use Illuminate\Support\Facades\Validator;
 
 class ExaminationController extends Controller
 {
@@ -1132,6 +1133,341 @@ class ExaminationController extends Controller
             return response()->json([
                 'status' => 'error',
                 'message' => 'Error fetching data: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * @OA\Post(
+     *     path="/api/examinations/check-student-eligible-in-exam",
+     *     tags={"Examinations"},
+     *     summary="Check if a student is eligible in exam",
+     *     description="Calls PostgreSQL stored function fn_check_studenteligible_inexam_studentid to verify student eligibility, registration, roll number, and payment status for an exam.",
+     *     security={{"token": {}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"student_id", "exam_year", "semester"},
+     *             @OA\Property(property="student_id", type="integer", format="int64", example=1077, description="Student ID"),
+     *             @OA\Property(property="exam_year", type="string", example="2026", description="Examination Year"),
+     *             @OA\Property(property="semester", type="string", example="Part-II", description="Semester / Part Name"),
+     *             @OA\Property(property="admin_user_id", type="integer", format="int64", example=1077, description="Admin User ID (defaults to auth user / student ID)")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Student eligibility details retrieved successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="error", type="boolean", example=false),
+     *             @OA\Property(property="status", type="integer", example=0),
+     *             @OA\Property(property="message", type="string", example="Student eligibility details fetched successfully."),
+     *             @OA\Property(
+     *                 property="data",
+     *                 type="object",
+     *                 @OA\Property(property="Ispaid", type="boolean", nullable=true, example=null),
+     *                 @OA\Property(property="Semester", type="string", example="Part-II"),
+     *                 @OA\Property(property="StudentId", type="integer", example=1077),
+     *                 @OA\Property(property="RollNumber", type="string", nullable=true, example=null),
+     *                 @OA\Property(property="StudentName", type="string", example="SARMIN MIDDEY"),
+     *                 @OA\Property(property="PayableAmount", type="number", nullable=true, example=null),
+     *                 @OA\Property(property="EnrollmentType", type="string", example="REGULAR"),
+     *                 @OA\Property(property="RegistrationNumber", type="string", example="PHARM242501978")
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(response=422, description="Validation failed"),
+     *     @OA\Response(response=401, description="Unauthorized"),
+     *     @OA\Response(response=404, description="Student record not found"),
+     *     @OA\Response(response=500, description="Internal server error")
+     * )
+     */
+    public function checkStudentEligibleInExam(Request $request)
+    {
+        $studentId = $request->input('student_id', $request->input('p_studentid', $request->input('studentId', $request->input('id'))));
+        $examYear = $request->input('exam_year', $request->input('p_examyear', $request->input('examYear', $request->input('year'))));
+        $semester = $request->input('semester', $request->input('p_semester', $request->input('part_sem', $request->input('semester_name'))));
+        
+        $adminUserId = $request->input('admin_user_id', $request->input('p_adminuserid', $request->input('adminUserId', $request->input('user_id'))));
+        if (empty($adminUserId)) {
+            try {
+                $adminUserId = authUserId();
+            } catch (\Exception $e) {
+                $adminUserId = null;
+            }
+        }
+        if (empty($adminUserId)) {
+            $adminUserId = $studentId;
+        }
+
+        $validator = Validator::make([
+            'student_id'    => $studentId,
+            'exam_year'     => $examYear,
+            'semester'      => $semester,
+            'admin_user_id' => $adminUserId,
+        ], [
+            'student_id'    => 'required|numeric',
+            'exam_year'     => 'required',
+            'semester'      => 'required|string',
+            'admin_user_id' => 'required|numeric',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'error'   => true,
+                'status'  => 1,
+                'message' => 'Validation failed: ' . $validator->errors()->first(),
+                'errors'  => $validator->errors(),
+                'data'    => null,
+            ], 422);
+        }
+
+        Log::channel('daily')->info('[Examinations] fn_check_studenteligible_inexam_studentid INPUT', [
+            'student_id'    => $studentId,
+            'exam_year'     => $examYear,
+            'semester'      => $semester,
+            'admin_user_id' => $adminUserId,
+            'ip'            => $request->ip(),
+        ]);
+
+        try {
+            $result = DB::select(
+                'SELECT public.fn_check_studenteligible_inexam_studentid(?::bigint, ?::varchar, ?::varchar, ?::bigint) AS data',
+                [(int) $studentId, (string) $examYear, (string) $semester, (int) $adminUserId]
+            );
+
+            if (empty($result)) {
+                return response()->json([
+                    'error'   => true,
+                    'status'  => 3,
+                    'message' => 'No data returned from database function.',
+                    'data'    => null,
+                ], 404);
+            }
+
+            $raw = $result[0]->data ?? null;
+
+            if ($raw === null) {
+                return response()->json([
+                    'error'   => true,
+                    'status'  => 3,
+                    'message' => 'No student eligibility record found.',
+                    'data'    => null,
+                ], 404);
+            }
+
+            $data = is_string($raw) ? json_decode($raw, true) : (array) $raw;
+
+            if (json_last_error() !== JSON_ERROR_NONE && is_string($raw)) {
+                Log::channel('daily')->error('[Examinations] fn_check_studenteligible_inexam_studentid JSON decode error', [
+                    'error' => json_last_error_msg(),
+                    'raw'   => $raw,
+                ]);
+                return response()->json([
+                    'error'   => true,
+                    'status'  => 3,
+                    'message' => 'Failed to parse database response.',
+                    'data'    => null,
+                ], 500);
+            }
+
+            Log::channel('daily')->info('[Examinations] fn_check_studenteligible_inexam_studentid OUTPUT', [
+                'student_id' => $studentId,
+                'data'       => $data,
+            ]);
+
+            return response()->json([
+                'error'   => false,
+                'status'  => 0,
+                'message' => 'Student eligibility details fetched successfully.',
+                'data'    => $data,
+            ], 200);
+
+        } catch (\Exception $e) {
+            Log::channel('daily')->error('[Examinations] fn_check_studenteligible_inexam_studentid EXCEPTION', [
+                'message' => $e->getMessage(),
+                'line'    => $e->getLine(),
+                'file'    => $e->getFile(),
+            ]);
+
+            return response()->json([
+                'error'   => true,
+                'status'  => 3,
+                'message' => 'An error occurred while checking student eligibility: ' . $e->getMessage(),
+                'data'    => null,
+            ], 500);
+        }
+    }
+
+    /**
+     * @OA\Post(
+     *     path="/api/examinations/ra-details-by-registration-number",
+     *     tags={"Examinations"},
+     *     summary="Get reported against subject marks details by student registration number",
+     *     description="Calls PostgreSQL stored function fn_getradetailslistbystudentregistartionnumber to retrieve subject-wise internal/external marks and obtained marks for a reported against student.",
+     *     security={{"token": {}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"registration_number", "exam_year", "part_id"},
+     *             @OA\Property(property="registration_number", type="string", example="PHARM242507934", description="Student Registration Number"),
+     *             @OA\Property(property="exam_year", type="string", example="2026", description="Exam Year"),
+     *             @OA\Property(property="part_id", type="string", example="Part-I", description="Part / Semester Name (e.g. Part-I, Part-II)"),
+     *             @OA\Property(property="admin_user_id", type="integer", format="int64", example=1, description="Admin User ID (defaults to auth user / 1)")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Reported against details fetched successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="version", type="string", example="1.0"),
+     *             @OA\Property(property="status", type="integer", example=0),
+     *             @OA\Property(property="message", type="string", example="Reported against details fetched successfully"),
+     *             @OA\Property(property="count", type="integer", example=5),
+     *             @OA\Property(
+     *                 property="data",
+     *                 type="array",
+     *                 @OA\Items(
+     *                     type="object",
+     *                     @OA\Property(property="subjectCode", type="string", example="HUAP"),
+     *                     @OA\Property(property="subjectName", type="string", example="THEORY"),
+     *                     @OA\Property(property="externalFullMarks", type="number", format="double", example=80.00),
+     *                     @OA\Property(property="internalFullMarks", type="number", format="double", example=20.00),
+     *                     @OA\Property(property="externalMarksObtained", type="number", format="double", example=25.00),
+     *                     @OA\Property(property="internalMarksObtained", type="number", format="double", example=16.00)
+     *                 )
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(response=422, description="Validation failed"),
+     *     @OA\Response(response=500, description="Internal server error")
+     * )
+     */
+    public function getRaDetailsListByStudentRegistrationNumber(Request $request)
+    {
+        $registrationNumber = $request->input('registration_number', $request->input('p_registrationnumber', $request->input('reg_no', $request->input('studentRegistrationNumber', $request->input('registrationNumber', $request->input('student_reg_no'))))));
+        $examYear = $request->input('exam_year', $request->input('p_examyear', $request->input('examYear', $request->input('year'))));
+        $partId = $request->input('part_id', $request->input('p_partid', $request->input('partId', $request->input('part_sem', $request->input('semester', $request->input('part'))))));
+        
+        $adminUserId = $request->input('admin_user_id', $request->input('p_adminuserid', $request->input('adminUserId', $request->input('user_id'))));
+        if (empty($adminUserId)) {
+            try {
+                $adminUserId = authUserId();
+            } catch (\Exception $e) {
+                $adminUserId = null;
+            }
+        }
+        if (empty($adminUserId)) {
+            $adminUserId = 1;
+        }
+
+        $validator = Validator::make([
+            'registration_number' => $registrationNumber,
+            'exam_year'           => $examYear,
+            'part_id'             => $partId,
+            'admin_user_id'       => $adminUserId,
+        ], [
+            'registration_number' => 'required|string|max:100',
+            'exam_year'           => 'required',
+            'part_id'             => 'required|string|max:50',
+            'admin_user_id'       => 'required|numeric',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'version' => '1.0',
+                'status'  => 1,
+                'message' => 'Validation failed: ' . $validator->errors()->first(),
+                'errors'  => $validator->errors(),
+                'data'    => null,
+            ], 422);
+        }
+
+        $registrationNumber = trim($registrationNumber);
+        $examYear           = (string) trim($examYear);
+        $partId             = (string) trim($partId);
+        $adminUserId        = (int) $adminUserId;
+
+        Log::channel('daily')->info('[Examinations] fn_getradetailslistbystudentregistartionnumber INPUT', [
+            'registration_number' => $registrationNumber,
+            'exam_year'           => $examYear,
+            'part_id'             => $partId,
+            'admin_user_id'       => $adminUserId,
+            'ip'                  => $request->ip(),
+        ]);
+
+        try {
+            $result = DB::select(
+                'SELECT public.fn_getradetailslistbystudentregistartionnumber(?::varchar, ?::varchar, ?::varchar, ?::bigint) AS data',
+                [$registrationNumber, $examYear, $partId, $adminUserId]
+            );
+
+            if (empty($result)) {
+                return response()->json([
+                    'version' => '1.0',
+                    'status'  => 0,
+                    'message' => 'No reported against details found.',
+                    'count'   => 0,
+                    'data'    => [],
+                ], 200);
+            }
+
+            $details = [];
+
+            foreach ($result as $row) {
+                $raw = $row->data ?? null;
+
+                if ($raw === null) {
+                    continue;
+                }
+
+                $decoded = is_string($raw) ? json_decode($raw, true) : (array) $raw;
+
+                if (is_string($raw) && json_last_error() !== JSON_ERROR_NONE) {
+                    Log::channel('daily')->error('[Examinations] fn_getradetailslistbystudentregistartionnumber JSON decode error', [
+                        'error' => json_last_error_msg(),
+                        'raw'   => $raw,
+                    ]);
+
+                    return response()->json([
+                        'version' => '1.0',
+                        'status'  => 3,
+                        'message' => 'Failed to parse database response.',
+                        'data'    => null,
+                    ], 500);
+                }
+
+                if (is_array($decoded) && array_is_list($decoded)) {
+                    $details = array_merge($details, $decoded);
+                } elseif (is_array($decoded)) {
+                    $details[] = $decoded;
+                }
+            }
+
+            Log::channel('daily')->info('[Examinations] fn_getradetailslistbystudentregistartionnumber OUTPUT', [
+                'registration_number' => $registrationNumber,
+                'count'               => count($details),
+            ]);
+
+            return response()->json([
+                'version' => '1.0',
+                'status'  => 0,
+                'message' => 'Reported against details fetched successfully',
+                'count'   => count($details),
+                'data'    => $details,
+            ], 200);
+
+        } catch (\Exception $e) {
+            Log::channel('daily')->error('[Examinations] fn_getradetailslistbystudentregistartionnumber EXCEPTION', [
+                'message' => $e->getMessage(),
+                'line'    => $e->getLine(),
+                'file'    => $e->getFile(),
+            ]);
+
+            return response()->json([
+                'version' => '1.0',
+                'status'  => 3,
+                'message' => 'An error occurred while fetching reported against details: ' . $e->getMessage(),
+                'data'    => null,
             ], 500);
         }
     }

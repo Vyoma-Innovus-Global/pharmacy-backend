@@ -11,6 +11,7 @@ use App\Models\PaymentTransaction;
 use Illuminate\Http\Request;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Schema;
 
@@ -1019,6 +1020,149 @@ class EnrollmentController extends Controller
             return response()->json([
                 'error' => true,
                 'message' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * @OA\Post(
+     *     path="/api/enrollment/ra-student-list",
+     *     tags={"Enrollment"},
+     *     summary="Get list of RA (Re-Admission) students by institute code",
+     *     description="Calls PostgreSQL stored function fn_get_ra_student_list to retrieve all Re-Admission students for a given institute code.",
+     *     security={{"token": {}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"inst_code"},
+     *             @OA\Property(property="inst_code", type="string", example="RAIP", description="Institute Code")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Re-admission students fetched successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="version", type="string", example="1.0"),
+     *             @OA\Property(property="status", type="integer", example=0),
+     *             @OA\Property(property="message", type="string", example="Re-admission students fetched successfully"),
+     *             @OA\Property(property="count", type="integer", example=1),
+     *             @OA\Property(
+     *                 property="data",
+     *                 type="array",
+     *                 @OA\Items(
+     *                     type="object",
+     *                     @OA\Property(property="semester", type="string", example="Part-I"),
+     *                     @OA\Property(property="studentRoll", type="string", example="PRAIPPHARM1"),
+     *                     @OA\Property(property="studentNumber", type="string", example="AD25009939"),
+     *                     @OA\Property(property="studentRegistrationNumber", type="string", example="PHARM242507934")
+     *                 )
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(response=422, description="Validation failed"),
+     *     @OA\Response(response=500, description="Internal server error")
+     * )
+     */
+    public function getRaStudentList(Request $request)
+    {
+        $instCode = $request->input('inst_code', $request->input('p_instcode', $request->input('instCode', $request->input('institute_code', $request->input('i_code')))));
+
+        $validator = Validator::make([
+            'inst_code' => $instCode,
+        ], [
+            'inst_code' => 'required|string|max:50',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'version' => '1.0',
+                'status'  => 1,
+                'message' => 'Validation failed: ' . $validator->errors()->first(),
+                'errors'  => $validator->errors(),
+                'data'    => null,
+            ], 422);
+        }
+
+        $instCode = strtoupper(trim($instCode));
+
+        Log::channel('daily')->info('[Enrollment] fn_get_ra_student_list INPUT', [
+            'inst_code' => $instCode,
+            'ip'        => $request->ip(),
+        ]);
+
+        try {
+            $result = DB::select(
+                'SELECT public.fn_get_ra_student_list(?::varchar) AS data',
+                [$instCode]
+            );
+
+            if (empty($result)) {
+                return response()->json([
+                    'version' => '1.0',
+                    'status'  => 0,
+                    'message' => 'No re-admission students found.',
+                    'count'   => 0,
+                    'data'    => [],
+                ], 200);
+            }
+
+            $students = [];
+
+            foreach ($result as $row) {
+                $raw = $row->data ?? null;
+
+                if ($raw === null) {
+                    continue;
+                }
+
+                $decoded = is_string($raw) ? json_decode($raw, true) : (array) $raw;
+
+                if (is_string($raw) && json_last_error() !== JSON_ERROR_NONE) {
+                    Log::channel('daily')->error('[Enrollment] fn_get_ra_student_list JSON decode error', [
+                        'error' => json_last_error_msg(),
+                        'raw'   => $raw,
+                    ]);
+
+                    return response()->json([
+                        'version' => '1.0',
+                        'status'  => 3,
+                        'message' => 'Failed to parse database response.',
+                        'data'    => null,
+                    ], 500);
+                }
+
+                if (is_array($decoded) && array_is_list($decoded)) {
+                    $students = array_merge($students, $decoded);
+                } elseif (is_array($decoded)) {
+                    $students[] = $decoded;
+                }
+            }
+
+            Log::channel('daily')->info('[Enrollment] fn_get_ra_student_list OUTPUT', [
+                'inst_code' => $instCode,
+                'count'     => count($students),
+            ]);
+
+            return response()->json([
+                'version' => '1.0',
+                'status'  => 0,
+                'message' => 'Re-admission students fetched successfully',
+                'count'   => count($students),
+                'data'    => $students,
+            ], 200);
+
+        } catch (\Exception $e) {
+            Log::channel('daily')->error('[Enrollment] fn_get_ra_student_list EXCEPTION', [
+                'message' => $e->getMessage(),
+                'line'    => $e->getLine(),
+                'file'    => $e->getFile(),
+            ]);
+
+            return response()->json([
+                'version' => '1.0',
+                'status'  => 3,
+                'message' => 'An error occurred while fetching re-admission students: ' . $e->getMessage(),
+                'data'    => null,
             ], 500);
         }
     }

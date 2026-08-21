@@ -212,4 +212,111 @@ class AdminInstituteController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * @OA\Post(
+     *     path="/api/admin/ra-institute-list",
+     *     tags={"Admin Institutes"},
+     *     summary="Get list of RA (Re-Admission) institutes",
+     *     description="Calls PostgreSQL stored function fn_get_ra_institute_list to retrieve all Re-Admission institutes.",
+     *     security={{"token": {}}},
+     *     @OA\Response(
+     *         response=200,
+     *         description="Data fetched successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="version", type="string", example="1.0"),
+     *             @OA\Property(property="status", type="integer", example=0),
+     *             @OA\Property(property="message", type="string", example="Data fetch successfully"),
+     *             @OA\Property(property="count", type="integer", example=2),
+     *             @OA\Property(
+     *                 property="data",
+     *                 type="array",
+     *                 @OA\Items(
+     *                     type="object",
+     *                     @OA\Property(property="i_code", type="string", example="RAIP"),
+     *                     @OA\Property(property="i_name", type="string", example="RISHI AUROBINDO INSTITUTE")
+     *                 )
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(response=500, description="Internal server error")
+     * )
+     */
+    public function getRaInstituteList(Request $request)
+    {
+        Log::channel('daily')->info('[getRaInstituteList] INPUT', [
+            'ip' => $request->ip(),
+        ]);
+
+        try {
+            $result = DB::select('SELECT public.fn_get_ra_institute_list() AS data');
+
+            if (empty($result)) {
+                return response()->json([
+                    'version' => '1.0',
+                    'status'  => 0,
+                    'message' => 'No institutes found.',
+                    'count'   => 0,
+                    'data'    => [],
+                ], 200);
+            }
+
+            $institutes = [];
+
+            foreach ($result as $row) {
+                $raw = $row->data ?? null;
+
+                if ($raw === null) {
+                    continue;
+                }
+
+                $decoded = is_string($raw) ? json_decode($raw, true) : (array) $raw;
+
+                if (is_string($raw) && json_last_error() !== JSON_ERROR_NONE) {
+                    Log::channel('daily')->error('[getRaInstituteList] JSON_DECODE_ERROR', [
+                        'error' => json_last_error_msg(),
+                        'raw'   => $raw,
+                    ]);
+
+                    return response()->json([
+                        'version' => '1.0',
+                        'status'  => 3,
+                        'message' => 'Failed to parse database response.',
+                        'data'    => null,
+                    ], 500);
+                }
+
+                if (is_array($decoded) && array_is_list($decoded)) {
+                    $institutes = array_merge($institutes, $decoded);
+                } elseif (is_array($decoded)) {
+                    $institutes[] = $decoded;
+                }
+            }
+
+            Log::channel('daily')->info('[getRaInstituteList] OUTPUT (200)', [
+                'count' => count($institutes),
+            ]);
+
+            return response()->json([
+                'version' => '1.0',
+                'status'  => 0,
+                'message' => 'Data fetch successfully',
+                'count'   => count($institutes),
+                'data'    => $institutes,
+            ], 200);
+
+        } catch (\Exception $e) {
+            Log::channel('daily')->error('[getRaInstituteList] EXCEPTION', [
+                'message' => $e->getMessage(),
+                'line'    => $e->getLine(),
+            ]);
+
+            return response()->json([
+                'version' => '1.0',
+                'status'  => 3,
+                'message' => $e->getMessage(),
+                'data'    => null,
+            ], 500);
+        }
+    }
 }
