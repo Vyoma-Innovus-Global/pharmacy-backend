@@ -1166,4 +1166,350 @@ class EnrollmentController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * @OA\Post(
+     *     path="/api/enrollment/enroll-student-details",
+     *     tags={"Enrollment"},
+     *     summary="Get enrolled student details by institute code, exam year, semester, and user ID",
+     *     description="Calls PostgreSQL stored function fn_getenrollstudentdetails to retrieve enrolled student details.",
+     *     security={{"token": {}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"inst_code", "exam_year", "semester", "user_id"},
+     *             @OA\Property(property="inst_code", type="string", example="JCG", description="Institute Code (e.g. JCG)"),
+     *             @OA\Property(property="exam_year", type="string", example="2026", description="Exam Year (e.g. 2026)"),
+     *             @OA\Property(property="semester", type="string", example="Part-II", description="Semester / Part (e.g. Part-II)"),
+     *             @OA\Property(property="user_id", type="integer", example=3114, description="User ID / Admin User ID (e.g. 3114)")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Enrolled student details fetched successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="version", type="string", example="1.0"),
+     *             @OA\Property(property="status", type="integer", example=0),
+     *             @OA\Property(property="message", type="string", example="Enrolled student details fetched successfully"),
+     *             @OA\Property(property="count", type="integer", example=2),
+     *             @OA\Property(
+     *                 property="data",
+     *                 type="array",
+     *                 @OA\Items(
+     *                     type="object",
+     *                     @OA\Property(property="rollNo", type="string", nullable=true, example=null),
+     *                     @OA\Property(property="txnDate", type="string", nullable=true, example=null),
+     *                     @OA\Property(property="enrlType", type="string", example="REGULAR"),
+     *                     @OA\Property(property="instStatus", type="string", nullable=true, example=null),
+     *                     @OA\Property(property="studentName", type="string", example="ARNAB PAUL"),
+     *                     @OA\Property(property="fatherMotherName", type="string", example="ARUN PAUL"),
+     *                     @OA\Property(property="registrationNumber", type="string", example="PHARM242504516")
+     *                 )
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(response=422, description="Validation failed"),
+     *     @OA\Response(response=500, description="Internal server error")
+     * )
+     */
+    public function getEnrollStudentDetails(Request $request)
+    {
+        $authUserData = json_decode($request->header('auth_user_data'), true);
+        $authUserId   = $authUserData['user_id'] ?? null;
+
+        $instCode = $request->input('inst_code', $request->input('p_instcode', $request->input('instCode', $request->input('institute_code', $request->input('i_code')))));
+        $examYear = $request->input('exam_year', $request->input('p_examyear', $request->input('examYear', $request->input('academic_year', $request->input('year')))));
+        $semester = $request->input('semester', $request->input('p_semester', $request->input('part_sem', $request->input('partSem', $request->input('part')))));
+        $userId   = $request->input('user_id', $request->input('p_userid', $request->input('userId', $request->input('admin_user_id', $authUserId))));
+
+        $validator = Validator::make([
+            'inst_code' => $instCode,
+            'exam_year' => $examYear,
+            'semester'  => $semester,
+            'user_id'   => $userId,
+        ], [
+            'inst_code' => 'required|string|max:50',
+            'exam_year' => 'required|string|max:20',
+            'semester'  => 'required|string|max:50',
+            'user_id'   => 'required|integer',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'version' => '1.0',
+                'status'  => 1,
+                'message' => 'Validation failed: ' . $validator->errors()->first(),
+                'errors'  => $validator->errors(),
+                'data'    => null,
+            ], 422);
+        }
+
+        $instCode = strtoupper(trim($instCode));
+        $examYear = trim((string) $examYear);
+        $semester = trim((string) $semester);
+        $userId   = (int) $userId;
+
+        Log::channel('daily')->info('[Enrollment] fn_getenrollstudentdetails INPUT', [
+            'inst_code' => $instCode,
+            'exam_year' => $examYear,
+            'semester'  => $semester,
+            'user_id'   => $userId,
+            'ip'        => $request->ip(),
+        ]);
+
+        try {
+            $result = DB::select(
+                'SELECT public.fn_getenrollstudentdetails(?::varchar, ?::varchar, ?::varchar, ?::bigint) AS data',
+                [$instCode, $examYear, $semester, $userId]
+            );
+
+            if (empty($result)) {
+                return response()->json([
+                    'version' => '1.0',
+                    'status'  => 0,
+                    'message' => 'No enrolled student details found.',
+                    'count'   => 0,
+                    'data'    => [],
+                ], 200);
+            }
+
+            $students = [];
+
+            foreach ($result as $row) {
+                $raw = $row->data ?? null;
+
+                if ($raw === null) {
+                    $rowArr = (array) $row;
+                    if (!empty($rowArr)) {
+                        $students[] = $rowArr;
+                    }
+                    continue;
+                }
+
+                $decoded = is_string($raw) ? json_decode($raw, true) : (array) $raw;
+
+                if (is_string($raw) && json_last_error() !== JSON_ERROR_NONE) {
+                    Log::channel('daily')->error('[Enrollment] fn_getenrollstudentdetails JSON decode error', [
+                        'error' => json_last_error_msg(),
+                        'raw'   => $raw,
+                    ]);
+
+                    return response()->json([
+                        'version' => '1.0',
+                        'status'  => 3,
+                        'message' => 'Failed to parse database response.',
+                        'data'    => null,
+                    ], 500);
+                }
+
+                if (is_array($decoded) && array_is_list($decoded)) {
+                    $students = array_merge($students, $decoded);
+                } elseif (is_array($decoded)) {
+                    $students[] = $decoded;
+                }
+            }
+
+            Log::channel('daily')->info('[Enrollment] fn_getenrollstudentdetails OUTPUT', [
+                'inst_code' => $instCode,
+                'exam_year' => $examYear,
+                'semester'  => $semester,
+                'user_id'   => $userId,
+                'count'     => count($students),
+            ]);
+
+            return response()->json([
+                'version' => '1.0',
+                'status'  => 0,
+                'message' => 'Enrolled student details fetched successfully',
+                'count'   => count($students),
+                'data'    => $students,
+            ], 200);
+
+        } catch (\Exception $e) {
+            Log::channel('daily')->error('[Enrollment] fn_getenrollstudentdetails EXCEPTION', [
+                'message' => $e->getMessage(),
+                'line'    => $e->getLine(),
+                'file'    => $e->getFile(),
+            ]);
+
+            return response()->json([
+                'version' => '1.0',
+                'status'  => 3,
+                'message' => 'An error occurred while fetching enrolled student details: ' . $e->getMessage(),
+                'data'    => null,
+            ], 500);
+        }
+    }
+
+    /**
+     * @OA\Post(
+     *     path="/api/enrollment/update-student-enrollment-status",
+     *     tags={"Enrollment"},
+     *     summary="Update student enrollment status by admin",
+     *     description="Calls PostgreSQL stored function fn_updatestudentenrollmentstatusbyadmin to update student enrollment status.",
+     *     security={{"token": {}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"student_id", "exam_year", "semester", "admin_user_id", "admin_user_type", "status"},
+     *             @OA\Property(property="student_id", type="integer", example=12345, description="Student ID (p_studentid)"),
+     *             @OA\Property(property="exam_year", type="string", example="2026", description="Exam Year (p_examyear)"),
+     *             @OA\Property(property="semester", type="string", example="1", description="Semester / Part (p_semester)"),
+     *             @OA\Property(property="admin_user_id", type="integer", example=3114, description="Admin User ID (p_adminuserid)"),
+     *             @OA\Property(property="admin_user_type", type="integer", example=1, description="Admin User Type (p_adminusertype)"),
+     *             @OA\Property(property="status", type="integer", example=5, description="Status code (p_status): 5 = Accept / Approved, 7 = Reject / Rejected"),
+     *             @OA\Property(property="remarks", type="string", example="Approved", description="Remarks (p_remarks)")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Student enrollment status updated successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="version", type="string", example="1.0"),
+     *             @OA\Property(property="status", type="integer", example=0),
+     *             @OA\Property(property="message", type="string", example="Student enrollment status updated successfully"),
+     *             @OA\Property(
+     *                 property="data",
+     *                 type="object",
+     *                 @OA\Property(property="p_errorcode", type="integer", example=0)
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(response=422, description="Validation failed"),
+     *     @OA\Response(response=500, description="Internal server error")
+     * )
+     */
+    public function updateStudentEnrollmentStatusByAdmin(Request $request)
+    {
+        $authUserData = json_decode($request->header('auth_user_data'), true);
+        $authUserId   = $authUserData['user_id'] ?? null;
+        $authUserType = $authUserData['role_id'] ?? $authUserData['user_type'] ?? 1;
+
+        $studentId     = $request->input('student_id', $request->input('studentId', $request->input('p_studentid', $request->input('s_id'))));
+        $examYear      = $request->input('exam_year', $request->input('examYear', $request->input('p_examyear', $request->input('academic_year', $request->input('year')))));
+        $semester      = $request->input('semester', $request->input('p_semester', $request->input('part_sem', $request->input('partSem', $request->input('part')))));
+        $adminUserId   = $request->input('admin_user_id', $request->input('adminUserId', $request->input('p_adminuserid', $request->input('user_id', $request->input('userId', $authUserId)))));
+        $adminUserType = $request->input('admin_user_type', $request->input('adminUserType', $request->input('p_adminusertype', $request->input('user_type', $request->input('userType', $authUserType)))));
+        $status        = $request->input('status', $request->input('p_status', $request->input('enrollment_status', $request->input('enrollStatus'))));
+        $remarks       = $request->input('remarks', $request->input('p_remarks', ''));
+
+        $validator = Validator::make([
+            'student_id'      => $studentId,
+            'exam_year'       => $examYear,
+            'semester'        => $semester,
+            'admin_user_id'   => $adminUserId,
+            'admin_user_type' => $adminUserType,
+            'status'          => $status,
+            'remarks'         => $remarks,
+        ], [
+            'student_id'      => 'required|integer',
+            'exam_year'       => 'required|string|max:20',
+            'semester'        => 'required|string|max:50',
+            'admin_user_id'   => 'required|integer',
+            'admin_user_type' => 'required|integer',
+            'status'          => 'required|integer',
+            'remarks'         => 'nullable|string|max:500',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'version' => '1.0',
+                'status'  => 1,
+                'message' => 'Validation failed: ' . $validator->errors()->first(),
+                'errors'  => $validator->errors(),
+                'data'    => null,
+            ], 422);
+        }
+
+        $studentId     = (int) $studentId;
+        $examYear      = trim((string) $examYear);
+        $semester      = trim((string) $semester);
+        $adminUserId   = (int) $adminUserId;
+        $adminUserType = (int) $adminUserType;
+        $status        = (int) $status;
+        $remarks       = (string) ($remarks ?? '');
+
+        Log::channel('daily')->info('[Enrollment] fn_updatestudentenrollmentstatusbyadmin INPUT', [
+            'student_id'      => $studentId,
+            'exam_year'       => $examYear,
+            'semester'        => $semester,
+            'admin_user_id'   => $adminUserId,
+            'admin_user_type' => $adminUserType,
+            'status'          => $status,
+            'remarks'         => $remarks,
+            'ip'              => $request->ip(),
+        ]);
+
+        try {
+            $result = DB::select(
+                'SELECT public.fn_updatestudentenrollmentstatusbyadmin(?::bigint, ?::varchar, ?::varchar, ?::bigint, ?::bigint, ?::integer, ?::varchar) AS data',
+                [
+                    $studentId,
+                    $examYear,
+                    $semester,
+                    $adminUserId,
+                    $adminUserType,
+                    $status,
+                    $remarks,
+                ]
+            );
+
+            $raw = $result[0]->data ?? null;
+
+            if ($raw === null) {
+                return response()->json([
+                    'version' => '1.0',
+                    'status'  => 1,
+                    'message' => 'No response returned from database function.',
+                    'data'    => null,
+                ], 500);
+            }
+
+            $decoded = is_string($raw) ? json_decode($raw, true) : (array) $raw;
+
+            if (is_string($raw) && json_last_error() !== JSON_ERROR_NONE) {
+                Log::channel('daily')->error('[Enrollment] fn_updatestudentenrollmentstatusbyadmin JSON decode error', [
+                    'error' => json_last_error_msg(),
+                    'raw'   => $raw,
+                ]);
+
+                return response()->json([
+                    'version' => '1.0',
+                    'status'  => 3,
+                    'message' => 'Failed to parse database response.',
+                    'data'    => null,
+                ], 500);
+            }
+
+            $errorCode = $decoded['p_errorcode'] ?? $decoded['errorcode'] ?? 0;
+            $isSuccess = ((int) $errorCode === 0);
+
+            Log::channel('daily')->info('[Enrollment] fn_updatestudentenrollmentstatusbyadmin OUTPUT', [
+                'student_id' => $studentId,
+                'result'     => $decoded,
+                'isSuccess'  => $isSuccess,
+            ]);
+
+            return response()->json([
+                'version' => '1.0',
+                'status'  => $isSuccess ? 0 : 1,
+                'message' => $isSuccess ? 'Student enrollment status updated successfully' : 'Failed to update student enrollment status',
+                'data'    => $decoded,
+            ], $isSuccess ? 200 : 400);
+
+        } catch (\Exception $e) {
+            Log::channel('daily')->error('[Enrollment] fn_updatestudentenrollmentstatusbyadmin EXCEPTION', [
+                'message' => $e->getMessage(),
+                'line'    => $e->getLine(),
+                'file'    => $e->getFile(),
+            ]);
+
+            return response()->json([
+                'version' => '1.0',
+                'status'  => 3,
+                'message' => 'An error occurred while updating student enrollment status: ' . $e->getMessage(),
+                'data'    => null,
+            ], 500);
+        }
+    }
 }

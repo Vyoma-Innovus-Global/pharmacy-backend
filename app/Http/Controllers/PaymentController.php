@@ -1820,6 +1820,115 @@ public function generateStudentReviewOrderId(Request $request)
     }
 }
 
+public function generateEnrollmentStudentOrderId(Request $request)
+{
+    $studentId = $request->input('student_id', $request->input('studentId', $request->input('p_student_id', $request->input('id'))));
+    $enrlType  = $request->input('enrl_type', $request->input('enrltype', $request->input('p_enrltype', $request->input('enrollment_type', $request->input('enroll_type', $request->input('type'))))));
+    $semester  = $request->input('semester', $request->input('p_semester', $request->input('part_sem', $request->input('part_id', $request->input('partId', $request->input('part'))))));
+    $examYear  = $request->input('exam_year', $request->input('examYear', $request->input('p_exam_year', $request->input('year'))));
+
+    $validator = Validator::make([
+        'student_id' => $studentId,
+        'enrl_type'  => $enrlType,
+        'semester'   => $semester,
+        'exam_year'  => $examYear,
+    ], [
+        'student_id' => 'required|numeric',
+        'enrl_type'  => 'required|string|max:50',
+        'semester'   => 'required|string|max:50',
+        'exam_year'  => 'required|string|max:20',
+    ]);
+
+    if ($validator->fails()) {
+        return response()->json([
+            'error'   => true,
+            'status'  => 1,
+            'message' => 'Validation failed: ' . $validator->errors()->first(),
+            'errors'  => $validator->errors(),
+            'data'    => null,
+        ], 422);
+    }
+
+    $studentId = (int) $studentId;
+    $enrlType  = (string) trim($enrlType);
+    $semester  = (string) trim($semester);
+    $examYear  = (string) trim($examYear);
+
+    Log::channel('daily')->info('[Payment] fn_enrollmentstudent_generateorderid INPUT', [
+        'student_id' => $studentId,
+        'enrl_type'  => $enrlType,
+        'semester'   => $semester,
+        'exam_year'  => $examYear,
+        'ip'         => $request->ip(),
+    ]);
+
+    try {
+        $result = DB::select(
+            'SELECT public.fn_enrollmentstudent_generateorderid(?::bigint, ?::varchar, ?::varchar, ?::varchar) AS data',
+            [$studentId, $enrlType, $semester, $examYear]
+        );
+
+        $payload = $this->decodeDbFunctionJson($result[0]->data ?? null, 'fn_enrollmentstudent_generateorderid');
+
+        if ($payload instanceof \Illuminate\Http\JsonResponse) {
+            return $payload;
+        }
+
+        $merchantId       = env('SBI_MERCHANT_ID');
+        $actionUrl        = env('SBI_PAYMENT_API');
+        $paymentKey       = env('SBI_PAYMENT_KEY');
+        $orderId          = $payload['order_id'] ?? $payload['orderId'] ?? null;
+        $paymentAmount    = $payload['payment_amount'] ?? $payload['amount'] ?? null;
+        $requestParameter = $payload['requestParameter']
+            ?? $payload['request_parameter']
+            ?? $payload['paymentData']
+            ?? $payload['payment_data']
+            ?? null;
+
+        if (!$requestParameter && $merchantId && $orderId && $paymentAmount !== null) {
+            $baseUrl    = rtrim(env('APP_URL'), '/') . '/student-payment/';
+            $successUrl = "{$baseUrl}success";
+            $failUrl    = "{$baseUrl}fail";
+            $marId      = '5';
+            $otherData  = $payload['other_data']
+                ?? $payload['otherData']
+                ?? "{$studentId}_{$examYear}_{$enrlType}_{$semester}";
+
+            $requestParameter = "{$merchantId}|DOM|IN|INR|{$paymentAmount}|{$otherData}|{$successUrl}|{$failUrl}|SBIEPAY|{$orderId}|{$marId}|NB|ONLINE|ONLINE,pWhMnIEMc4q6hKdi2Fx50Ii8CKAoSIqv9ScSpwuMHM4=";
+        }
+
+        $payload['encryptTrans']     = ($paymentKey && $requestParameter)
+            ? sbiEncrypt($requestParameter)
+            : ($payload['encryptTrans'] ?? $payload['EncryptTrans'] ?? $payload['transaction_id'] ?? null);
+        $payload['merchIdVal']       = $merchantId;
+        $payload['actionUrl']        = $actionUrl;
+        $payload['gatewaySubmitUrl'] = rtrim(env('APP_URL'), '/') . '/student-payment/submit';
+        $payload['payment_api']      = $actionUrl;
+        $payload['merchant_id']      = $merchantId;
+
+        Log::channel('daily')->info('[Payment] fn_enrollmentstudent_generateorderid OUTPUT', [
+            'order_id'       => $orderId,
+            'payment_amount' => $paymentAmount,
+            'merchant_id'    => $merchantId,
+            'action_url'     => $actionUrl,
+        ]);
+
+        return response()->json($payload, 200);
+
+    } catch (\Exception $e) {
+        Log::channel('daily')->error('[Payment] fn_enrollmentstudent_generateorderid EXCEPTION', [
+            'message' => $e->getMessage(),
+            'line'    => $e->getLine(),
+            'file'    => $e->getFile(),
+        ]);
+
+        return response()->json([
+            'error'   => true,
+            'message' => 'Failed to generate enrollment order id: ' . $e->getMessage(),
+        ], 500);
+    }
+}
+
 public function getStudentPaymentTypeByStudentId(Request $request)
 {
     $studentId = $request->input('student_id', $request->input('p_student_id'));

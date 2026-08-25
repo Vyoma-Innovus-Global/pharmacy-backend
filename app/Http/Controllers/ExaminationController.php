@@ -1322,18 +1322,31 @@ class ExaminationController extends Controller
      *             @OA\Property(property="version", type="string", example="1.0"),
      *             @OA\Property(property="status", type="integer", example=0),
      *             @OA\Property(property="message", type="string", example="Reported against details fetched successfully"),
-     *             @OA\Property(property="count", type="integer", example=5),
+     *             @OA\Property(property="count", type="integer", example=10),
      *             @OA\Property(
      *                 property="data",
      *                 type="array",
      *                 @OA\Items(
      *                     type="object",
-     *                     @OA\Property(property="subjectCode", type="string", example="HUAP"),
-     *                     @OA\Property(property="subjectName", type="string", example="THEORY"),
-     *                     @OA\Property(property="externalFullMarks", type="number", format="double", example=80.00),
-     *                     @OA\Property(property="internalFullMarks", type="number", format="double", example=20.00),
-     *                     @OA\Property(property="externalMarksObtained", type="number", format="double", example=25.00),
-     *                     @OA\Property(property="internalMarksObtained", type="number", format="double", example=16.00)
+     *                     @OA\Property(property="remarks", type="string", example="test"),
+     *                     @OA\Property(property="attendence", type="string", example="PR"),
+     *                     @OA\Property(property="backSubject", type="array", @OA\Items(type="string")),
+     *                     @OA\Property(property="raDecission", type="integer", example=2),
+     *                     @OA\Property(
+     *                         property="marks",
+     *                         type="array",
+     *                         @OA\Items(
+     *                             type="object",
+     *                             @OA\Property(property="marksId", type="integer", example=1591),
+     *                             @OA\Property(property="raStatus", type="integer", example=1),
+     *                             @OA\Property(property="subjectCode", type="string", example="HUAP"),
+     *                             @OA\Property(property="subjectName", type="string", example="HUMAN ANATOMY & PHYSIOLOGY"),
+     *                             @OA\Property(property="externalFullMarks", type="number", format="double", example=80.00),
+     *                             @OA\Property(property="internalFullMarks", type="number", format="double", example=20.00),
+     *                             @OA\Property(property="externalMarksObtained", type="number", format="double", example=0.00),
+     *                             @OA\Property(property="internalMarksObtained", type="number", format="double", example=0.00)
+     *                         )
+     *                     )
      *                 )
      *             )
      *         )
@@ -1443,6 +1456,39 @@ class ExaminationController extends Controller
                 }
             }
 
+            $groupedData = [];
+            if (!empty($details)) {
+                $first = $details[0];
+                $remarks     = $first['remarks'] ?? null;
+                $attendence  = $first['attendence'] ?? ($first['attendance'] ?? null);
+                $backSubject = $first['backSubject'] ?? ($first['back_subject'] ?? []);
+                $raDecission = $first['raDecission'] ?? ($first['raDecision'] ?? ($first['ra_decision'] ?? null));
+
+                $marksList = array_map(function ($item) {
+                    unset(
+                        $item['remarks'],
+                        $item['attendence'],
+                        $item['attendance'],
+                        $item['backSubject'],
+                        $item['back_subject'],
+                        $item['raDecission'],
+                        $item['raDecision'],
+                        $item['ra_decision']
+                    );
+                    return $item;
+                }, $details);
+
+                $groupedData = [
+                    [
+                        'remarks'     => $remarks,
+                        'attendence'  => $attendence,
+                        'backSubject' => $backSubject,
+                        'raDecission' => $raDecission,
+                        'marks'       => $marksList,
+                    ]
+                ];
+            }
+
             Log::channel('daily')->info('[Examinations] fn_getradetailslistbystudentregistartionnumber OUTPUT', [
                 'registration_number' => $registrationNumber,
                 'count'               => count($details),
@@ -1453,7 +1499,7 @@ class ExaminationController extends Controller
                 'status'  => 0,
                 'message' => 'Reported against details fetched successfully',
                 'count'   => count($details),
-                'data'    => $details,
+                'data'    => $groupedData,
             ], 200);
 
         } catch (\Exception $e) {
@@ -1467,6 +1513,1369 @@ class ExaminationController extends Controller
                 'version' => '1.0',
                 'status'  => 3,
                 'message' => 'An error occurred while fetching reported against details: ' . $e->getMessage(),
+                'data'    => null,
+            ], 500);
+        }
+    }
+
+    /**
+     * @OA\Post(
+     *     path="/api/examinations/update-ra-student-marks",
+     *     tags={"Examinations"},
+     *     summary="Update reported against student marks (single or batch array)",
+     *     description="Calls PostgreSQL stored function fn_update_ra_studentmarks to update internal marks, external marks, remarks, and status for one or multiple reported against student records in a loop.",
+     *     security={{"token": {}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             oneOf={
+     *                 @OA\Schema(
+     *                     type="object",
+     *                     required={"marks_id"},
+     *                     @OA\Property(property="marks_id", type="integer", format="int64", example=12345, description="Marks ID (p_marksid)"),
+     *                     @OA\Property(property="admin_user_id", type="integer", format="int64", example=3114, description="Admin User ID"),
+     *                     @OA\Property(property="internal_marks", type="integer", example=25, description="Internal Marks (p_internalmarks)", nullable=true),
+     *                     @OA\Property(property="external_marks", type="integer", example=65, description="External Marks (p_externalmarks)", nullable=true),
+     *                     @OA\Property(property="remarks", type="string", example="Updated by admin", description="Remarks (p_remarks)", nullable=true),
+     *                     @OA\Property(property="status", type="integer", example=0, description="Status (p_status)", nullable=true)
+     *                 ),
+     *                 @OA\Schema(
+     *                     type="object",
+     *                     @OA\Property(property="admin_user_id", type="integer", example=3114),
+     *                     @OA\Property(property="remarks", type="string", example="Updated by admin"),
+     *                     @OA\Property(property="status", type="integer", example=0),
+     *                     @OA\Property(
+     *                         property="marks",
+     *                         type="array",
+     *                         @OA\Items(
+     *                             type="object",
+     *                             required={"marks_id"},
+     *                             @OA\Property(property="marks_id", type="integer", format="int64", example=12345),
+     *                             @OA\Property(property="internal_marks", type="integer", example=25, nullable=true),
+     *                             @OA\Property(property="external_marks", type="integer", example=65, nullable=true),
+     *                             @OA\Property(property="remarks", type="string", example="Updated by admin", nullable=true),
+     *                             @OA\Property(property="status", type="integer", example=0, nullable=true)
+     *                         )
+     *                     )
+     *                 )
+     *             }
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="RA student marks updated successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="version", type="string", example="1.0"),
+     *             @OA\Property(property="error", type="boolean", example=false),
+     *             @OA\Property(property="status", type="integer", example=0),
+     *             @OA\Property(property="message", type="string", example="All 2 RA student marks updated successfully"),
+     *             @OA\Property(property="data", type="object")
+     *         )
+     *     ),
+     *     @OA\Response(response=400, description="Bad Request / Function error"),
+     *     @OA\Response(response=422, description="Validation failed"),
+     *     @OA\Response(response=500, description="Internal server error")
+     * )
+     */
+    /**
+     * @OA\Post(
+     *     path="/api/examinations/update-ra-student-marks",
+     *     tags={"Examinations"},
+     *     summary="Update reported against student marks and decision",
+     *     description="Calls PostgreSQL stored functions fn_update_ra_studentmarks (for marks) and fn_save_ra_decission_student (for decision/back type) in a single API call.",
+     *     security={{"token": {}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             @OA\Property(property="student_id", type="integer", format="int64", example=3293, description="Student ID (p_student_id)"),
+     *             @OA\Property(property="student_reg_no", type="string", example="PHARM242507934", description="Student Reg No (p_student_reg_no)"),
+     *             @OA\Property(property="attendance", type="string", example="PR", description="Attendance (p_attendence, defaults to PR)"),
+     *             @OA\Property(property="decision", type="integer", example=3, description="Decision / Back Type (p_decission)"),
+     *             @OA\Property(property="subject_code", type="array", @OA\Items(type="string"), example={"HUAP", "PHCY"}, description="Subject codes JSONB (p_subjectcode)"),
+     *             @OA\Property(property="admin_user_id", type="integer", format="int64", example=3114, description="Admin / Entry User ID"),
+     *             @OA\Property(property="remarks", type="string", example="Updated by admin", description="Remarks (p_remarks)"),
+     *             @OA\Property(
+     *                 property="marks",
+     *                 type="array",
+     *                 @OA\Items(
+     *                     type="object",
+     *                     required={"marks_id"},
+     *                     @OA\Property(property="marks_id", type="integer", format="int64", example=12345),
+     *                     @OA\Property(property="internal_marks", type="integer", example=25, nullable=true),
+     *                     @OA\Property(property="external_marks", type="integer", example=65, nullable=true),
+     *                     @OA\Property(property="remarks", type="string", example="Updated by admin", nullable=true),
+     *                     @OA\Property(property="status", type="integer", example=1, nullable=true)
+     *                 )
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="RA student marks and decision updated successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="version", type="string", example="1.0"),
+     *             @OA\Property(property="error", type="boolean", example=false),
+     *             @OA\Property(property="status", type="integer", example=0),
+     *             @OA\Property(property="message", type="string", example="RA student marks and decision updated successfully"),
+     *             @OA\Property(property="data", type="object")
+     *         )
+     *     ),
+     *     @OA\Response(response=400, description="Bad Request / Function error"),
+     *     @OA\Response(response=422, description="Validation failed"),
+     *     @OA\Response(response=500, description="Internal server error")
+     * )
+     */
+    public function updateRaStudentMarks(Request $request)
+    {
+        $globalAdminUserId = $request->input('admin_user_id', $request->input('p_adminuserid', $request->input('p_entry_user_id', $request->input('entry_user_id', $request->input('adminUserId', $request->input('user_id'))))));
+        if (empty($globalAdminUserId)) {
+            try {
+                $globalAdminUserId = authUserId();
+            } catch (\Exception $e) {
+                $globalAdminUserId = null;
+            }
+        }
+        if (empty($globalAdminUserId)) {
+            $globalAdminUserId = 1;
+        }
+
+        $globalRemarks = $request->input('remarks', $request->input('p_remarks', $request->input('remark', $request->input('comments'))));
+        $globalStatus  = $request->input('status', $request->input('p_status', $request->input('ra_status', $request->input('raStatus', 0))));
+
+        // Decision SP parameters
+        $studentId    = $request->input('student_id', $request->input('p_student_id', $request->input('studentId', $request->input('id'))));
+        $studentRegNo = $request->input('student_reg_no', $request->input('p_student_reg_no', $request->input('registration_number', $request->input('registrationNumber', $request->input('reg_no', $request->input('studentRegistrationNumber'))))));
+        $attendance   = $request->input('attendance', $request->input('attendence', $request->input('p_attendance', $request->input('p_attendence', 'PR'))));
+        $decision     = $request->input('decision', $request->input('decission', $request->input('p_decision', $request->input('p_decission', $request->input('back_type', $request->input('backType'))))));
+        $subjectCodesRaw = $request->input('subject_code', $request->input('subjectcode', $request->input('p_subjectcode', $request->input('subject_codes', $request->input('selected_subjects', $request->input('selectedSubjects', []))))));
+
+        $rawItems = [];
+        $isBatchRequest = false;
+
+        $jsonPayload = $request->json()->all();
+        if ($request->isJson() && is_array($jsonPayload) && !empty($jsonPayload) && array_is_list($jsonPayload)) {
+            $rawItems = $jsonPayload;
+            $isBatchRequest = true;
+        } else {
+            $arrayCandidate = $request->input('marks', $request->input('marks_list', $request->input('student_marks', $request->input('studentMarks', $request->input('data', $request->input('items'))))));
+
+            if (is_array($arrayCandidate) && !empty($arrayCandidate) && array_is_list($arrayCandidate)) {
+                $rawItems = $arrayCandidate;
+                $isBatchRequest = true;
+            } elseif (is_array($request->input('marks_id')) || is_array($request->input('marksId')) || is_array($request->input('p_marksid'))) {
+                $marksIdArr  = (array) $request->input('marks_id', $request->input('marksId', $request->input('p_marksid')));
+                $internalArr = (array) $request->input('internal_marks', $request->input('internalMarks', $request->input('p_internalmarks', [])));
+                $externalArr = (array) $request->input('external_marks', $request->input('externalMarks', $request->input('p_externalmarks', [])));
+                $remarksArr  = (array) $request->input('remarks', $request->input('remark', $request->input('p_remarks', [])));
+                $statusArr   = (array) $request->input('status', $request->input('p_status', $request->input('ra_status', $request->input('raStatus', []))));
+
+                foreach ($marksIdArr as $idx => $mId) {
+                    $rawItems[] = [
+                        'marks_id'       => $mId,
+                        'internal_marks' => $internalArr[$idx] ?? null,
+                        'external_marks' => $externalArr[$idx] ?? null,
+                        'remarks'        => is_array($remarksArr) && isset($remarksArr[$idx]) ? $remarksArr[$idx] : $globalRemarks,
+                        'status'         => is_array($statusArr) && isset($statusArr[$idx]) ? $statusArr[$idx] : $globalStatus,
+                    ];
+                }
+                $isBatchRequest = count($rawItems) > 1;
+            } elseif ($request->has('marks_id') || $request->has('p_marksid') || $request->has('marksId')) {
+                $rawItems = [$request->all()];
+                $isBatchRequest = false;
+            }
+        }
+
+        $normalizedItems = [];
+        if (!empty($rawItems)) {
+            foreach ($rawItems as $index => $item) {
+                if (!is_array($item)) {
+                    return response()->json([
+                        'version' => '1.0',
+                        'error'   => true,
+                        'status'  => 1,
+                        'message' => "Invalid payload format at index {$index}.",
+                        'data'    => null,
+                    ], 422);
+                }
+
+                $marksId       = $item['marks_id'] ?? $item['p_marksid'] ?? $item['marksId'] ?? $item['id'] ?? null;
+                $adminUserId   = $item['admin_user_id'] ?? $item['p_adminuserid'] ?? $item['adminUserId'] ?? $item['user_id'] ?? $globalAdminUserId;
+                $internalMarks = $item['internal_marks'] ?? $item['p_internalmarks'] ?? $item['internalMarks'] ?? $item['internal_mark'] ?? $item['internal'] ?? null;
+                $externalMarks = $item['external_marks'] ?? $item['p_externalmarks'] ?? $item['externalMarks'] ?? $item['external_mark'] ?? $item['external'] ?? null;
+                $remarks       = $item['remarks'] ?? $item['p_remarks'] ?? $item['remark'] ?? $item['comments'] ?? $globalRemarks;
+                $status        = $item['status'] ?? $item['p_status'] ?? $item['ra_status'] ?? $item['raStatus'] ?? ($isBatchRequest ? 0 : $globalStatus);
+
+                $validator = Validator::make([
+                    'marks_id'       => $marksId,
+                    'admin_user_id'  => $adminUserId,
+                    'internal_marks' => $internalMarks,
+                    'external_marks' => $externalMarks,
+                    'remarks'        => $remarks,
+                    'status'         => $status,
+                ], [
+                    'marks_id'       => 'required|numeric',
+                    'admin_user_id'  => 'required|numeric',
+                    'internal_marks' => 'nullable|numeric|min:0',
+                    'external_marks' => 'nullable|numeric|min:0',
+                    'remarks'        => 'nullable|string|max:500',
+                    'status'         => 'nullable|integer',
+                ]);
+
+                if ($validator->fails()) {
+                    return response()->json([
+                        'version' => '1.0',
+                        'error'   => true,
+                        'status'  => 1,
+                        'message' => "Validation failed for item #{$index}: " . $validator->errors()->first(),
+                        'errors'  => $validator->errors(),
+                        'data'    => null,
+                    ], 422);
+                }
+
+                $normalizedItems[] = [
+                    'index'          => $index,
+                    'marks_id'       => (int) $marksId,
+                    'admin_user_id'  => (int) $adminUserId,
+                    'internal_marks' => ($internalMarks !== null && $internalMarks !== '') ? (int) $internalMarks : null,
+                    'external_marks' => ($externalMarks !== null && $externalMarks !== '') ? (int) $externalMarks : null,
+                    'remarks'        => $remarks !== null ? (string) trim($remarks) : null,
+                    'status'         => ($status !== null && $status !== '') ? (int) $status : 0,
+                ];
+            }
+        }
+
+        // Map subject codes for decision SP
+        $mappedSubjectCodes = [];
+        if (is_array($subjectCodesRaw)) {
+            foreach ($subjectCodesRaw as $s) {
+                if (is_string($s) && !is_numeric($s)) {
+                    $mappedSubjectCodes[] = strtoupper(trim($s));
+                } else {
+                    $foundCode = null;
+                    foreach ($rawItems as $rItem) {
+                        $rMarksId = $rItem['marks_id'] ?? $rItem['p_marksid'] ?? $rItem['marksId'] ?? $rItem['id'] ?? null;
+                        if ((string)$rMarksId === (string)$s) {
+                            $foundCode = $rItem['subject_code'] ?? $rItem['subjectCode'] ?? $rItem['subject'] ?? null;
+                            break;
+                        }
+                    }
+                    if ($foundCode) {
+                        $mappedSubjectCodes[] = strtoupper(trim($foundCode));
+                    } else {
+                        $mappedSubjectCodes[] = (string) $s;
+                    }
+                }
+            }
+        } elseif (is_string($subjectCodesRaw) && trim($subjectCodesRaw) !== '') {
+            $decodedJson = json_decode($subjectCodesRaw, true);
+            if (is_array($decodedJson)) {
+                $mappedSubjectCodes = $decodedJson;
+            } else {
+                $mappedSubjectCodes = array_filter(array_map('trim', explode(',', $subjectCodesRaw)));
+            }
+        }
+
+        $subjectCodeJson = json_encode(array_values($mappedSubjectCodes));
+
+        DB::beginTransaction();
+
+        try {
+            $success = 0;
+            $failed = 0;
+            $results = [];
+
+            // 1. Execute SP 1: fn_update_ra_studentmarks for each mark item
+            foreach ($normalizedItems as $item) {
+                $marksId       = $item['marks_id'];
+                $adminUserId   = $item['admin_user_id'];
+                $internalMarks = $item['internal_marks'];
+                $externalMarks = $item['external_marks'];
+                $remarks       = $item['remarks'];
+                $status        = $item['status'];
+
+                $result = DB::select(
+                    'SELECT public.fn_update_ra_studentmarks(?::bigint, ?::bigint, ?::integer, ?::integer, ?::varchar, ?::smallint) AS data',
+                    [$marksId, $adminUserId, $internalMarks, $externalMarks, $remarks, $status]
+                );
+
+                if (empty($result)) {
+                    $failed++;
+                    $results[] = [
+                        'index'    => $item['index'],
+                        'marks_id' => $marksId,
+                        'status'   => 'failed',
+                        'error'    => 'No response returned from fn_update_ra_studentmarks',
+                    ];
+                    continue;
+                }
+
+                $raw = $result[0]->data ?? null;
+                if ($raw === null && !empty($result[0])) {
+                    $raw = (array) $result[0];
+                }
+
+                $decoded = is_string($raw) ? json_decode($raw, true) : (array) $raw;
+
+                if (is_string($raw) && json_last_error() !== JSON_ERROR_NONE) {
+                    $failed++;
+                    $results[] = [
+                        'index'    => $item['index'],
+                        'marks_id' => $marksId,
+                        'status'   => 'failed',
+                        'error'    => 'Failed to parse fn_update_ra_studentmarks response',
+                    ];
+                    continue;
+                }
+
+                $errorCode = isset($decoded['p_errorcode']) ? (int) $decoded['p_errorcode'] : (isset($decoded['errorcode']) ? (int) $decoded['errorcode'] : 0);
+
+                if ($errorCode === 0) {
+                    $success++;
+                    $results[] = [
+                        'index'    => $item['index'],
+                        'marks_id' => $marksId,
+                        'status'   => 'success',
+                        'result'   => $decoded,
+                    ];
+                } else {
+                    $failed++;
+                    $results[] = [
+                        'index'      => $item['index'],
+                        'marks_id'   => $marksId,
+                        'status'     => 'failed',
+                        'error_code' => $errorCode,
+                        'message'    => $decoded['p_message'] ?? $decoded['message'] ?? 'fn_update_ra_studentmarks error',
+                        'result'     => $decoded,
+                    ];
+                }
+            }
+
+            // 2. Execute SP 2: fn_save_ra_decission_student if decision / student details are provided
+            $decisionResult = null;
+            $hasDecisionCall = ($studentId !== null || $studentRegNo !== null || $decision !== null);
+
+            if ($hasDecisionCall) {
+                $sp2StudentId    = $studentId ? (int) $studentId : 0;
+                $sp2StudentRegNo = (string) ($studentRegNo ?? '');
+                $sp2Attendance   = (string) ($attendance ?? 'PR');
+                $sp2Decision     = $decision !== null ? (int) $decision : 0;
+
+                Log::channel('daily')->info('[Examinations] fn_save_ra_decission_student INPUT', [
+                    'student_id'     => $sp2StudentId,
+                    'student_reg_no' => $sp2StudentRegNo,
+                    'attendance'     => $sp2Attendance,
+                    'decision'       => $sp2Decision,
+                    'subject_code'   => $subjectCodeJson,
+                    'remarks'        => $globalRemarks,
+                    'entry_user_id'  => $globalAdminUserId,
+                ]);
+
+                $sp2Res = DB::select(
+                    'SELECT public.fn_save_ra_decission_student(?::bigint, ?::varchar, ?::varchar, ?::integer, ?::jsonb, ?::varchar, ?::bigint) AS data',
+                    [$sp2StudentId, $sp2StudentRegNo, $sp2Attendance, $sp2Decision, $subjectCodeJson, $globalRemarks, $globalAdminUserId]
+                );
+
+                if (!empty($sp2Res)) {
+                    $raw2 = $sp2Res[0]->data ?? null;
+                    if ($raw2 === null && !empty($sp2Res[0])) {
+                        $raw2 = (array) $sp2Res[0];
+                    }
+
+                    $decisionResult = is_string($raw2) ? json_decode($raw2, true) : (array) $raw2;
+                    $decisionErrorCode = isset($decisionResult['p_errorcode'])
+                        ? (int) $decisionResult['p_errorcode']
+                        : (isset($decisionResult['errorcode']) ? (int) $decisionResult['errorcode'] : 0);
+
+                    if ($decisionErrorCode !== 0) {
+                        DB::rollBack();
+                        return response()->json([
+                            'version' => '1.0',
+                            'error'   => true,
+                            'status'  => $decisionErrorCode,
+                            'message' => $decisionResult['p_message'] ?? $decisionResult['message'] ?? 'Failed to save RA decision (error code: ' . $decisionErrorCode . ')',
+                            'data'    => [
+                                'marks_results'   => $results,
+                                'decision_result' => $decisionResult,
+                            ],
+                        ], 400);
+                    }
+                }
+            }
+
+            // Check marks outcome
+            if ($failed > 0 && $success === 0 && !empty($normalizedItems)) {
+                DB::rollBack();
+                return response()->json([
+                    'version' => '1.0',
+                    'error'   => true,
+                    'status'  => 1,
+                    'message' => "All {$failed} RA student marks failed to update",
+                    'data'    => [
+                        'total'           => count($normalizedItems),
+                        'success'         => $success,
+                        'failed'          => $failed,
+                        'results'         => $results,
+                        'decision_result' => $decisionResult,
+                    ],
+                ], 400);
+            }
+
+            DB::commit();
+
+            Log::channel('daily')->info('[Examinations] updateRaStudentMarks COMPLETE', [
+                'marks_success'   => $success,
+                'marks_failed'    => $failed,
+                'decision_result' => $decisionResult,
+            ]);
+
+            // Single item non-batch response
+            if (!$isBatchRequest && count($normalizedItems) === 1) {
+                $firstResult = $results[0] ?? [];
+                $resData = $firstResult['result'] ?? ['p_errorcode' => 0];
+                if ($decisionResult !== null) {
+                    $resData['decision_result'] = $decisionResult;
+                }
+
+                return response()->json([
+                    'version' => '1.0',
+                    'error'   => false,
+                    'status'  => 0,
+                    'message' => 'RA student marks and decision updated successfully',
+                    'data'    => $resData,
+                ], 200);
+            }
+
+            $overallError  = $failed > 0;
+            $overallStatus = $failed === 0 ? 0 : ($success > 0 ? 2 : 1);
+            $message = $failed === 0
+                ? "RA student marks and decision updated successfully"
+                : "Partial success: {$success} succeeded, {$failed} failed";
+
+            return response()->json([
+                'version' => '1.0',
+                'error'   => $overallError,
+                'status'  => $overallStatus,
+                'message' => $message,
+                'data'    => [
+                    'total'           => count($normalizedItems),
+                    'success'         => $success,
+                    'failed'          => $failed,
+                    'results'         => $results,
+                    'decision_result' => $decisionResult,
+                ],
+            ], 200);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::channel('daily')->error('[Examinations] updateRaStudentMarks EXCEPTION', [
+                'message' => $e->getMessage(),
+                'line'    => $e->getLine(),
+                'file'    => $e->getFile(),
+            ]);
+
+            return response()->json([
+                'version' => '1.0',
+                'error'   => true,
+                'status'  => 3,
+                'message' => 'An error occurred while updating RA student marks and decision: ' . $e->getMessage(),
+                'data'    => null,
+            ], 500);
+        }
+    }
+
+    /**
+     * @OA\Post(
+     *     path="/api/examinations/all-examination-institutes",
+     *     tags={"Examinations", "Admin Institutes"},
+     *     summary="Get all examination institutes by institute/center code",
+     *     description="Calls PostgreSQL stored function fn_admin_getallexaminationinstitutes to retrieve all examination institutes for a given institute/center code and admin user ID.",
+     *     security={{"token": {}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"inst_code"},
+     *             @OA\Property(property="inst_code", type="string", example="JCG", description="Institute / Center Code (p_inst_code)"),
+     *             @OA\Property(property="admin_user_id", type="integer", format="int64", example=5447, description="Admin User ID (p_admin_user_id, defaults to auth user)")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Examination institutes fetched successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="version", type="string", example="1.0"),
+     *             @OA\Property(property="status", type="integer", example=0),
+     *             @OA\Property(property="message", type="string", example="Examination institutes fetched successfully"),
+     *             @OA\Property(property="count", type="integer", example=2),
+     *             @OA\Property(
+     *                 property="data",
+     *                 type="array",
+     *                 @OA\Items(
+     *                     type="object",
+     *                     @OA\Property(property="instituteId", type="integer", example=187),
+     *                     @OA\Property(property="instituteCode", type="string", example="AMNA"),
+     *                     @OA\Property(property="instituteName", type="string", example="AAMNA COLLEGE OF PHARMACEUTICAL SCIENCE & RESEARCH"),
+     *                     @OA\Property(property="instituteType", type="string", example="Private")
+     *                 )
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(response=422, description="Validation failed"),
+     *     @OA\Response(response=500, description="Internal server error")
+     * )
+     */
+    public function getAllExaminationInstitutes(Request $request)
+    {
+        $instCode = $request->input('inst_code', $request->input('p_inst_code', $request->input('institute_code', $request->input('instituteCode', $request->input('i_code', $request->input('center_code'))))));
+        $adminUserId = $request->input('admin_user_id', $request->input('p_admin_user_id', $request->input('adminUserId', $request->input('user_id'))));
+
+        if (empty($adminUserId)) {
+            try {
+                $adminUserId = authUserId();
+            } catch (\Exception $e) {
+                $adminUserId = null;
+            }
+        }
+        if (empty($adminUserId)) {
+            $adminUserId = 1;
+        }
+
+        $validator = Validator::make([
+            'inst_code'     => $instCode,
+            'admin_user_id' => $adminUserId,
+        ], [
+            'inst_code'     => 'required|string|max:100',
+            'admin_user_id' => 'required|numeric',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'version' => '1.0',
+                'status'  => 1,
+                'message' => 'Validation failed: ' . $validator->errors()->first(),
+                'errors'  => $validator->errors(),
+                'data'    => null,
+            ], 422);
+        }
+
+        $instCode    = trim($instCode);
+        $adminUserId = (int) $adminUserId;
+
+        Log::channel('daily')->info('[Examinations] fn_admin_getallexaminationinstitutes INPUT', [
+            'inst_code'     => $instCode,
+            'admin_user_id' => $adminUserId,
+            'ip'            => $request->ip(),
+        ]);
+
+        try {
+            $result = DB::select(
+                'SELECT public.fn_admin_getallexaminationinstitutes(?::varchar, ?::bigint) AS data',
+                [$instCode, $adminUserId]
+            );
+
+            if (empty($result)) {
+                return response()->json([
+                    'version' => '1.0',
+                    'status'  => 0,
+                    'message' => 'No examination institutes found.',
+                    'count'   => 0,
+                    'data'    => [],
+                ], 200);
+            }
+
+            $institutes = [];
+
+            foreach ($result as $row) {
+                $raw = $row->data ?? null;
+
+                if ($raw === null) {
+                    continue;
+                }
+
+                $decoded = is_string($raw) ? json_decode($raw, true) : (array) $raw;
+
+                if (is_string($raw) && json_last_error() !== JSON_ERROR_NONE) {
+                    Log::channel('daily')->error('[Examinations] fn_admin_getallexaminationinstitutes JSON decode error', [
+                        'error' => json_last_error_msg(),
+                        'raw'   => $raw,
+                    ]);
+
+                    return response()->json([
+                        'version' => '1.0',
+                        'status'  => 3,
+                        'message' => 'Failed to parse database response.',
+                        'data'    => null,
+                    ], 500);
+                }
+
+                if (is_array($decoded) && array_is_list($decoded)) {
+                    $institutes = array_merge($institutes, $decoded);
+                } elseif (is_array($decoded)) {
+                    $institutes[] = $decoded;
+                }
+            }
+
+            Log::channel('daily')->info('[Examinations] fn_admin_getallexaminationinstitutes OUTPUT', [
+                'inst_code' => $instCode,
+                'count'     => count($institutes),
+            ]);
+
+            return response()->json([
+                'version' => '1.0',
+                'status'  => 0,
+                'message' => 'Examination institutes fetched successfully',
+                'count'   => count($institutes),
+                'data'    => $institutes,
+            ], 200);
+
+        } catch (\Exception $e) {
+            Log::channel('daily')->error('[Examinations] fn_admin_getallexaminationinstitutes EXCEPTION', [
+                'message' => $e->getMessage(),
+                'line'    => $e->getLine(),
+                'file'    => $e->getFile(),
+            ]);
+
+            return response()->json([
+                'version' => '1.0',
+                'status'  => 3,
+                'message' => 'An error occurred while fetching examination institutes: ' . $e->getMessage(),
+                'data'    => null,
+            ], 500);
+        }
+    }
+
+    /**
+     * @OA\Post(
+     *     path="/api/examinations/save-examination-center",
+     *     tags={"Examinations"},
+     *     summary="Save examination center allocation (single or multiple destination institutes)",
+     *     description="Calls PostgreSQL stored function fn_save_examinationcenter in a loop to assign or map one or multiple destination examination center(s) to a source institute for an exam year and semester.",
+     *     security={{"token": {}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"source_inst_code", "destination_inst_code", "exam_year", "semester"},
+     *             @OA\Property(property="source_inst_code", type="string", example="JCG", description="Source Institute Code (p_source_inst_code)"),
+     *             @OA\Property(
+     *                 property="destination_inst_code",
+     *                 oneOf={
+     *                     @OA\Schema(type="string", example="SRV", description="Single destination code"),
+     *                     @OA\Schema(type="array", @OA\Items(type="string"), example={"SRV", "AMNA"}, description="Array of destination codes"),
+     *                     @OA\Schema(type="array", @OA\Items(type="object", @OA\Property(property="instituteCode", type="string", example="SRV")), description="Array of institute objects")
+     *                 },
+     *                 description="Destination Center Institute Code(s) (p_destination_inst_code)"
+     *             ),
+     *             @OA\Property(property="exam_year", type="string", example="2026", description="Exam Year (p_examyear)"),
+     *             @OA\Property(property="semester", type="string", example="Part-II", description="Semester / Part Name (p_semester)"),
+     *             @OA\Property(property="user_id", type="integer", format="int64", example=12, description="User ID (p_userid, defaults to auth user)")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Examination center(s) saved successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="version", type="string", example="1.0"),
+     *             @OA\Property(property="status", type="integer", example=0),
+     *             @OA\Property(property="message", type="string", example="Examination center(s) saved successfully"),
+     *             @OA\Property(property="data", type="object")
+     *         )
+     *     ),
+     *     @OA\Response(response=400, description="Bad Request / Stored function error"),
+     *     @OA\Response(response=422, description="Validation failed"),
+     *     @OA\Response(response=500, description="Internal server error")
+     * )
+     */
+    public function saveExaminationCenter(Request $request)
+    {
+        $sourceInstCode = $request->input('source_inst_code', $request->input('p_source_inst_code', $request->input('source_institute_code', $request->input('source_code', $request->input('src_inst_code')))));
+        $destinationRaw = $request->input('destination_inst_code', $request->input('p_destination_inst_code', $request->input('destination_institute_code', $request->input('destination_institutes', $request->input('dest_inst_code', $request->input('center_code', $request->input('destination_code', $request->input('destination_codes'))))))));
+        $examYear       = $request->input('exam_year', $request->input('p_examyear', $request->input('examyear', $request->input('year'))));
+        $semester       = $request->input('semester', $request->input('p_semester', $request->input('part_sem', $request->input('part_id', $request->input('part')))));
+        $userId         = $request->input('user_id', $request->input('p_userid', $request->input('admin_user_id', $request->input('userid', $request->input('adminUserId')))));
+
+        if (empty($userId)) {
+            try {
+                $userId = authUserId();
+            } catch (\Exception $e) {
+                $userId = null;
+            }
+        }
+        if (empty($userId)) {
+            $userId = 1;
+        }
+
+        // Normalize destination institute codes into a flat list of strings
+        $destinationList = [];
+        if (is_array($destinationRaw)) {
+            foreach ($destinationRaw as $item) {
+                if (is_array($item)) {
+                    $code = $item['destination_inst_code'] ?? ($item['instituteCode'] ?? ($item['institute_code'] ?? ($item['code'] ?? ($item['value'] ?? ($item['i_code'] ?? null)))));
+                    if (!empty($code)) {
+                        $destinationList[] = trim((string) $code);
+                    }
+                } elseif (is_string($item) || is_numeric($item)) {
+                    $code = trim((string) $item);
+                    if ($code !== '') {
+                        $destinationList[] = $code;
+                    }
+                }
+            }
+        } elseif (is_string($destinationRaw) || is_numeric($destinationRaw)) {
+            $str = trim((string) $destinationRaw);
+            if ($str !== '') {
+                if (str_contains($str, ',')) {
+                    $parts = explode(',', $str);
+                    foreach ($parts as $p) {
+                        $p = trim($p);
+                        if ($p !== '') {
+                            $destinationList[] = $p;
+                        }
+                    }
+                } else {
+                    $destinationList[] = $str;
+                }
+            }
+        }
+
+        $destinationList = array_values(array_unique($destinationList));
+
+        $validator = Validator::make([
+            'source_inst_code'      => $sourceInstCode,
+            'destination_inst_code' => $destinationList,
+            'exam_year'             => $examYear,
+            'semester'              => $semester,
+            'user_id'               => $userId,
+        ], [
+            'source_inst_code'      => 'required|string|max:100',
+            'destination_inst_code' => 'required|array|min:1',
+            'destination_inst_code.*' => 'required|string|max:100',
+            'exam_year'             => 'required|string|max:20',
+            'semester'              => 'required|string|max:50',
+            'user_id'               => 'required|numeric',
+        ], [
+            'destination_inst_code.required' => 'At least one destination institute code is required.',
+            'destination_inst_code.min'      => 'At least one destination institute code is required.',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'version' => '1.0',
+                'status'  => 1,
+                'message' => 'Validation failed: ' . $validator->errors()->first(),
+                'errors'  => $validator->errors(),
+                'data'    => null,
+            ], 422);
+        }
+
+        $sourceInstCode = trim($sourceInstCode);
+        $examYear       = (string) trim($examYear);
+        $semester       = (string) trim($semester);
+        $userId         = (int) $userId;
+
+        Log::channel('daily')->info('[Examinations] fn_save_examinationcenter INPUT', [
+            'source_inst_code'       => $sourceInstCode,
+            'destination_inst_codes' => $destinationList,
+            'exam_year'              => $examYear,
+            'semester'               => $semester,
+            'user_id'                => $userId,
+            'ip'                     => $request->ip(),
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            $results      = [];
+            $successCount = 0;
+            $failedCount  = 0;
+
+            foreach ($destinationList as $destinationInstCode) {
+                $result = DB::select(
+                    'SELECT public.fn_save_examinationcenter(?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::bigint) AS data',
+                    [$sourceInstCode, $destinationInstCode, $examYear, $semester, $userId]
+                );
+
+                if (empty($result)) {
+                    $failedCount++;
+                    $results[] = [
+                        'destination_inst_code' => $destinationInstCode,
+                        'status'                => 1,
+                        'message'               => 'No response from database function.',
+                        'data'                  => null,
+                    ];
+                    continue;
+                }
+
+                $raw = $result[0]->data ?? null;
+
+                if ($raw === null) {
+                    $failedCount++;
+                    $results[] = [
+                        'destination_inst_code' => $destinationInstCode,
+                        'status'                => 1,
+                        'message'               => 'Database function returned empty result.',
+                        'data'                  => null,
+                    ];
+                    continue;
+                }
+
+                $decoded = is_string($raw) ? json_decode($raw, true) : (array) $raw;
+
+                if (is_string($raw) && json_last_error() !== JSON_ERROR_NONE) {
+                    $failedCount++;
+                    $results[] = [
+                        'destination_inst_code' => $destinationInstCode,
+                        'status'                => 3,
+                        'message'               => 'Failed to parse database response.',
+                        'data'                  => null,
+                    ];
+                    continue;
+                }
+
+                $errorCode = $decoded['p_errorcode'] ?? ($decoded['errorCode'] ?? ($decoded['error_code'] ?? null));
+
+                if ($errorCode !== null && (int) $errorCode !== 0) {
+                    $failedCount++;
+                    $results[] = [
+                        'destination_inst_code' => $destinationInstCode,
+                        'status'                => (int) $errorCode,
+                        'message'               => $decoded['p_errormessage'] ?? ($decoded['message'] ?? 'Failed to save examination center.'),
+                        'data'                  => $decoded,
+                    ];
+                } else {
+                    $successCount++;
+                    $results[] = [
+                        'destination_inst_code' => $destinationInstCode,
+                        'status'                => 0,
+                        'message'               => 'Saved successfully',
+                        'data'                  => $decoded,
+                    ];
+                }
+            }
+
+            Log::channel('daily')->info('[Examinations] fn_save_examinationcenter OUTPUT', [
+                'total'   => count($destinationList),
+                'success' => $successCount,
+                'failed'  => $failedCount,
+            ]);
+
+            if ($failedCount > 0 && $successCount === 0) {
+                DB::rollBack();
+                return response()->json([
+                    'version' => '1.0',
+                    'status'  => 1,
+                    'message' => 'Failed to save examination center(s).',
+                    'data'    => [
+                        'total'   => count($destinationList),
+                        'success' => $successCount,
+                        'failed'  => $failedCount,
+                        'results' => $results,
+                    ],
+                ], 400);
+            }
+
+            DB::commit();
+
+            // For single-item string request, provide clean single object payload compatibility
+            if (count($destinationList) === 1 && !is_array($destinationRaw)) {
+                $firstResult = $results[0];
+                return response()->json([
+                    'version' => '1.0',
+                    'status'  => $firstResult['status'],
+                    'message' => 'Examination center saved successfully',
+                    'data'    => $firstResult['data'] ?? ['p_errorcode' => 0],
+                ], 200);
+            }
+
+            return response()->json([
+                'version' => '1.0',
+                'status'  => $failedCount === 0 ? 0 : 2,
+                'message' => $failedCount === 0
+                    ? 'Examination center(s) saved successfully'
+                    : "Partial success: {$successCount} saved, {$failedCount} failed",
+                'data'    => [
+                    'total'   => count($destinationList),
+                    'success' => $successCount,
+                    'failed'  => $failedCount,
+                    'results' => $results,
+                ],
+            ], 200);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::channel('daily')->error('[Examinations] fn_save_examinationcenter EXCEPTION', [
+                'message' => $e->getMessage(),
+                'line'    => $e->getLine(),
+                'file'    => $e->getFile(),
+            ]);
+
+            return response()->json([
+                'version' => '1.0',
+                'status'  => 3,
+                'message' => 'An error occurred while saving examination center: ' . $e->getMessage(),
+                'data'    => null,
+            ], 500);
+        }
+    }
+
+    /**
+     * @OA\Post(
+     *     path="/api/examinations/save-routine",
+     *     tags={"Examinations", "Schedule"},
+     *     summary="Save examination routine / schedule (single or batch)",
+     *     description="Calls PostgreSQL stored function fn_admin_saveroutine to save or update subject examination dates for an exam year and semester.",
+     *     security={{"token": {}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             oneOf={
+     *                 @OA\Schema(
+     *                     type="object",
+     *                     required={"exam_year", "semester", "exam_date", "subject_code"},
+     *                     @OA\Property(property="routine_id", type="integer", format="int64", example=0, description="Routine ID (0 for new, >0 for edit)"),
+     *                     @OA\Property(property="exam_year", type="string", example="2026", description="Exam Year (p_examyear)"),
+     *                     @OA\Property(property="semester", type="string", example="Part_II", description="Semester / Part Name (p_semester)"),
+     *                     @OA\Property(property="exam_date", type="string", format="date-time", example="2026-09-20 10:00:00", description="Exam Date & Time (p_examdate)"),
+     *                     @OA\Property(property="subject_code", type="string", example="CPHM", description="Subject Code (p_subjectcode)"),
+     *                     @OA\Property(property="entry_user_id", type="integer", format="int64", example=3114, description="Entry Admin User ID (p_entry_user_id)")
+     *                 ),
+     *                 @OA\Schema(
+     *                     type="object",
+     *                     @OA\Property(property="exam_year", type="string", example="2026"),
+     *                     @OA\Property(property="semester", type="string", example="Part_II"),
+     *                     @OA\Property(property="entry_user_id", type="integer", example=3114),
+     *                     @OA\Property(
+     *                         property="routines",
+     *                         type="array",
+     *                         @OA\Items(
+     *                             type="object",
+     *                             required={"exam_date", "subject_code"},
+     *                             @OA\Property(property="routine_id", type="integer", example=0),
+     *                             @OA\Property(property="exam_date", type="string", example="2026-09-20 10:00:00"),
+     *                             @OA\Property(property="subject_code", type="string", example="CPHM")
+     *                         )
+     *                     )
+     *                 )
+     *             }
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Routine saved successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="version", type="string", example="1.0"),
+     *             @OA\Property(property="status", type="integer", example=0),
+     *             @OA\Property(property="message", type="string", example="Examination routine saved successfully"),
+     *             @OA\Property(property="data", type="object", @OA\Property(property="p_errorcode", type="integer", example=0))
+     *         )
+     *     ),
+     *     @OA\Response(response=400, description="Bad Request / Stored function error"),
+     *     @OA\Response(response=422, description="Validation failed"),
+     *     @OA\Response(response=500, description="Internal server error")
+     * )
+     */
+    public function saveRoutine(Request $request)
+    {
+        $rawContent = $request->all();
+        $isRawList = is_array($rawContent) && array_is_list($rawContent);
+
+        $defaultExamYear    = $request->input('exam_year', $request->input('p_examyear', $request->input('examYear', $request->input('year'))));
+        $defaultSemester    = $request->input('semester', $request->input('p_semester', $request->input('part_sem', $request->input('part_id', $request->input('part')))));
+        $defaultEntryUserId = $request->input('entry_user_id', $request->input('p_entry_user_id', $request->input('admin_user_id', $request->input('user_id', $request->input('userId')))));
+
+        if (empty($defaultEntryUserId)) {
+            try {
+                $defaultEntryUserId = authUserId();
+            } catch (\Exception $e) {
+                $defaultEntryUserId = null;
+            }
+        }
+        if (empty($defaultEntryUserId)) {
+            $defaultEntryUserId = 1;
+        }
+
+        $routinesArray = $request->input('routines', $request->input('routine_list', $request->input('items', [])));
+
+        $items = [];
+
+        if ($isRawList) {
+            $items = $rawContent;
+        } elseif (!empty($routinesArray) && is_array($routinesArray)) {
+            $items = $routinesArray;
+        } else {
+            // Single item
+            $items = [
+                [
+                    'routine_id'    => $request->input('routine_id', $request->input('p_routineid', $request->input('routineId', $request->input('id', 0)))),
+                    'exam_year'     => $defaultExamYear,
+                    'semester'      => $defaultSemester,
+                    'exam_date'     => $request->input('exam_date', $request->input('p_examdate', $request->input('examDate', $request->input('date')))),
+                    'subject_code'  => $request->input('subject_code', $request->input('p_subjectcode', $request->input('subjectCode', $request->input('subject')))),
+                    'entry_user_id' => $defaultEntryUserId,
+                ]
+            ];
+        }
+
+        $normalizedItems = [];
+        foreach ($items as $index => $item) {
+            $routineId   = isset($item['routine_id']) ? (int) $item['routine_id'] : (isset($item['p_routineid']) ? (int) $item['p_routineid'] : (isset($item['routineId']) ? (int) $item['routineId'] : (isset($item['id']) ? (int) $item['id'] : 0)));
+            $examYear    = $item['exam_year'] ?? ($item['p_examyear'] ?? ($item['examYear'] ?? $defaultExamYear));
+            $semester    = $item['semester'] ?? ($item['p_semester'] ?? ($item['part_sem'] ?? ($item['part_id'] ?? $defaultSemester)));
+            $examDate    = $item['exam_date'] ?? ($item['p_examdate'] ?? ($item['examDate'] ?? ($item['date'] ?? null)));
+            $subjectCode = $item['subject_code'] ?? ($item['p_subjectcode'] ?? ($item['subjectCode'] ?? ($item['subject'] ?? null)));
+            $entryUserId = $item['entry_user_id'] ?? ($item['p_entry_user_id'] ?? ($item['admin_user_id'] ?? ($item['user_id'] ?? $defaultEntryUserId)));
+
+            if (empty($entryUserId)) {
+                $entryUserId = $defaultEntryUserId;
+            }
+
+            $normalizedItems[] = [
+                'index'         => $index,
+                'routine_id'    => (int) $routineId,
+                'exam_year'     => $examYear !== null ? trim((string) $examYear) : null,
+                'semester'      => $semester !== null ? trim((string) $semester) : null,
+                'exam_date'     => $examDate !== null ? trim((string) $examDate) : null,
+                'subject_code'  => $subjectCode !== null ? trim((string) $subjectCode) : null,
+                'entry_user_id' => (int) $entryUserId,
+            ];
+        }
+
+        if (empty($normalizedItems)) {
+            return response()->json([
+                'version' => '1.0',
+                'status'  => 1,
+                'message' => 'No routine data provided.',
+                'data'    => null,
+            ], 422);
+        }
+
+        // Validate each item
+        $validator = Validator::make(['items' => $normalizedItems], [
+            'items'                 => 'required|array|min:1',
+            'items.*.exam_year'     => 'required|string|max:20',
+            'items.*.semester'      => 'required|string|max:50',
+            'items.*.exam_date'     => 'required',
+            'items.*.subject_code'  => 'required|string|max:50',
+            'items.*.entry_user_id' => 'required|numeric',
+        ], [
+            'items.*.exam_year.required'    => 'Exam year is required for each routine item.',
+            'items.*.semester.required'     => 'Semester is required for each routine item.',
+            'items.*.exam_date.required'    => 'Exam date is required for each routine item.',
+            'items.*.subject_code.required' => 'Subject code is required for each routine item.',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'version' => '1.0',
+                'status'  => 1,
+                'message' => 'Validation failed: ' . $validator->errors()->first(),
+                'errors'  => $validator->errors(),
+                'data'    => null,
+            ], 422);
+        }
+
+        Log::channel('daily')->info('[Examinations] fn_admin_saveroutine INPUT', [
+            'count' => count($normalizedItems),
+            'items' => $normalizedItems,
+            'ip'    => $request->ip(),
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            $results      = [];
+            $successCount = 0;
+            $failedCount  = 0;
+
+            foreach ($normalizedItems as $item) {
+                $formattedDate = $item['exam_date'];
+                try {
+                    $timestamp = strtotime($formattedDate);
+                    if ($timestamp !== false) {
+                        $formattedDate = date('Y-m-d H:i:s', $timestamp);
+                    }
+                } catch (\Exception $de) {
+                    // keep original date string
+                }
+
+                $result = DB::select(
+                    'SELECT public.fn_admin_saveroutine(?::bigint, ?::varchar, ?::varchar, ?::timestamp, ?::varchar, ?::bigint) AS data',
+                    [
+                        $item['routine_id'],
+                        $item['exam_year'],
+                        $item['semester'],
+                        $formattedDate,
+                        $item['subject_code'],
+                        $item['entry_user_id']
+                    ]
+                );
+
+                if (empty($result)) {
+                    $failedCount++;
+                    $results[] = [
+                        'subject_code' => $item['subject_code'],
+                        'status'       => 1,
+                        'message'      => 'No response from database function.',
+                        'data'         => null,
+                    ];
+                    continue;
+                }
+
+                $raw = $result[0]->data ?? null;
+
+                if ($raw === null) {
+                    $failedCount++;
+                    $results[] = [
+                        'subject_code' => $item['subject_code'],
+                        'status'       => 1,
+                        'message'      => 'Database function returned empty result.',
+                        'data'         => null,
+                    ];
+                    continue;
+                }
+
+                $decoded = is_string($raw) ? json_decode($raw, true) : (array) $raw;
+
+                if (is_string($raw) && json_last_error() !== JSON_ERROR_NONE) {
+                    $failedCount++;
+                    $results[] = [
+                        'subject_code' => $item['subject_code'],
+                        'status'       => 3,
+                        'message'      => 'Failed to parse database response.',
+                        'data'         => null,
+                    ];
+                    continue;
+                }
+
+                $errorCode = $decoded['p_errorcode'] ?? ($decoded['errorCode'] ?? ($decoded['error_code'] ?? null));
+
+                if ($errorCode !== null && (int) $errorCode !== 0) {
+                    $failedCount++;
+                    $results[] = [
+                        'subject_code' => $item['subject_code'],
+                        'status'       => (int) $errorCode,
+                        'message'      => $decoded['p_errormessage'] ?? ($decoded['message'] ?? 'Failed to save routine.'),
+                        'data'         => $decoded,
+                    ];
+                } else {
+                    $successCount++;
+                    $results[] = [
+                        'subject_code' => $item['subject_code'],
+                        'status'       => 0,
+                        'message'      => 'Routine saved successfully',
+                        'data'         => $decoded,
+                    ];
+                }
+            }
+
+            Log::channel('daily')->info('[Examinations] fn_admin_saveroutine OUTPUT', [
+                'total'   => count($normalizedItems),
+                'success' => $successCount,
+                'failed'  => $failedCount,
+            ]);
+
+            if ($failedCount > 0 && $successCount === 0) {
+                DB::rollBack();
+                return response()->json([
+                    'version' => '1.0',
+                    'status'  => 1,
+                    'message' => 'Failed to save examination routine.',
+                    'data'    => [
+                        'total'   => count($normalizedItems),
+                        'success' => $successCount,
+                        'failed'  => $failedCount,
+                        'results' => $results,
+                    ],
+                ], 400);
+            }
+
+            DB::commit();
+
+            // Single-item clean response format
+            if (count($normalizedItems) === 1 && !$isRawList && empty($routinesArray)) {
+                $firstResult = $results[0];
+                return response()->json([
+                    'version' => '1.0',
+                    'status'  => $firstResult['status'],
+                    'message' => 'Examination routine saved successfully',
+                    'data'    => $firstResult['data'] ?? ['p_errorcode' => 0],
+                ], 200);
+            }
+
+            return response()->json([
+                'version' => '1.0',
+                'status'  => $failedCount === 0 ? 0 : 2,
+                'message' => $failedCount === 0
+                    ? 'Examination routine(s) saved successfully'
+                    : "Partial success: {$successCount} saved, {$failedCount} failed",
+                'data'    => [
+                    'total'   => count($normalizedItems),
+                    'success' => $successCount,
+                    'failed'  => $failedCount,
+                    'results' => $results,
+                ],
+            ], 200);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::channel('daily')->error('[Examinations] fn_admin_saveroutine EXCEPTION', [
+                'message' => $e->getMessage(),
+                'line'    => $e->getLine(),
+                'file'    => $e->getFile(),
+            ]);
+
+            return response()->json([
+                'version' => '1.0',
+                'status'  => 3,
+                'message' => 'An error occurred while saving examination routine: ' . $e->getMessage(),
+                'data'    => null,
+            ], 500);
+        }
+    }
+
+    /**
+     * @OA\Post(
+     *     path="/api/examinations/routine-list",
+     *     tags={"Examinations", "Schedule"},
+     *     summary="Get examination routine list by exam year and semester",
+     *     description="Calls PostgreSQL stored function fn_get_routinelist to retrieve the examination schedule/routine for an exam year and semester.",
+     *     security={{"token": {}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"exam_year", "semester"},
+     *             @OA\Property(property="exam_year", type="string", example="2026", description="Exam Year (p_examyear)"),
+     *             @OA\Property(property="semester", type="string", example="Part_II", description="Semester / Part Name (p_semester)")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Routine list fetched successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="version", type="string", example="1.0"),
+     *             @OA\Property(property="status", type="integer", example=0),
+     *             @OA\Property(property="message", type="string", example="Examination routine fetched successfully"),
+     *             @OA\Property(property="count", type="integer", example=3),
+     *             @OA\Property(
+     *                 property="data",
+     *                 type="array",
+     *                 @OA\Items(
+     *                     type="object",
+     *                     @OA\Property(property="routineId", type="integer", example=1),
+     *                     @OA\Property(property="examDate", type="string", example="2026-09-20T10:00:00"),
+     *                     @OA\Property(property="subjectCode", type="string", example="CPHM"),
+     *                     @OA\Property(property="subjectName", type="string", example="COMMUNITY PHARMACY & MANAGEMENT")
+     *                 )
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(response=422, description="Validation failed"),
+     *     @OA\Response(response=500, description="Internal server error")
+     * )
+     */
+    public function getRoutineList(Request $request)
+    {
+        $examYear = $request->input('exam_year', $request->input('p_examyear', $request->input('examYear', $request->input('year'))));
+        $semester = $request->input('semester', $request->input('p_semester', $request->input('part_sem', $request->input('part_id', $request->input('part')))));
+
+        $validator = Validator::make([
+            'exam_year' => $examYear,
+            'semester'  => $semester,
+        ], [
+            'exam_year' => 'required|string|max:20',
+            'semester'  => 'required|string|max:50',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'version' => '1.0',
+                'status'  => 1,
+                'message' => 'Validation failed: ' . $validator->errors()->first(),
+                'errors'  => $validator->errors(),
+                'data'    => null,
+            ], 422);
+        }
+
+        $examYear = (string) trim($examYear);
+        $semester = (string) trim($semester);
+
+        Log::channel('daily')->info('[Examinations] fn_get_routinelist INPUT', [
+            'exam_year' => $examYear,
+            'semester'  => $semester,
+            'ip'        => $request->ip(),
+        ]);
+
+        try {
+            $result = DB::select(
+                'SELECT public.fn_get_routinelist(?::varchar, ?::varchar) AS data',
+                [$examYear, $semester]
+            );
+
+            if (empty($result)) {
+                return response()->json([
+                    'version' => '1.0',
+                    'status'  => 0,
+                    'message' => 'No examination routine found.',
+                    'count'   => 0,
+                    'data'    => [],
+                ], 200);
+            }
+
+            $routines = [];
+
+            foreach ($result as $row) {
+                $raw = $row->data ?? null;
+
+                if ($raw === null) {
+                    continue;
+                }
+
+                $decoded = is_string($raw) ? json_decode($raw, true) : (array) $raw;
+
+                if (is_string($raw) && json_last_error() !== JSON_ERROR_NONE) {
+                    Log::channel('daily')->error('[Examinations] fn_get_routinelist JSON decode error', [
+                        'error' => json_last_error_msg(),
+                        'raw'   => $raw,
+                    ]);
+
+                    return response()->json([
+                        'version' => '1.0',
+                        'status'  => 3,
+                        'message' => 'Failed to parse database response.',
+                        'data'    => null,
+                    ], 500);
+                }
+
+                if (is_array($decoded) && array_is_list($decoded)) {
+                    $routines = array_merge($routines, $decoded);
+                } elseif (is_array($decoded)) {
+                    $routines[] = $decoded;
+                }
+            }
+
+            Log::channel('daily')->info('[Examinations] fn_get_routinelist OUTPUT', [
+                'exam_year' => $examYear,
+                'semester'  => $semester,
+                'count'     => count($routines),
+            ]);
+
+            return response()->json([
+                'version' => '1.0',
+                'status'  => 0,
+                'message' => 'Examination routine fetched successfully',
+                'count'   => count($routines),
+                'data'    => $routines,
+            ], 200);
+
+        } catch (\Exception $e) {
+            Log::channel('daily')->error('[Examinations] fn_get_routinelist EXCEPTION', [
+                'message' => $e->getMessage(),
+                'line'    => $e->getLine(),
+                'file'    => $e->getFile(),
+            ]);
+
+            return response()->json([
+                'version' => '1.0',
+                'status'  => 3,
+                'message' => 'An error occurred while fetching examination routine: ' . $e->getMessage(),
                 'data'    => null,
             ], 500);
         }

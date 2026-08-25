@@ -82,6 +82,10 @@ Route::prefix('enrollment')->middleware('authenticate')->group(function () {
     Route::get('/ra-institute-list', [AdminInstituteController::class, 'getRaInstituteList']);
     Route::post('/ra-institute-list', [AdminInstituteController::class, 'getRaInstituteList']);
     Route::post('/ra-student-list', [EnrollmentController::class, 'getRaStudentList']);
+    Route::post('/get-enroll-student-details', [EnrollmentController::class, 'getEnrollStudentDetails']);
+    Route::post('/enroll-student-details', [EnrollmentController::class, 'getEnrollStudentDetails']);
+    Route::post('/update-student-enrollment-status', [EnrollmentController::class, 'updateStudentEnrollmentStatusByAdmin']);
+    Route::post('/update-student-enrollment-status-by-admin', [EnrollmentController::class, 'updateStudentEnrollmentStatusByAdmin']);
     Route::post('/list', [EnrollmentController::class, 'list']);
 
     Route::post('/get-enrollment-fees-data', [PaymentController::class, 'getEnrollmentPaymentdata']);
@@ -103,6 +107,8 @@ Route::prefix('enrollment')->middleware('authenticate')->group(function () {
     Route::post('/rollno-generate-submit', [EnrollmentController::class, 'rollno_generate_submit']);
     Route::post('/exam-center-list', [EnrollmentController::class, 'exam_center_list']);
     Route::post('/exam-center-submit', [EnrollmentController::class, 'exam_center_submit']);
+    Route::post('/generate-order-id', [PaymentController::class, 'generateEnrollmentStudentOrderId']);
+    Route::post('/generate-student-order-id', [PaymentController::class, 'generateEnrollmentStudentOrderId']);
 });
 
 Route::prefix('payment')->group(function () {
@@ -122,6 +128,9 @@ Route::prefix('payment')->middleware('authenticate')->group(function () {
     Route::post('/generate-order-id', [PaymentController::class, 'generateStudentOrderId']);
     Route::post('/generateReviewOrderId', [PaymentController::class, 'generateStudentReviewOrderId']);
     Route::post('/generate-review-order-id', [PaymentController::class, 'generateStudentReviewOrderId']);
+    Route::post('/generate-enrollment-order-id', [PaymentController::class, 'generateEnrollmentStudentOrderId']);
+    Route::post('/generateEnrollmentOrderId', [PaymentController::class, 'generateEnrollmentStudentOrderId']);
+    Route::post('/enrollment-student-generate-order-id', [PaymentController::class, 'generateEnrollmentStudentOrderId']);
     Route::post('/saveSbiPaymentDetails', [PaymentController::class, 'saveSbiPaymentDetails']);
     Route::post('/save-sbi-payment-details', [PaymentController::class, 'saveSbiPaymentDetails']);
     Route::post('/savePaymentDetails', [PaymentController::class, 'savePaymentDetails']);
@@ -222,6 +231,20 @@ Route::prefix('examinations')->middleware('authenticate')->group(function () {
     Route::post('/check-student-eligible', [ExaminationController::class, 'checkStudentEligibleInExam']);
     Route::post('/ra-details-by-registration-number', [ExaminationController::class, 'getRaDetailsListByStudentRegistrationNumber']);
     Route::post('/ra-details-list-by-student-registration-number', [ExaminationController::class, 'getRaDetailsListByStudentRegistrationNumber']);
+    Route::post('/update-ra-studentmarks', [ExaminationController::class, 'updateRaStudentMarks']);
+    Route::post('/update-ra-student-marks', [ExaminationController::class, 'updateRaStudentMarks']);
+    Route::post('/all-examination-institutes', [ExaminationController::class, 'getAllExaminationInstitutes']);
+    Route::post('/examination-institutes', [ExaminationController::class, 'getAllExaminationInstitutes']);
+    Route::get('/examination-institutes', [ExaminationController::class, 'getAllExaminationInstitutes']);
+    Route::post('/admin-get-all-examination-institutes', [ExaminationController::class, 'getAllExaminationInstitutes']);
+    Route::post('/save-examination-center', [ExaminationController::class, 'saveExaminationCenter']);
+    Route::post('/save-examinationcenter', [ExaminationController::class, 'saveExaminationCenter']);
+    Route::post('/save-routine', [ExaminationController::class, 'saveRoutine']);
+    Route::post('/admin-save-routine', [ExaminationController::class, 'saveRoutine']);
+    Route::post('/routine-list', [ExaminationController::class, 'getRoutineList']);
+    Route::get('/routine-list', [ExaminationController::class, 'getRoutineList']);
+    Route::post('/get-routine-list', [ExaminationController::class, 'getRoutineList']);
+    Route::get('/get-routine-list', [ExaminationController::class, 'getRoutineList']);
 });
 
 Route::prefix('answersheet')->middleware('authenticate')->group(function () {
@@ -399,7 +422,25 @@ Route::prefix('admin')->middleware('authenticate')->group(function () {
     Route::get('/ra-institute-list', [AdminInstituteController::class, 'getRaInstituteList']);
     Route::post('/ra-institute-list', [AdminInstituteController::class, 'getRaInstituteList']);
     Route::post('/ra-student-list', [EnrollmentController::class, 'getRaStudentList']);
+    Route::post('/get-enroll-student-details', [EnrollmentController::class, 'getEnrollStudentDetails']);
+    Route::post('/enroll-student-details', [EnrollmentController::class, 'getEnrollStudentDetails']);
+    Route::post('/update-student-enrollment-status', [EnrollmentController::class, 'updateStudentEnrollmentStatusByAdmin']);
+    Route::post('/update-student-enrollment-status-by-admin', [EnrollmentController::class, 'updateStudentEnrollmentStatusByAdmin']);
     Route::post('/ra-details-by-registration-number', [ExaminationController::class, 'getRaDetailsListByStudentRegistrationNumber']);
+    Route::post('/update-ra-studentmarks', [ExaminationController::class, 'updateRaStudentMarks']);
+    Route::post('/update-ra-student-marks', [ExaminationController::class, 'updateRaStudentMarks']);
+    Route::post('/all-examination-institutes', [AdminInstituteController::class, 'getAllExaminationInstitutes']);
+    Route::post('/examination-institutes', [AdminInstituteController::class, 'getAllExaminationInstitutes']);
+    Route::get('/examination-institutes', [AdminInstituteController::class, 'getAllExaminationInstitutes']);
+    Route::post('/admin-get-all-examination-institutes', [AdminInstituteController::class, 'getAllExaminationInstitutes']);
+    Route::post('/save-examination-center', [ExaminationController::class, 'saveExaminationCenter']);
+    Route::post('/save-examinationcenter', [ExaminationController::class, 'saveExaminationCenter']);
+    Route::post('/save-routine', [ExaminationController::class, 'saveRoutine']);
+    Route::post('/admin-save-routine', [ExaminationController::class, 'saveRoutine']);
+    Route::post('/routine-list', [ExaminationController::class, 'getRoutineList']);
+    Route::get('/routine-list', [ExaminationController::class, 'getRoutineList']);
+    Route::post('/get-routine-list', [ExaminationController::class, 'getRoutineList']);
+    Route::get('/get-routine-list', [ExaminationController::class, 'getRoutineList']);
     Route::post('/semesters', [AdminSemesterController::class, 'getAllSemesters']);
     Route::post('/subject-categories', [AdminSubjectCategoryController::class, 'getAllSubjectCategories']);
     Route::post('/departments', [AdminDepartmentController::class, 'getDepartmentsByInst']);

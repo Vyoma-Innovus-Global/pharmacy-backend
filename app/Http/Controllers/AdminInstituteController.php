@@ -319,4 +319,164 @@ class AdminInstituteController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * @OA\Post(
+     *     path="/api/admin/all-examination-institutes",
+     *     tags={"Admin - Master Data", "Examinations"},
+     *     summary="Get all examination institutes by institute/center code",
+     *     description="Calls PostgreSQL stored function fn_admin_getallexaminationinstitutes to retrieve all examination institutes for a given institute/center code and admin user ID.",
+     *     security={{"token": {}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"inst_code"},
+     *             @OA\Property(property="inst_code", type="string", example="JCG", description="Institute / Center Code (p_inst_code)"),
+     *             @OA\Property(property="admin_user_id", type="integer", format="int64", example=5447, description="Admin User ID (p_admin_user_id, defaults to auth user)")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Examination institutes fetched successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="version", type="string", example="1.0"),
+     *             @OA\Property(property="status", type="integer", example=0),
+     *             @OA\Property(property="message", type="string", example="Examination institutes fetched successfully"),
+     *             @OA\Property(property="count", type="integer", example=2),
+     *             @OA\Property(
+     *                 property="data",
+     *                 type="array",
+     *                 @OA\Items(
+     *                     type="object",
+     *                     @OA\Property(property="instituteId", type="integer", example=187),
+     *                     @OA\Property(property="instituteCode", type="string", example="AMNA"),
+     *                     @OA\Property(property="instituteName", type="string", example="AAMNA COLLEGE OF PHARMACEUTICAL SCIENCE & RESEARCH"),
+     *                     @OA\Property(property="instituteType", type="string", example="Private")
+     *                 )
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(response=422, description="Validation failed"),
+     *     @OA\Response(response=500, description="Internal server error")
+     * )
+     */
+    public function getAllExaminationInstitutes(Request $request)
+    {
+        $instCode = $request->input('inst_code', $request->input('p_inst_code', $request->input('institute_code', $request->input('instituteCode', $request->input('i_code', $request->input('center_code'))))));
+        $adminUserId = $request->input('admin_user_id', $request->input('p_admin_user_id', $request->input('adminUserId', $request->input('user_id'))));
+
+        if (empty($adminUserId)) {
+            try {
+                $adminUserId = authUserId();
+            } catch (\Exception $e) {
+                $adminUserId = null;
+            }
+        }
+        if (empty($adminUserId)) {
+            $adminUserId = 1;
+        }
+
+        $validator = Validator::make([
+            'inst_code'     => $instCode,
+            'admin_user_id' => $adminUserId,
+        ], [
+            'inst_code'     => 'required|string|max:100',
+            'admin_user_id' => 'required|numeric',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'version' => '1.0',
+                'status'  => 1,
+                'message' => 'Validation failed: ' . $validator->errors()->first(),
+                'errors'  => $validator->errors(),
+                'data'    => null,
+            ], 422);
+        }
+
+        $instCode    = trim($instCode);
+        $adminUserId = (int) $adminUserId;
+
+        Log::channel('daily')->info('[getAllExaminationInstitutes] INPUT', [
+            'inst_code'     => $instCode,
+            'admin_user_id' => $adminUserId,
+            'ip'            => $request->ip(),
+        ]);
+
+        try {
+            $result = DB::select(
+                'SELECT public.fn_admin_getallexaminationinstitutes(?::varchar, ?::bigint) AS data',
+                [$instCode, $adminUserId]
+            );
+
+            if (empty($result)) {
+                return response()->json([
+                    'version' => '1.0',
+                    'status'  => 0,
+                    'message' => 'No examination institutes found.',
+                    'count'   => 0,
+                    'data'    => [],
+                ], 200);
+            }
+
+            $institutes = [];
+
+            foreach ($result as $row) {
+                $raw = $row->data ?? null;
+
+                if ($raw === null) {
+                    continue;
+                }
+
+                $decoded = is_string($raw) ? json_decode($raw, true) : (array) $raw;
+
+                if (is_string($raw) && json_last_error() !== JSON_ERROR_NONE) {
+                    Log::channel('daily')->error('[getAllExaminationInstitutes] JSON decode error', [
+                        'error' => json_last_error_msg(),
+                        'raw'   => $raw,
+                    ]);
+
+                    return response()->json([
+                        'version' => '1.0',
+                        'status'  => 3,
+                        'message' => 'Failed to parse database response.',
+                        'data'    => null,
+                    ], 500);
+                }
+
+                if (is_array($decoded) && array_is_list($decoded)) {
+                    $institutes = array_merge($institutes, $decoded);
+                } elseif (is_array($decoded)) {
+                    $institutes[] = $decoded;
+                }
+            }
+
+            Log::channel('daily')->info('[getAllExaminationInstitutes] OUTPUT', [
+                'inst_code' => $instCode,
+                'count'     => count($institutes),
+            ]);
+
+            return response()->json([
+                'version' => '1.0',
+                'status'  => 0,
+                'message' => 'Examination institutes fetched successfully',
+                'count'   => count($institutes),
+                'data'    => $institutes,
+            ], 200);
+
+        } catch (\Exception $e) {
+            Log::channel('daily')->error('[getAllExaminationInstitutes] EXCEPTION', [
+                'message' => $e->getMessage(),
+                'line'    => $e->getLine(),
+                'file'    => $e->getFile(),
+            ]);
+
+            return response()->json([
+                'version' => '1.0',
+                'status'  => 3,
+                'message' => 'An error occurred while fetching examination institutes: ' . $e->getMessage(),
+                'data'    => null,
+            ], 500);
+        }
+    }
 }
