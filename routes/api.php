@@ -245,9 +245,9 @@ Route::prefix('examinations')->middleware('authenticate')->group(function () {
     Route::post('/save-routine', [ExaminationController::class, 'saveRoutine']);
     Route::post('/admin-save-routine', [ExaminationController::class, 'saveRoutine']);
     Route::post('/routine-list', [ExaminationController::class, 'getRoutineList']);
-    Route::get('/routine-list', [ExaminationController::class, 'getRoutineList']);
     Route::post('/get-routine-list', [ExaminationController::class, 'getRoutineList']);
-    Route::get('/get-routine-list', [ExaminationController::class, 'getRoutineList']);
+    Route::post('/get-routinelist', [ExaminationController::class, 'getRoutineList']);
+    Route::post('/routinelist', [ExaminationController::class, 'getRoutineList']);
 });
 
 Route::prefix('answersheet')->middleware('authenticate')->group(function () {
@@ -445,9 +445,9 @@ Route::prefix('admin')->middleware('authenticate')->group(function () {
     Route::post('/save-routine', [ExaminationController::class, 'saveRoutine']);
     Route::post('/admin-save-routine', [ExaminationController::class, 'saveRoutine']);
     Route::post('/routine-list', [ExaminationController::class, 'getRoutineList']);
-    Route::get('/routine-list', [ExaminationController::class, 'getRoutineList']);
     Route::post('/get-routine-list', [ExaminationController::class, 'getRoutineList']);
-    Route::get('/get-routine-list', [ExaminationController::class, 'getRoutineList']);
+    Route::post('/get-routinelist', [ExaminationController::class, 'getRoutineList']);
+    Route::post('/routinelist', [ExaminationController::class, 'getRoutineList']);
     Route::post('/semesters', [AdminSemesterController::class, 'getAllSemesters']);
     Route::post('/subject-categories', [AdminSubjectCategoryController::class, 'getAllSubjectCategories']);
     Route::post('/departments', [AdminDepartmentController::class, 'getDepartmentsByInst']);
