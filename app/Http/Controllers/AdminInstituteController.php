@@ -479,4 +479,215 @@ class AdminInstituteController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * @OA\Post(
+     *     path="/api/admin/get-examination-center",
+     *     tags={"Admin - Master Data", "Examinations"},
+     *     summary="Get examination center allocation mapping",
+     *     description="Calls PostgreSQL stored function fn_admin_getexaminationcenter to retrieve examination center mappings for a given exam year and semester.",
+     *     security={{"token": {}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"exam_year", "semester"},
+     *             @OA\Property(property="exam_year", type="string", example="2026", description="Exam Year (p_exam_year)"),
+     *             @OA\Property(property="semester", type="string", example="Part-II", description="Semester / Part (p_semester)")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Examination centers fetched successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="version", type="string", example="1.0"),
+     *             @OA\Property(property="status", type="integer", example=0),
+     *             @OA\Property(property="message", type="string", example="Examination centers fetched successfully"),
+     *             @OA\Property(property="count", type="integer", example=2),
+     *             @OA\Property(
+     *                 property="data",
+     *                 type="array",
+     *                 @OA\Items(
+     *                     type="object",
+     *                     @OA\Property(property="destination_inst_code", type="string", example="JCG"),
+     *                     @OA\Property(property="destination_inst_name", type="string", nullable=true, example="JNAN CHANDRA GHOSH POLYTECHNIC"),
+     *                     @OA\Property(
+     *                         property="source_institutes",
+     *                         type="array",
+     *                         @OA\Items(
+     *                             type="object",
+     *                             @OA\Property(property="source_inst_code", type="string", example="ARCP"),
+     *                             @OA\Property(property="source_inst_name", type="string", nullable=true, example="ABDUR RAHIM COLLEGE OF PHARMACY")
+     *                         )
+     *                     )
+     *                 )
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(response=422, description="Validation failed"),
+     *     @OA\Response(response=500, description="Internal server error")
+     * )
+     */
+    public function getExaminationCenter(Request $request)
+    {
+        $examYear = $request->input('exam_year', $request->input('p_exam_year', $request->input('p_examyear', $request->input('examyear', $request->input('year')))));
+        $semester = $request->input('semester', $request->input('p_semester', $request->input('part_sem', $request->input('part_id', $request->input('part')))));
+
+        $validator = Validator::make([
+            'exam_year' => $examYear,
+            'semester'  => $semester,
+        ], [
+            'exam_year' => 'required|string|max:20',
+            'semester'  => 'required|string|max:50',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'version' => '1.0',
+                'status'  => 1,
+                'message' => 'Validation failed: ' . $validator->errors()->first(),
+                'errors'  => $validator->errors(),
+                'data'    => null,
+            ], 422);
+        }
+
+        $examYear = trim((string) $examYear);
+        $semester = trim((string) $semester);
+
+        Log::channel('daily')->info('[AdminInstitute] fn_admin_getexaminationcenter INPUT', [
+            'exam_year' => $examYear,
+            'semester'  => $semester,
+            'ip'        => $request->ip(),
+        ]);
+
+        try {
+            $result = DB::select(
+                'SELECT public.fn_admin_getexaminationcenter(?::varchar, ?::varchar) AS data',
+                [$examYear, $semester]
+            );
+
+            if (empty($result)) {
+                return response()->json([
+                    'version' => '1.0',
+                    'status'  => 0,
+                    'message' => 'No examination centers found.',
+                    'count'   => 0,
+                    'data'    => [],
+                ], 200);
+            }
+
+            $centers = [];
+
+            foreach ($result as $row) {
+                $raw = $row->data ?? null;
+
+                if ($raw === null) {
+                    continue;
+                }
+
+                $decoded = is_string($raw) ? json_decode($raw, true) : (array) $raw;
+
+                if (is_string($raw) && json_last_error() !== JSON_ERROR_NONE) {
+                    Log::channel('daily')->error('[AdminInstitute] fn_admin_getexaminationcenter JSON decode error', [
+                        'error' => json_last_error_msg(),
+                        'raw'   => $raw,
+                    ]);
+
+                    return response()->json([
+                        'version' => '1.0',
+                        'status'  => 3,
+                        'message' => 'Failed to parse database response.',
+                        'data'    => null,
+                    ], 500);
+                }
+
+                if (is_array($decoded) && array_is_list($decoded)) {
+                    $centers = array_merge($centers, $decoded);
+                } elseif (is_array($decoded)) {
+                    $centers[] = $decoded;
+                }
+            }
+
+            // Group by Destination Institute (Snake Case Only)
+            $grouped = [];
+
+            foreach ($centers as $item) {
+                if (!is_array($item)) {
+                    continue;
+                }
+
+                $destCode = $item['destination_inst_code'] ?? ($item['DestinationInstCode'] ?? ($item['destinationInstCode'] ?? null));
+                $destName = $item['destination_inst_name'] ?? ($item['DestinationInstName'] ?? ($item['destinationInstName'] ?? null));
+                $srcCode  = $item['source_inst_code'] ?? ($item['SoucrceInstCode'] ?? ($item['SourceInstCode'] ?? ($item['sourceInstCode'] ?? null)));
+                $srcName  = $item['source_inst_name'] ?? ($item['SourceInstName'] ?? ($item['sourceInstName'] ?? null));
+
+                $groupKey = ($destCode !== null && trim((string) $destCode) !== '') ? trim((string) $destCode) : '__UNASSIGNED__';
+
+                if (!isset($grouped[$groupKey])) {
+                    $grouped[$groupKey] = [
+                        'destination_inst_code' => ($destCode !== null && trim((string) $destCode) !== '') ? trim((string) $destCode) : null,
+                        'destination_inst_name' => $destName,
+                        'source_institutes'     => [],
+                    ];
+                }
+
+                if (!empty($destName) && empty($grouped[$groupKey]['destination_inst_name'])) {
+                    $grouped[$groupKey]['destination_inst_name'] = $destName;
+                }
+
+                if (!empty($srcCode)) {
+                    $cleanSrcCode = trim((string) $srcCode);
+
+                    // Check if this source institute is already added for this destination center
+                    $exists = false;
+                    foreach ($grouped[$groupKey]['source_institutes'] as $idx => $existingSrc) {
+                        if (strcasecmp($existingSrc['source_inst_code'] ?? '', $cleanSrcCode) === 0) {
+                            $exists = true;
+                            if (empty($existingSrc['source_inst_name']) && !empty($srcName)) {
+                                $grouped[$groupKey]['source_institutes'][$idx]['source_inst_name'] = $srcName;
+                            }
+                            break;
+                        }
+                    }
+
+                    if (!$exists) {
+                        $grouped[$groupKey]['source_institutes'][] = [
+                            'source_inst_code' => $cleanSrcCode,
+                            'source_inst_name' => $srcName,
+                        ];
+                    }
+                }
+            }
+
+            $groupedData = array_values($grouped);
+
+            Log::channel('daily')->info('[AdminInstitute] fn_admin_getexaminationcenter OUTPUT', [
+                'exam_year' => $examYear,
+                'semester'  => $semester,
+                'count'     => count($groupedData),
+            ]);
+
+            return response()->json([
+                'version' => '1.0',
+                'status'  => 0,
+                'message' => 'Examination centers fetched successfully',
+                'count'   => count($groupedData),
+                'data'    => $groupedData,
+            ], 200);
+
+        } catch (\Exception $e) {
+            Log::channel('daily')->error('[AdminInstitute] fn_admin_getexaminationcenter EXCEPTION', [
+                'message' => $e->getMessage(),
+                'line'    => $e->getLine(),
+                'file'    => $e->getFile(),
+            ]);
+
+            return response()->json([
+                'version' => '1.0',
+                'status'  => 3,
+                'message' => 'An error occurred while fetching examination centers: ' . $e->getMessage(),
+                'data'    => null,
+            ], 500);
+        }
+    }
 }
+

@@ -2147,23 +2147,23 @@ class ExaminationController extends Controller
      * @OA\Post(
      *     path="/api/examinations/save-examination-center",
      *     tags={"Examinations"},
-     *     summary="Save examination center allocation (single or multiple destination institutes)",
-     *     description="Calls PostgreSQL stored function fn_save_examinationcenter in a loop to assign or map one or multiple destination examination center(s) to a source institute for an exam year and semester.",
+     *     summary="Save examination center allocation (multiple source institutes to single destination center)",
+     *     description="Calls PostgreSQL stored function fn_save_examinationcenter in a loop to assign or map one or multiple source institutes to a destination examination center for an exam year and semester.",
      *     security={{"token": {}}},
      *     @OA\RequestBody(
      *         required=true,
      *         @OA\JsonContent(
      *             required={"source_inst_code", "destination_inst_code", "exam_year", "semester"},
-     *             @OA\Property(property="source_inst_code", type="string", example="JCG", description="Source Institute Code (p_source_inst_code)"),
      *             @OA\Property(
-     *                 property="destination_inst_code",
+     *                 property="source_inst_code",
      *                 oneOf={
-     *                     @OA\Schema(type="string", example="SRV", description="Single destination code"),
-     *                     @OA\Schema(type="array", @OA\Items(type="string"), example={"SRV", "AMNA"}, description="Array of destination codes"),
-     *                     @OA\Schema(type="array", @OA\Items(type="object", @OA\Property(property="instituteCode", type="string", example="SRV")), description="Array of institute objects")
+     *                     @OA\Schema(type="string", example="JCG", description="Single source code"),
+     *                     @OA\Schema(type="array", @OA\Items(type="string"), example={"JCG", "AAKI"}, description="Array of source institute codes"),
+     *                     @OA\Schema(type="array", @OA\Items(type="object", @OA\Property(property="instituteCode", type="string", example="JCG")), description="Array of source institute objects")
      *                 },
-     *                 description="Destination Center Institute Code(s) (p_destination_inst_code)"
+     *                 description="Source Institute Code(s) (p_source_inst_code)"
      *             ),
+     *             @OA\Property(property="destination_inst_code", type="string", example="SRV", description="Destination Center Institute Code (p_destination_inst_code)"),
      *             @OA\Property(property="exam_year", type="string", example="2026", description="Exam Year (p_examyear)"),
      *             @OA\Property(property="semester", type="string", example="Part-II", description="Semester / Part Name (p_semester)"),
      *             @OA\Property(property="user_id", type="integer", format="int64", example=12, description="User ID (p_userid, defaults to auth user)")
@@ -2186,11 +2186,11 @@ class ExaminationController extends Controller
      */
     public function saveExaminationCenter(Request $request)
     {
-        $sourceInstCode = $request->input('source_inst_code', $request->input('p_source_inst_code', $request->input('source_institute_code', $request->input('source_code', $request->input('src_inst_code')))));
+        $sourceRaw      = $request->input('source_inst_code', $request->input('p_source_inst_code', $request->input('source_institute_code', $request->input('source_institutes', $request->input('source_codes', $request->input('source_code', $request->input('src_inst_code', $request->input('source_inst_codes'))))))));
         $destinationRaw = $request->input('destination_inst_code', $request->input('p_destination_inst_code', $request->input('destination_institute_code', $request->input('destination_institutes', $request->input('dest_inst_code', $request->input('center_code', $request->input('destination_code', $request->input('destination_codes'))))))));
-        $examYear       = $request->input('exam_year', $request->input('p_examyear', $request->input('examyear', $request->input('year'))));
+        $examYear       = $request->input('exam_year', $request->input('p_examyear', $request->input('p_exam_year', $request->input('examyear', $request->input('year')))));
         $semester       = $request->input('semester', $request->input('p_semester', $request->input('part_sem', $request->input('part_id', $request->input('part')))));
-        $userId         = $request->input('user_id', $request->input('p_userid', $request->input('admin_user_id', $request->input('userid', $request->input('adminUserId')))));
+        $userId         = $request->input('user_id', $request->input('p_userid', $request->input('p_user_id', $request->input('admin_user_id', $request->input('userid', $request->input('adminUserId'))))));
 
         if (empty($userId)) {
             try {
@@ -2203,57 +2203,81 @@ class ExaminationController extends Controller
             $userId = 1;
         }
 
-        // Normalize destination institute codes into a flat list of strings
-        $destinationList = [];
-        if (is_array($destinationRaw)) {
-            foreach ($destinationRaw as $item) {
+        // Normalize source institute codes into a flat list of strings
+        $sourceList = [];
+        if (is_array($sourceRaw)) {
+            foreach ($sourceRaw as $item) {
                 if (is_array($item)) {
-                    $code = $item['destination_inst_code'] ?? ($item['instituteCode'] ?? ($item['institute_code'] ?? ($item['code'] ?? ($item['value'] ?? ($item['i_code'] ?? null)))));
+                    $code = $item['source_inst_code'] ?? ($item['instituteCode'] ?? ($item['institute_code'] ?? ($item['code'] ?? ($item['value'] ?? ($item['i_code'] ?? ($item['SoucrceInstCode'] ?? ($item['SourceInstCode'] ?? null)))))));
                     if (!empty($code)) {
-                        $destinationList[] = trim((string) $code);
+                        $sourceList[] = trim((string) $code);
                     }
                 } elseif (is_string($item) || is_numeric($item)) {
                     $code = trim((string) $item);
                     if ($code !== '') {
-                        $destinationList[] = $code;
+                        $sourceList[] = $code;
                     }
                 }
             }
-        } elseif (is_string($destinationRaw) || is_numeric($destinationRaw)) {
-            $str = trim((string) $destinationRaw);
+        } elseif (is_string($sourceRaw) || is_numeric($sourceRaw)) {
+            $str = trim((string) $sourceRaw);
             if ($str !== '') {
                 if (str_contains($str, ',')) {
                     $parts = explode(',', $str);
                     foreach ($parts as $p) {
                         $p = trim($p);
                         if ($p !== '') {
-                            $destinationList[] = $p;
+                            $sourceList[] = $p;
                         }
                     }
                 } else {
-                    $destinationList[] = $str;
+                    $sourceList[] = $str;
                 }
             }
         }
 
-        $destinationList = array_values(array_unique($destinationList));
+        $sourceList = array_values(array_unique($sourceList));
+
+        // Normalize destination institute center code into a single string
+        $destinationInstCode = null;
+        if (is_array($destinationRaw)) {
+            if (isset($destinationRaw['destination_inst_code'])) {
+                $destinationInstCode = trim((string) $destinationRaw['destination_inst_code']);
+            } elseif (isset($destinationRaw['instituteCode'])) {
+                $destinationInstCode = trim((string) $destinationRaw['instituteCode']);
+            } elseif (isset($destinationRaw['institute_code'])) {
+                $destinationInstCode = trim((string) $destinationRaw['institute_code']);
+            } elseif (isset($destinationRaw['code'])) {
+                $destinationInstCode = trim((string) $destinationRaw['code']);
+            } elseif (!empty($destinationRaw)) {
+                $first = reset($destinationRaw);
+                if (is_array($first)) {
+                    $destinationInstCode = trim((string) ($first['destination_inst_code'] ?? ($first['instituteCode'] ?? ($first['institute_code'] ?? ($first['code'] ?? '')))));
+                } else {
+                    $destinationInstCode = trim((string) $first);
+                }
+            }
+        } elseif (is_string($destinationRaw) || is_numeric($destinationRaw)) {
+            $destinationInstCode = trim((string) $destinationRaw);
+        }
 
         $validator = Validator::make([
-            'source_inst_code'      => $sourceInstCode,
-            'destination_inst_code' => $destinationList,
+            'source_inst_code'      => $sourceList,
+            'destination_inst_code' => $destinationInstCode,
             'exam_year'             => $examYear,
             'semester'              => $semester,
             'user_id'               => $userId,
         ], [
-            'source_inst_code'      => 'required|string|max:100',
-            'destination_inst_code' => 'required|array|min:1',
-            'destination_inst_code.*' => 'required|string|max:100',
-            'exam_year'             => 'required|string|max:20',
-            'semester'              => 'required|string|max:50',
-            'user_id'               => 'required|numeric',
+            'source_inst_code'        => 'required|array|min:1',
+            'source_inst_code.*'      => 'required|string|max:100',
+            'destination_inst_code'   => 'required|string|max:100',
+            'exam_year'               => 'required|string|max:20',
+            'semester'                => 'required|string|max:50',
+            'user_id'                 => 'required|numeric',
         ], [
-            'destination_inst_code.required' => 'At least one destination institute code is required.',
-            'destination_inst_code.min'      => 'At least one destination institute code is required.',
+            'source_inst_code.required'      => 'At least one source institute code is required.',
+            'source_inst_code.min'           => 'At least one source institute code is required.',
+            'destination_inst_code.required' => 'Destination institute center code is required.',
         ]);
 
         if ($validator->fails()) {
@@ -2266,18 +2290,18 @@ class ExaminationController extends Controller
             ], 422);
         }
 
-        $sourceInstCode = trim($sourceInstCode);
-        $examYear       = (string) trim($examYear);
-        $semester       = (string) trim($semester);
-        $userId         = (int) $userId;
+        $destinationInstCode = trim((string) $destinationInstCode);
+        $examYear            = (string) trim($examYear);
+        $semester            = (string) trim($semester);
+        $userId              = (int) $userId;
 
         Log::channel('daily')->info('[Examinations] fn_save_examinationcenter INPUT', [
-            'source_inst_code'       => $sourceInstCode,
-            'destination_inst_codes' => $destinationList,
-            'exam_year'              => $examYear,
-            'semester'               => $semester,
-            'user_id'                => $userId,
-            'ip'                     => $request->ip(),
+            'source_inst_codes'     => $sourceList,
+            'destination_inst_code' => $destinationInstCode,
+            'exam_year'             => $examYear,
+            'semester'              => $semester,
+            'user_id'               => $userId,
+            'ip'                    => $request->ip(),
         ]);
 
         try {
@@ -2287,15 +2311,16 @@ class ExaminationController extends Controller
             $successCount = 0;
             $failedCount  = 0;
 
-            foreach ($destinationList as $destinationInstCode) {
+            foreach ($sourceList as $srcCode) {
                 $result = DB::select(
                     'SELECT public.fn_save_examinationcenter(?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::bigint) AS data',
-                    [$sourceInstCode, $destinationInstCode, $examYear, $semester, $userId]
+                    [$srcCode, $destinationInstCode, $examYear, $semester, $userId]
                 );
 
                 if (empty($result)) {
                     $failedCount++;
                     $results[] = [
+                        'source_inst_code'      => $srcCode,
                         'destination_inst_code' => $destinationInstCode,
                         'status'                => 1,
                         'message'               => 'No response from database function.',
@@ -2309,6 +2334,7 @@ class ExaminationController extends Controller
                 if ($raw === null) {
                     $failedCount++;
                     $results[] = [
+                        'source_inst_code'      => $srcCode,
                         'destination_inst_code' => $destinationInstCode,
                         'status'                => 1,
                         'message'               => 'Database function returned empty result.',
@@ -2322,6 +2348,7 @@ class ExaminationController extends Controller
                 if (is_string($raw) && json_last_error() !== JSON_ERROR_NONE) {
                     $failedCount++;
                     $results[] = [
+                        'source_inst_code'      => $srcCode,
                         'destination_inst_code' => $destinationInstCode,
                         'status'                => 3,
                         'message'               => 'Failed to parse database response.',
@@ -2335,6 +2362,7 @@ class ExaminationController extends Controller
                 if ($errorCode !== null && (int) $errorCode !== 0) {
                     $failedCount++;
                     $results[] = [
+                        'source_inst_code'      => $srcCode,
                         'destination_inst_code' => $destinationInstCode,
                         'status'                => (int) $errorCode,
                         'message'               => $decoded['p_errormessage'] ?? ($decoded['message'] ?? 'Failed to save examination center.'),
@@ -2343,6 +2371,7 @@ class ExaminationController extends Controller
                 } else {
                     $successCount++;
                     $results[] = [
+                        'source_inst_code'      => $srcCode,
                         'destination_inst_code' => $destinationInstCode,
                         'status'                => 0,
                         'message'               => 'Saved successfully',
@@ -2352,7 +2381,7 @@ class ExaminationController extends Controller
             }
 
             Log::channel('daily')->info('[Examinations] fn_save_examinationcenter OUTPUT', [
-                'total'   => count($destinationList),
+                'total'   => count($sourceList),
                 'success' => $successCount,
                 'failed'  => $failedCount,
             ]);
@@ -2364,7 +2393,7 @@ class ExaminationController extends Controller
                     'status'  => 1,
                     'message' => 'Failed to save examination center(s).',
                     'data'    => [
-                        'total'   => count($destinationList),
+                        'total'   => count($sourceList),
                         'success' => $successCount,
                         'failed'  => $failedCount,
                         'results' => $results,
@@ -2375,7 +2404,7 @@ class ExaminationController extends Controller
             DB::commit();
 
             // For single-item string request, provide clean single object payload compatibility
-            if (count($destinationList) === 1 && !is_array($destinationRaw)) {
+            if (count($sourceList) === 1 && !is_array($sourceRaw)) {
                 $firstResult = $results[0];
                 return response()->json([
                     'version' => '1.0',
@@ -2392,7 +2421,7 @@ class ExaminationController extends Controller
                     ? 'Examination center(s) saved successfully'
                     : "Partial success: {$successCount} saved, {$failedCount} failed",
                 'data'    => [
-                    'total'   => count($destinationList),
+                    'total'   => count($sourceList),
                     'success' => $successCount,
                     'failed'  => $failedCount,
                     'results' => $results,
@@ -2411,6 +2440,216 @@ class ExaminationController extends Controller
                 'version' => '1.0',
                 'status'  => 3,
                 'message' => 'An error occurred while saving examination center: ' . $e->getMessage(),
+                'data'    => null,
+            ], 500);
+        }
+    }
+
+    /**
+     * @OA\Post(
+     *     path="/api/examinations/get-examination-center",
+     *     tags={"Examinations", "Admin - Master Data"},
+     *     summary="Get examination center allocation mapping",
+     *     description="Calls PostgreSQL stored function fn_admin_getexaminationcenter to retrieve examination center mappings for a given exam year and semester.",
+     *     security={{"token": {}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"exam_year", "semester"},
+     *             @OA\Property(property="exam_year", type="string", example="2026", description="Exam Year (p_exam_year)"),
+     *             @OA\Property(property="semester", type="string", example="Part-II", description="Semester / Part (p_semester)")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Examination centers fetched successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="version", type="string", example="1.0"),
+     *             @OA\Property(property="status", type="integer", example=0),
+     *             @OA\Property(property="message", type="string", example="Examination centers fetched successfully"),
+     *             @OA\Property(property="count", type="integer", example=2),
+     *             @OA\Property(
+     *                 property="data",
+     *                 type="array",
+     *                 @OA\Items(
+     *                     type="object",
+     *                     @OA\Property(property="destination_inst_code", type="string", example="JCG"),
+     *                     @OA\Property(property="destination_inst_name", type="string", nullable=true, example="JNAN CHANDRA GHOSH POLYTECHNIC"),
+     *                     @OA\Property(
+     *                         property="source_institutes",
+     *                         type="array",
+     *                         @OA\Items(
+     *                             type="object",
+     *                             @OA\Property(property="source_inst_code", type="string", example="ARCP"),
+     *                             @OA\Property(property="source_inst_name", type="string", nullable=true, example="ABDUR RAHIM COLLEGE OF PHARMACY")
+     *                         )
+     *                     )
+     *                 )
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(response=422, description="Validation failed"),
+     *     @OA\Response(response=500, description="Internal server error")
+     * )
+     */
+    public function getExaminationCenter(Request $request)
+    {
+        $examYear = $request->input('exam_year', $request->input('p_exam_year', $request->input('p_examyear', $request->input('examyear', $request->input('year')))));
+        $semester = $request->input('semester', $request->input('p_semester', $request->input('part_sem', $request->input('part_id', $request->input('part')))));
+
+        $validator = Validator::make([
+            'exam_year' => $examYear,
+            'semester'  => $semester,
+        ], [
+            'exam_year' => 'required|string|max:20',
+            'semester'  => 'required|string|max:50',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'version' => '1.0',
+                'status'  => 1,
+                'message' => 'Validation failed: ' . $validator->errors()->first(),
+                'errors'  => $validator->errors(),
+                'data'    => null,
+            ], 422);
+        }
+
+        $examYear = trim((string) $examYear);
+        $semester = trim((string) $semester);
+
+        Log::channel('daily')->info('[Examinations] fn_admin_getexaminationcenter INPUT', [
+            'exam_year' => $examYear,
+            'semester'  => $semester,
+            'ip'        => $request->ip(),
+        ]);
+
+        try {
+            $result = DB::select(
+                'SELECT public.fn_admin_getexaminationcenter(?::varchar, ?::varchar) AS data',
+                [$examYear, $semester]
+            );
+
+            if (empty($result)) {
+                return response()->json([
+                    'version' => '1.0',
+                    'status'  => 0,
+                    'message' => 'No examination centers found.',
+                    'count'   => 0,
+                    'data'    => [],
+                ], 200);
+            }
+
+            $centers = [];
+
+            foreach ($result as $row) {
+                $raw = $row->data ?? null;
+
+                if ($raw === null) {
+                    continue;
+                }
+
+                $decoded = is_string($raw) ? json_decode($raw, true) : (array) $raw;
+
+                if (is_string($raw) && json_last_error() !== JSON_ERROR_NONE) {
+                    Log::channel('daily')->error('[Examinations] fn_admin_getexaminationcenter JSON decode error', [
+                        'error' => json_last_error_msg(),
+                        'raw'   => $raw,
+                    ]);
+
+                    return response()->json([
+                        'version' => '1.0',
+                        'status'  => 3,
+                        'message' => 'Failed to parse database response.',
+                        'data'    => null,
+                    ], 500);
+                }
+
+                if (is_array($decoded) && array_is_list($decoded)) {
+                    $centers = array_merge($centers, $decoded);
+                } elseif (is_array($decoded)) {
+                    $centers[] = $decoded;
+                }
+            }
+
+            // Group by Destination Institute (Snake Case Only)
+            $grouped = [];
+
+            foreach ($centers as $item) {
+                if (!is_array($item)) {
+                    continue;
+                }
+
+                $destCode = $item['destination_inst_code'] ?? ($item['DestinationInstCode'] ?? ($item['destinationInstCode'] ?? null));
+                $destName = $item['destination_inst_name'] ?? ($item['DestinationInstName'] ?? ($item['destinationInstName'] ?? null));
+                $srcCode  = $item['source_inst_code'] ?? ($item['SoucrceInstCode'] ?? ($item['SourceInstCode'] ?? ($item['sourceInstCode'] ?? null)));
+                $srcName  = $item['source_inst_name'] ?? ($item['SourceInstName'] ?? ($item['sourceInstName'] ?? null));
+
+                $groupKey = ($destCode !== null && trim((string) $destCode) !== '') ? trim((string) $destCode) : '__UNASSIGNED__';
+
+                if (!isset($grouped[$groupKey])) {
+                    $grouped[$groupKey] = [
+                        'destination_inst_code' => ($destCode !== null && trim((string) $destCode) !== '') ? trim((string) $destCode) : null,
+                        'destination_inst_name' => $destName,
+                        'source_institutes'     => [],
+                    ];
+                }
+
+                if (!empty($destName) && empty($grouped[$groupKey]['destination_inst_name'])) {
+                    $grouped[$groupKey]['destination_inst_name'] = $destName;
+                }
+
+                if (!empty($srcCode)) {
+                    $cleanSrcCode = trim((string) $srcCode);
+
+                    // Check if this source institute is already added for this destination center
+                    $exists = false;
+                    foreach ($grouped[$groupKey]['source_institutes'] as $idx => $existingSrc) {
+                        if (strcasecmp($existingSrc['source_inst_code'] ?? '', $cleanSrcCode) === 0) {
+                            $exists = true;
+                            if (empty($existingSrc['source_inst_name']) && !empty($srcName)) {
+                                $grouped[$groupKey]['source_institutes'][$idx]['source_inst_name'] = $srcName;
+                            }
+                            break;
+                        }
+                    }
+
+                    if (!$exists) {
+                        $grouped[$groupKey]['source_institutes'][] = [
+                            'source_inst_code' => $cleanSrcCode,
+                            'source_inst_name' => $srcName,
+                        ];
+                    }
+                }
+            }
+
+            $groupedData = array_values($grouped);
+
+            Log::channel('daily')->info('[Examinations] fn_admin_getexaminationcenter OUTPUT', [
+                'exam_year' => $examYear,
+                'semester'  => $semester,
+                'count'     => count($groupedData),
+            ]);
+
+            return response()->json([
+                'version' => '1.0',
+                'status'  => 0,
+                'message' => 'Examination centers fetched successfully',
+                'count'   => count($groupedData),
+                'data'    => $groupedData,
+            ], 200);
+
+        } catch (\Exception $e) {
+            Log::channel('daily')->error('[Examinations] fn_admin_getexaminationcenter EXCEPTION', [
+                'message' => $e->getMessage(),
+                'line'    => $e->getLine(),
+                'file'    => $e->getFile(),
+            ]);
+
+            return response()->json([
+                'version' => '1.0',
+                'status'  => 3,
+                'message' => 'An error occurred while fetching examination centers: ' . $e->getMessage(),
                 'data'    => null,
             ], 500);
         }

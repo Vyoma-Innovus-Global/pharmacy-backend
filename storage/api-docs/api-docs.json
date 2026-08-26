@@ -357,6 +357,118 @@
                 ]
             }
         },
+        "/api/admin/get-examination-center": {
+            "post": {
+                "tags": [
+                    "Admin - Master Data",
+                    "Examinations"
+                ],
+                "summary": "Get examination center allocation mapping",
+                "description": "Calls PostgreSQL stored function fn_admin_getexaminationcenter to retrieve examination center mappings for a given exam year and semester.",
+                "operationId": "f9068ccef5c3b151de2124eb78677d0a",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "exam_year",
+                                    "semester"
+                                ],
+                                "properties": {
+                                    "exam_year": {
+                                        "description": "Exam Year (p_exam_year)",
+                                        "type": "string",
+                                        "example": "2026"
+                                    },
+                                    "semester": {
+                                        "description": "Semester / Part (p_semester)",
+                                        "type": "string",
+                                        "example": "Part-II"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Examination centers fetched successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "version": {
+                                            "type": "string",
+                                            "example": "1.0"
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "example": 0
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Examination centers fetched successfully"
+                                        },
+                                        "count": {
+                                            "type": "integer",
+                                            "example": 2
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "destination_inst_code": {
+                                                        "type": "string",
+                                                        "example": "JCG"
+                                                    },
+                                                    "destination_inst_name": {
+                                                        "type": "string",
+                                                        "example": "JNAN CHANDRA GHOSH POLYTECHNIC",
+                                                        "nullable": true
+                                                    },
+                                                    "source_institutes": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "properties": {
+                                                                "source_inst_code": {
+                                                                    "type": "string",
+                                                                    "example": "ARCP"
+                                                                },
+                                                                "source_inst_name": {
+                                                                    "type": "string",
+                                                                    "example": "ABDUR RAHIM COLLEGE OF PHARMACY",
+                                                                    "nullable": true
+                                                                }
+                                                            },
+                                                            "type": "object"
+                                                        }
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation failed"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                },
+                "security": [
+                    {
+                        "token": []
+                    }
+                ]
+            }
+        },
         "/api/admin/institute-wise-summary": {
             "post": {
                 "tags": [
@@ -2851,8 +2963,8 @@
                 "tags": [
                     "Examinations"
                 ],
-                "summary": "Save examination center allocation (single or multiple destination institutes)",
-                "description": "Calls PostgreSQL stored function fn_save_examinationcenter in a loop to assign or map one or multiple destination examination center(s) to a source institute for an exam year and semester.",
+                "summary": "Save examination center allocation (multiple source institutes to single destination center)",
+                "description": "Calls PostgreSQL stored function fn_save_examinationcenter in a loop to assign or map one or multiple source institutes to a destination examination center for an exam year and semester.",
                 "operationId": "2ada16ce7e43de5dc728530e6643e07a",
                 "requestBody": {
                     "required": true,
@@ -2867,43 +2979,43 @@
                                 ],
                                 "properties": {
                                     "source_inst_code": {
-                                        "description": "Source Institute Code (p_source_inst_code)",
-                                        "type": "string",
-                                        "example": "JCG"
-                                    },
-                                    "destination_inst_code": {
-                                        "description": "Destination Center Institute Code(s) (p_destination_inst_code)",
+                                        "description": "Source Institute Code(s) (p_source_inst_code)",
                                         "oneOf": [
                                             {
-                                                "description": "Single destination code",
+                                                "description": "Single source code",
                                                 "type": "string",
-                                                "example": "SRV"
+                                                "example": "JCG"
                                             },
                                             {
-                                                "description": "Array of destination codes",
+                                                "description": "Array of source institute codes",
                                                 "type": "array",
                                                 "items": {
                                                     "type": "string"
                                                 },
                                                 "example": [
-                                                    "SRV",
-                                                    "AMNA"
+                                                    "JCG",
+                                                    "AAKI"
                                                 ]
                                             },
                                             {
-                                                "description": "Array of institute objects",
+                                                "description": "Array of source institute objects",
                                                 "type": "array",
                                                 "items": {
                                                     "properties": {
                                                         "instituteCode": {
                                                             "type": "string",
-                                                            "example": "SRV"
+                                                            "example": "JCG"
                                                         }
                                                     },
                                                     "type": "object"
                                                 }
                                             }
                                         ]
+                                    },
+                                    "destination_inst_code": {
+                                        "description": "Destination Center Institute Code (p_destination_inst_code)",
+                                        "type": "string",
+                                        "example": "SRV"
                                     },
                                     "exam_year": {
                                         "description": "Exam Year (p_examyear)",
@@ -2957,6 +3069,118 @@
                     },
                     "400": {
                         "description": "Bad Request / Stored function error"
+                    },
+                    "422": {
+                        "description": "Validation failed"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                },
+                "security": [
+                    {
+                        "token": []
+                    }
+                ]
+            }
+        },
+        "/api/examinations/get-examination-center": {
+            "post": {
+                "tags": [
+                    "Examinations",
+                    "Admin - Master Data"
+                ],
+                "summary": "Get examination center allocation mapping",
+                "description": "Calls PostgreSQL stored function fn_admin_getexaminationcenter to retrieve examination center mappings for a given exam year and semester.",
+                "operationId": "8befa944b497e9417628733521bbda84",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "exam_year",
+                                    "semester"
+                                ],
+                                "properties": {
+                                    "exam_year": {
+                                        "description": "Exam Year (p_exam_year)",
+                                        "type": "string",
+                                        "example": "2026"
+                                    },
+                                    "semester": {
+                                        "description": "Semester / Part (p_semester)",
+                                        "type": "string",
+                                        "example": "Part-II"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Examination centers fetched successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "version": {
+                                            "type": "string",
+                                            "example": "1.0"
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "example": 0
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Examination centers fetched successfully"
+                                        },
+                                        "count": {
+                                            "type": "integer",
+                                            "example": 2
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "destination_inst_code": {
+                                                        "type": "string",
+                                                        "example": "JCG"
+                                                    },
+                                                    "destination_inst_name": {
+                                                        "type": "string",
+                                                        "example": "JNAN CHANDRA GHOSH POLYTECHNIC",
+                                                        "nullable": true
+                                                    },
+                                                    "source_institutes": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "properties": {
+                                                                "source_inst_code": {
+                                                                    "type": "string",
+                                                                    "example": "ARCP"
+                                                                },
+                                                                "source_inst_name": {
+                                                                    "type": "string",
+                                                                    "example": "ABDUR RAHIM COLLEGE OF PHARMACY",
+                                                                    "nullable": true
+                                                                }
+                                                            },
+                                                            "type": "object"
+                                                        }
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
                     },
                     "422": {
                         "description": "Validation failed"

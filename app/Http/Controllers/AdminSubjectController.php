@@ -188,7 +188,7 @@ class AdminSubjectController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'semester_id' => 'required|integer|min:1',
-            'subject_category_id' => 'required|integer|min:1',
+            'subject_category_id' => 'required|integer',
         ]);
 
         if ($validator->fails()) {
