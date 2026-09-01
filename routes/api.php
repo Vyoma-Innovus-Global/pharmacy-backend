@@ -248,6 +248,27 @@ Route::prefix('examinations')->middleware('authenticate')->group(function () {
     Route::post('/get-routine-list', [ExaminationController::class, 'getRoutineList']);
     Route::post('/get-routinelist', [ExaminationController::class, 'getRoutineList']);
     Route::post('/routinelist', [ExaminationController::class, 'getRoutineList']);
+    Route::post('/get-admit-card-details', [ExaminationController::class, 'getAdmitCardDetails']);
+    Route::post('/admit-card-details', [ExaminationController::class, 'getAdmitCardDetails']);
+    Route::post('/get-admitcard-details', [ExaminationController::class, 'getAdmitCardDetails']);
+    Route::post('/admitcard-details', [ExaminationController::class, 'getAdmitCardDetails']);
+    Route::post('/get-student-routine-info', [ExaminationController::class, 'getStudentRoutineInfo']);
+    Route::post('/student-routine-info', [ExaminationController::class, 'getStudentRoutineInfo']);
+    Route::post('/admin-get-student-routine-info', [ExaminationController::class, 'getStudentRoutineInfo']);
+    Route::post('/student-routine', [ExaminationController::class, 'getStudentRoutineInfo']);
+    Route::post('/get-student-routine', [ExaminationController::class, 'getStudentRoutineInfo']);
+    Route::post('/get-admit-card-with-routine', [ExaminationController::class, 'getAdmitCardWithRoutine']);
+    Route::post('/admit-card-with-routine', [ExaminationController::class, 'getAdmitCardWithRoutine']);
+    Route::post('/get-admitcard-with-routine', [ExaminationController::class, 'getAdmitCardWithRoutine']);
+    Route::post('/admin-get-student-admit-card-routine', [ExaminationController::class, 'getAdmitCardWithRoutine']);
+    Route::get('/get-admit-card-details', [ExaminationController::class, 'getAdmitCardDetails']);
+    Route::get('/admit-card-details', [ExaminationController::class, 'getAdmitCardDetails']);
+    Route::get('/get-admitcard-details', [ExaminationController::class, 'getAdmitCardDetails']);
+    Route::get('/admitcard-details', [ExaminationController::class, 'getAdmitCardDetails']);
+    Route::get('/get-admit-card-with-routine', [ExaminationController::class, 'getAdmitCardWithRoutine']);
+    Route::post('/get-appearing-candidates-by-inst', [ExaminationController::class, 'getAppearingCandidatesByInst']);
+    Route::post('/update-exam-attendance-status-by-inst', [ExaminationController::class, 'updateExamAttendanceStatusByInst']);
+    Route::post('/get-topsheet-list-by-inst', [ExaminationController::class, 'getTopSheetListByInst']);
 });
 
 Route::prefix('answersheet')->middleware('authenticate')->group(function () {
@@ -418,8 +439,7 @@ Route::prefix('marks')->middleware('authenticate')->group(function () {
 });
 
 Route::prefix('admin')->middleware('authenticate')->group(function () {
-    Route::post('/designations', [AdminDesignationController::class, 'getAllDesignations']);
-    Route::post('/institutes', [AdminInstituteController::class, 'getAllInstitutes']);
+     Route::post('/institutes', [AdminInstituteController::class, 'getAllInstitutes']);
     Route::get('/institute-list', [AdminInstituteController::class, 'getInstituteList']);
     Route::post('/institute-list', [AdminInstituteController::class, 'getInstituteList']);
     Route::get('/ra-institute-list', [AdminInstituteController::class, 'getRaInstituteList']);
@@ -448,6 +468,19 @@ Route::prefix('admin')->middleware('authenticate')->group(function () {
     Route::post('/get-routine-list', [ExaminationController::class, 'getRoutineList']);
     Route::post('/get-routinelist', [ExaminationController::class, 'getRoutineList']);
     Route::post('/routinelist', [ExaminationController::class, 'getRoutineList']);
+    Route::post('/get-admit-card-details', [ExaminationController::class, 'getAdmitCardDetails']);
+    Route::post('/admit-card-details', [ExaminationController::class, 'getAdmitCardDetails']);
+    Route::post('/get-admitcard-details', [ExaminationController::class, 'getAdmitCardDetails']);
+    Route::post('/admitcard-details', [ExaminationController::class, 'getAdmitCardDetails']);
+    Route::post('/get-student-routine-info', [ExaminationController::class, 'getStudentRoutineInfo']);
+    Route::post('/student-routine-info', [ExaminationController::class, 'getStudentRoutineInfo']);
+    Route::post('/admin-get-student-routine-info', [ExaminationController::class, 'getStudentRoutineInfo']);
+    Route::post('/student-routine', [ExaminationController::class, 'getStudentRoutineInfo']);
+    Route::post('/get-student-routine', [ExaminationController::class, 'getStudentRoutineInfo']);
+    Route::post('/get-admit-card-with-routine', [ExaminationController::class, 'getAdmitCardWithRoutine']);
+    Route::post('/admit-card-with-routine', [ExaminationController::class, 'getAdmitCardWithRoutine']);
+    Route::post('/get-admitcard-with-routine', [ExaminationController::class, 'getAdmitCardWithRoutine']);
+    Route::post('/admin-get-student-admit-card-routine', [ExaminationController::class, 'getAdmitCardWithRoutine']);
     Route::post('/semesters', [AdminSemesterController::class, 'getAllSemesters']);
     Route::post('/subject-categories', [AdminSubjectCategoryController::class, 'getAllSubjectCategories']);
     Route::post('/departments', [AdminDepartmentController::class, 'getDepartmentsByInst']);

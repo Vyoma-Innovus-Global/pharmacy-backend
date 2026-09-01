@@ -332,6 +332,8 @@ class AdminInstituteController extends Controller
      *         @OA\JsonContent(
      *             required={"inst_code"},
      *             @OA\Property(property="inst_code", type="string", example="JCG", description="Institute / Center Code (p_inst_code)"),
+     *             @OA\Property(property="exam_year", type="string", example="2026", description="Exam Year (p_examyear)"),
+     *             @OA\Property(property="semester", type="string", example="Part-II", description="Semester / Part (p_semester)"),
      *             @OA\Property(property="admin_user_id", type="integer", format="int64", example=5447, description="Admin User ID (p_admin_user_id, defaults to auth user)")
      *         )
      *     ),
@@ -362,8 +364,10 @@ class AdminInstituteController extends Controller
      */
     public function getAllExaminationInstitutes(Request $request)
     {
-        $instCode = $request->input('inst_code', $request->input('p_inst_code', $request->input('institute_code', $request->input('instituteCode', $request->input('i_code', $request->input('center_code'))))));
-        $adminUserId = $request->input('admin_user_id', $request->input('p_admin_user_id', $request->input('adminUserId', $request->input('user_id'))));
+        $instCode    = $request->input('inst_code', $request->input('p_inst_code', $request->input('institute_code', $request->input('instituteCode', $request->input('i_code', $request->input('center_code'))))));
+        $examYear    = $request->input('exam_year', $request->input('p_examyear', $request->input('p_exam_year', $request->input('examYear', $request->input('year')))));
+        $semester    = $request->input('semester', $request->input('p_semester', $request->input('semester_id', $request->input('semesterId', $request->input('part_sem', $request->input('part_id', $request->input('part')))))));
+        $adminUserId = $request->input('admin_user_id', $request->input('p_admin_user_id', $request->input('adminUserId', $request->input('user_id', $request->input('p_userid')))));
 
         if (empty($adminUserId)) {
             try {
@@ -378,9 +382,13 @@ class AdminInstituteController extends Controller
 
         $validator = Validator::make([
             'inst_code'     => $instCode,
+            'exam_year'     => $examYear,
+            'semester'      => $semester,
             'admin_user_id' => $adminUserId,
         ], [
             'inst_code'     => 'required|string|max:100',
+            'exam_year'     => 'nullable|string|max:20',
+            'semester'      => 'nullable|string|max:50',
             'admin_user_id' => 'required|numeric',
         ]);
 
@@ -394,19 +402,23 @@ class AdminInstituteController extends Controller
             ], 422);
         }
 
-        $instCode    = trim($instCode);
+        $instCode    = (string) trim($instCode);
+        $examYear    = !empty($examYear) ? (string) trim($examYear) : '';
+        $semester    = !empty($semester) ? (string) trim($semester) : '';
         $adminUserId = (int) $adminUserId;
 
         Log::channel('daily')->info('[getAllExaminationInstitutes] INPUT', [
             'inst_code'     => $instCode,
+            'exam_year'     => $examYear,
+            'semester'      => $semester,
             'admin_user_id' => $adminUserId,
             'ip'            => $request->ip(),
         ]);
 
         try {
             $result = DB::select(
-                'SELECT public.fn_admin_getallexaminationinstitutes(?::varchar, ?::bigint) AS data',
-                [$instCode, $adminUserId]
+                'SELECT public.fn_admin_getallexaminationinstitutes(?::varchar, ?::varchar, ?::varchar, ?::bigint) AS data',
+                [$instCode, $examYear, $semester, $adminUserId]
             );
 
             if (empty($result)) {

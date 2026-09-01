@@ -278,6 +278,16 @@
                                         "type": "string",
                                         "example": "JCG"
                                     },
+                                    "exam_year": {
+                                        "description": "Exam Year (p_examyear)",
+                                        "type": "string",
+                                        "example": "2026"
+                                    },
+                                    "semester": {
+                                        "description": "Semester / Part (p_semester)",
+                                        "type": "string",
+                                        "example": "Part-II"
+                                    },
                                     "admin_user_id": {
                                         "description": "Admin User ID (p_admin_user_id, defaults to auth user)",
                                         "type": "integer",
@@ -2879,6 +2889,16 @@
                                         "type": "string",
                                         "example": "JCG"
                                     },
+                                    "exam_year": {
+                                        "description": "Exam Year (p_examyear)",
+                                        "type": "string",
+                                        "example": "2026"
+                                    },
+                                    "semester": {
+                                        "description": "Semester / Part (p_semester)",
+                                        "type": "string",
+                                        "example": "Part-II"
+                                    },
                                     "admin_user_id": {
                                         "description": "Admin User ID (p_admin_user_id, defaults to auth user)",
                                         "type": "integer",
@@ -3236,10 +3256,22 @@
                                                 "example": "Part_II"
                                             },
                                             "exam_date": {
-                                                "description": "Exam Date & Time (p_examdate)",
+                                                "description": "Exam Date (p_examdate)",
+                                                "type": "string",
+                                                "format": "date-time",
+                                                "example": "2026-09-20 00:00:00"
+                                            },
+                                            "start_time": {
+                                                "description": "Exam Start Time (p_starttime)",
                                                 "type": "string",
                                                 "format": "date-time",
                                                 "example": "2026-09-20 10:00:00"
+                                            },
+                                            "end_time": {
+                                                "description": "Exam End Time (p_endtime)",
+                                                "type": "string",
+                                                "format": "date-time",
+                                                "example": "2026-09-20 13:00:00"
                                             },
                                             "subject_code": {
                                                 "description": "Subject Code (p_subjectcode)",
@@ -3283,7 +3315,15 @@
                                                         },
                                                         "exam_date": {
                                                             "type": "string",
+                                                            "example": "2026-09-20 00:00:00"
+                                                        },
+                                                        "start_time": {
+                                                            "type": "string",
                                                             "example": "2026-09-20 10:00:00"
+                                                        },
+                                                        "end_time": {
+                                                            "type": "string",
+                                                            "example": "2026-09-20 13:00:00"
                                                         },
                                                         "subject_code": {
                                                             "type": "string",
@@ -3433,6 +3473,827 @@
                                                 },
                                                 "type": "object"
                                             }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation failed"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                },
+                "security": [
+                    {
+                        "token": []
+                    }
+                ]
+            }
+        },
+        "/api/examinations/get-admit-card-details": {
+            "post": {
+                "tags": [
+                    "Examinations",
+                    "Admit Card"
+                ],
+                "summary": "Get admit card details by semester, exam year, institute, registration number, and user ID",
+                "description": "Calls PostgreSQL stored function public.fn_getadmitcard_details to retrieve admit card details.",
+                "operationId": "fc8f95ade3e87ac83ac61c255ce2cf8a",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "semester_id",
+                                    "exam_year"
+                                ],
+                                "properties": {
+                                    "semester_id": {
+                                        "description": "Semester ID / Part Name (p_semester_id)",
+                                        "type": "string",
+                                        "example": "Part-II"
+                                    },
+                                    "exam_year": {
+                                        "description": "Exam Year (p_exam_year)",
+                                        "type": "string",
+                                        "example": "2026"
+                                    },
+                                    "inst_code": {
+                                        "description": "Institute Code (p_inst_code)",
+                                        "type": "string",
+                                        "example": "JCG"
+                                    },
+                                    "registration_number": {
+                                        "description": "Registration Number (p_registration_number)",
+                                        "type": "string",
+                                        "example": "PHARM242504516"
+                                    },
+                                    "user_id": {
+                                        "description": "User ID (p_userid, defaults to auth user)",
+                                        "type": "integer",
+                                        "format": "int64",
+                                        "example": 12
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Admit card details fetched successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "version": {
+                                            "type": "string",
+                                            "example": "1.0"
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "example": 0
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Admit card details fetched successfully"
+                                        },
+                                        "count": {
+                                            "type": "integer",
+                                            "example": 1
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "dept": {
+                                                        "type": "string",
+                                                        "example": "PHARMACY(PHARM)"
+                                                    },
+                                                    "photo": {
+                                                        "type": "string",
+                                                        "example": "uploads/20260821123314_tYMLkpUs_whatsapp_image_2026_08_20_at_151059_1.jpeg"
+                                                    },
+                                                    "semester": {
+                                                        "type": "string",
+                                                        "example": "Part-II"
+                                                    },
+                                                    "studentId": {
+                                                        "type": "integer",
+                                                        "example": 1851
+                                                    },
+                                                    "centerName": {
+                                                        "type": "string",
+                                                        "example": "JNAN CHANDRA GHOSH POLYTECHNIC"
+                                                    },
+                                                    "fatherName": {
+                                                        "type": "string",
+                                                        "example": "ARUN PAUL"
+                                                    },
+                                                    "studentName": {
+                                                        "type": "string",
+                                                        "example": "ARNAB PAUL"
+                                                    },
+                                                    "centerAddress": {
+                                                        "type": "string",
+                                                        "example": null,
+                                                        "nullable": true
+                                                    },
+                                                    "instituteName": {
+                                                        "type": "string",
+                                                        "example": null,
+                                                        "nullable": true
+                                                    },
+                                                    "registrationNumber": {
+                                                        "type": "string",
+                                                        "example": "PHARM242504516"
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation failed"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                },
+                "security": [
+                    {
+                        "token": []
+                    }
+                ]
+            }
+        },
+        "/api/examinations/get-student-routine-info": {
+            "post": {
+                "tags": [
+                    "Examinations",
+                    "Routine"
+                ],
+                "summary": "Get student routine info by student ID, exam year, and semester",
+                "description": "Calls PostgreSQL stored function public.fn_admin_getstudentroutineinfo to retrieve student examination routine details.",
+                "operationId": "274967a25a2d2fa610a57ddad5e00b28",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "student_id",
+                                    "exam_year",
+                                    "semester"
+                                ],
+                                "properties": {
+                                    "admin_user_id": {
+                                        "description": "Admin User ID (p_admin_user_id, defaults to auth user)",
+                                        "type": "integer",
+                                        "format": "int64",
+                                        "example": 12
+                                    },
+                                    "student_id": {
+                                        "description": "Student ID (p_student_id)",
+                                        "type": "integer",
+                                        "format": "int64",
+                                        "example": 1409
+                                    },
+                                    "exam_year": {
+                                        "description": "Exam Year (p_exam_year)",
+                                        "type": "string",
+                                        "example": "2026"
+                                    },
+                                    "semester": {
+                                        "description": "Semester / Part Name (p_semester)",
+                                        "type": "string",
+                                        "example": "Part_II"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Student routine info fetched successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "version": {
+                                            "type": "string",
+                                            "example": "1.0"
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "example": 0
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Student routine info fetched successfully"
+                                        },
+                                        "count": {
+                                            "type": "integer",
+                                            "example": 2
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "examDate": {
+                                                        "type": "string",
+                                                        "example": "2026-08-26T11:00:00"
+                                                    },
+                                                    "subjectCode": {
+                                                        "type": "string",
+                                                        "example": "PHCO"
+                                                    },
+                                                    "subjectName": {
+                                                        "type": "string",
+                                                        "example": "PHARMACOLOGY"
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation failed"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                },
+                "security": [
+                    {
+                        "token": []
+                    }
+                ]
+            }
+        },
+        "/api/examinations/get-admit-card-with-routine": {
+            "post": {
+                "tags": [
+                    "Examinations",
+                    "Admit Card",
+                    "Routine"
+                ],
+                "summary": "Get admit card details and student routine info sequentially in a single API",
+                "description": "Sequentially calls public.fn_getadmitcard_details followed by public.fn_admin_getstudentroutineinfo. If any step fails, the response clearly indicates which API/function failed.",
+                "operationId": "1dfe6905095460cf155862034c957c17",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "semester",
+                                    "exam_year"
+                                ],
+                                "properties": {
+                                    "semester": {
+                                        "description": "Semester / Part Name (e.g. Part-II or Part_II)",
+                                        "type": "string",
+                                        "example": "Part-II"
+                                    },
+                                    "exam_year": {
+                                        "description": "Exam Year (p_exam_year)",
+                                        "type": "string",
+                                        "example": "2026"
+                                    },
+                                    "inst_code": {
+                                        "description": "Institute Code (p_inst_code)",
+                                        "type": "string",
+                                        "example": "JCG"
+                                    },
+                                    "registration_number": {
+                                        "description": "Registration Number (p_registration_number)",
+                                        "type": "string",
+                                        "example": "PHARM242504516"
+                                    },
+                                    "student_id": {
+                                        "description": "Student ID (p_student_id, optional if resolved from admit card)",
+                                        "type": "integer",
+                                        "format": "int64",
+                                        "example": 1409
+                                    },
+                                    "user_id": {
+                                        "description": "User / Admin ID (p_userid / p_admin_user_id, defaults to auth user)",
+                                        "type": "integer",
+                                        "format": "int64",
+                                        "example": 12
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Both admit card details and student routine info fetched successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "version": {
+                                            "type": "string",
+                                            "example": "1.0"
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "example": 0
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Admit card details and student routine info fetched successfully"
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "dept": {
+                                                        "type": "string",
+                                                        "example": "PHARMACY(PHARM)"
+                                                    },
+                                                    "photo": {
+                                                        "type": "string",
+                                                        "example": "uploads/20260821123314_tYMLkpUs_whatsapp_image_2026_08_20_at_151059_1.jpeg"
+                                                    },
+                                                    "semester": {
+                                                        "type": "string",
+                                                        "example": "Part-II"
+                                                    },
+                                                    "studentId": {
+                                                        "type": "integer",
+                                                        "example": 1851
+                                                    },
+                                                    "centerName": {
+                                                        "type": "string",
+                                                        "example": "JNAN CHANDRA GHOSH POLYTECHNIC"
+                                                    },
+                                                    "fatherName": {
+                                                        "type": "string",
+                                                        "example": "ARUN PAUL"
+                                                    },
+                                                    "studentName": {
+                                                        "type": "string",
+                                                        "example": "ARNAB PAUL"
+                                                    },
+                                                    "centerAddress": {
+                                                        "type": "string",
+                                                        "example": null,
+                                                        "nullable": true
+                                                    },
+                                                    "instituteName": {
+                                                        "type": "string",
+                                                        "example": null,
+                                                        "nullable": true
+                                                    },
+                                                    "registrationNumber": {
+                                                        "type": "string",
+                                                        "example": "PHARM242504516"
+                                                    },
+                                                    "routine": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "properties": {
+                                                                "examDate": {
+                                                                    "type": "string",
+                                                                    "example": "2026-08-26T11:00:00"
+                                                                },
+                                                                "subjectCode": {
+                                                                    "type": "string",
+                                                                    "example": "PHCO"
+                                                                },
+                                                                "subjectName": {
+                                                                    "type": "string",
+                                                                    "example": "PHARMACOLOGY"
+                                                                }
+                                                            },
+                                                            "type": "object"
+                                                        }
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "One of the sequential database function calls failed",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "version": {
+                                            "type": "string",
+                                            "example": "1.0"
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "example": 3
+                                        },
+                                        "failed_api": {
+                                            "type": "string",
+                                            "example": "fn_getadmitcard_details"
+                                        },
+                                        "failed_step": {
+                                            "type": "integer",
+                                            "example": 1
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "API step 1 (fn_getadmitcard_details) failed: query error"
+                                        },
+                                        "errors": {
+                                            "properties": {
+                                                "step": {
+                                                    "type": "string",
+                                                    "example": "fn_getadmitcard_details"
+                                                },
+                                                "step_number": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "error_message": {
+                                                    "type": "string",
+                                                    "example": "Database error details"
+                                                }
+                                            },
+                                            "type": "object"
+                                        },
+                                        "data": {
+                                            "type": "object",
+                                            "nullable": true
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation failed"
+                    }
+                },
+                "security": [
+                    {
+                        "token": []
+                    }
+                ]
+            }
+        },
+        "/api/examinations/get-appearing-candidates-by-inst": {
+            "post": {
+                "tags": [
+                    "Examinations",
+                    "Students"
+                ],
+                "summary": "Get appearing candidates details by institute",
+                "description": "Calls PostgreSQL stored function fn_admin_getappearingcandidateddetailsbyinst to retrieve appearing candidate details for a given institute, exam year, semester, and subject.",
+                "operationId": "f628b1e272b5242014a64c045c9f3c03",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "exam_year",
+                                    "semester",
+                                    "inst_code",
+                                    "subject_code"
+                                ],
+                                "properties": {
+                                    "exam_year": {
+                                        "description": "Exam Year (p_exam_year)",
+                                        "type": "string",
+                                        "example": "2026"
+                                    },
+                                    "semester": {
+                                        "description": "Semester / Part (p_semester)",
+                                        "type": "string",
+                                        "example": "Part-II"
+                                    },
+                                    "inst_code": {
+                                        "description": "Institute Code (p_instcode)",
+                                        "type": "string",
+                                        "example": "ADCP"
+                                    },
+                                    "subject_code": {
+                                        "description": "Subject Code (p_subjectcode)",
+                                        "type": "string",
+                                        "example": "PHCO"
+                                    },
+                                    "user_id": {
+                                        "description": "Admin/User ID (p_userid, optional)",
+                                        "type": "integer",
+                                        "example": 12
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Appearing candidates details fetched successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "version": {
+                                            "type": "string",
+                                            "example": "1.0"
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "example": 0
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Appearing candidate details fetched successfully"
+                                        },
+                                        "count": {
+                                            "type": "integer",
+                                            "example": 3
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "studentRegno": {
+                                                        "type": "string",
+                                                        "example": "PHARM242500153"
+                                                    },
+                                                    "appliedSubject": {
+                                                        "type": "string",
+                                                        "example": "PHARMACOLOGY"
+                                                    },
+                                                    "studentFullName": {
+                                                        "type": "string",
+                                                        "example": "MD ROKY"
+                                                    },
+                                                    "attendenceStatus": {
+                                                        "type": "string",
+                                                        "example": null,
+                                                        "nullable": true
+                                                    },
+                                                    "studentRollnumber": {
+                                                        "type": "string",
+                                                        "example": null,
+                                                        "nullable": true
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation failed"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                },
+                "security": [
+                    {
+                        "token": []
+                    }
+                ]
+            }
+        },
+        "/api/examinations/update-exam-attendance-status-by-inst": {
+            "post": {
+                "tags": [
+                    "Examinations",
+                    "Attendance"
+                ],
+                "summary": "Update exam attendance status by institute",
+                "description": "Calls PostgreSQL stored function fn_updateexamattendencestatusbyinst to update attendance status for candidate(s). Supports single student update or batch student updates.",
+                "operationId": "5939546e043fe7ac65149e0eba0056bb",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "exam_year",
+                                    "semester"
+                                ],
+                                "properties": {
+                                    "exam_year": {
+                                        "description": "Exam Year (p_examyear)",
+                                        "type": "string",
+                                        "example": "2026"
+                                    },
+                                    "semester": {
+                                        "description": "Semester / Part (p_semester)",
+                                        "type": "string",
+                                        "example": "Part-II"
+                                    },
+                                    "student_id": {
+                                        "description": "Student ID (p_studentid, for single update)",
+                                        "type": "integer",
+                                        "example": 2865
+                                    },
+                                    "status": {
+                                        "description": "Attendance Status e.g. PR, AB, RA (p_status)",
+                                        "type": "string",
+                                        "example": "PR"
+                                    },
+                                    "user_id": {
+                                        "description": "Admin/User ID (p_userid, optional)",
+                                        "type": "integer",
+                                        "example": 12
+                                    },
+                                    "students": {
+                                        "description": "Optional batch update list",
+                                        "type": "array",
+                                        "items": {
+                                            "properties": {
+                                                "student_id": {
+                                                    "type": "integer",
+                                                    "example": 2865
+                                                },
+                                                "status": {
+                                                    "type": "string",
+                                                    "example": "PR"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Exam attendance status updated successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "version": {
+                                            "type": "string",
+                                            "example": "1.0"
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "example": 0
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Exam attendance status updated successfully"
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "p_errorcode": {
+                                                    "type": "integer",
+                                                    "example": 0
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation failed"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                },
+                "security": [
+                    {
+                        "token": []
+                    }
+                ]
+            }
+        },
+        "/api/examinations/get-topsheet-list-by-inst": {
+            "post": {
+                "tags": [
+                    "Examinations",
+                    "Top Sheet"
+                ],
+                "summary": "Get top sheet list by institute",
+                "description": "Calls PostgreSQL stored function fn_admin_gettopsheetlistbyinst to retrieve top sheet candidate roll numbers categorized by Present, Absent, and RA for a given institute, exam year, and semester.",
+                "operationId": "6ed4dfceda0385959c0b29d4c5d431de",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "exam_year",
+                                    "semester",
+                                    "inst_code"
+                                ],
+                                "properties": {
+                                    "exam_year": {
+                                        "description": "Exam Year (p_exam_year)",
+                                        "type": "string",
+                                        "example": "2026"
+                                    },
+                                    "semester": {
+                                        "description": "Semester / Part (p_semester)",
+                                        "type": "string",
+                                        "example": "Part-II"
+                                    },
+                                    "inst_code": {
+                                        "description": "Institute Code (p_instcode)",
+                                        "type": "string",
+                                        "example": "ADCP"
+                                    },
+                                    "user_id": {
+                                        "description": "Admin/User ID (p_userid, optional)",
+                                        "type": "integer",
+                                        "example": 12
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Top sheet list fetched successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "version": {
+                                            "type": "string",
+                                            "example": "1.0"
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "example": 0
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Top sheet list fetched successfully"
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "RARollNumber": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "AbsentStudentRollnumber": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "PresentStudentRollnumber": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string",
+                                                        "nullable": true
+                                                    }
+                                                }
+                                            },
+                                            "type": "object"
                                         }
                                     },
                                     "type": "object"
@@ -4139,6 +5000,26 @@
         {
             "name": "Schedule",
             "description": "Schedule"
+        },
+        {
+            "name": "Admit Card",
+            "description": "Admit Card"
+        },
+        {
+            "name": "Routine",
+            "description": "Routine"
+        },
+        {
+            "name": "Students",
+            "description": "Students"
+        },
+        {
+            "name": "Attendance",
+            "description": "Attendance"
+        },
+        {
+            "name": "Top Sheet",
+            "description": "Top Sheet"
         }
     ]
 }
