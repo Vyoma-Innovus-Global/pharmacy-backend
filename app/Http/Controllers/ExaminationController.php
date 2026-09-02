@@ -2844,23 +2844,26 @@ class ExaminationController extends Controller
         try {
             DB::beginTransaction();
 
-            $formatTimestamp = function ($val, $datePrefix = null) {
+            $formatTimestamp = function ($val) {
                 if (empty($val)) {
                     return null;
                 }
                 $valStr = trim((string) $val);
-                // If it contains only time (e.g. HH:MM or HH:MM:SS or HH:MM AM/PM) and datePrefix is available
-                if ($datePrefix && !preg_match('/\d{4}[-\/]\d{1,2}[-\/]\d{1,2}/', $valStr)) {
-                    $dateOnly = date('Y-m-d', strtotime($datePrefix));
-                    $combined = $dateOnly . ' ' . $valStr;
-                    $ts = strtotime($combined);
-                    if ($ts !== false) {
-                        return date('Y-m-d H:i:s', $ts);
-                    }
-                }
                 $ts = strtotime($valStr);
                 if ($ts !== false) {
                     return date('Y-m-d H:i:s', $ts);
+                }
+                return $valStr;
+            };
+
+            $formatTime = function ($val) {
+                if (empty($val)) {
+                    return null;
+                }
+                $valStr = trim((string) $val);
+                $ts = strtotime($valStr);
+                if ($ts !== false) {
+                    return date('H:i:s', $ts);
                 }
                 return $valStr;
             };
@@ -2871,11 +2874,11 @@ class ExaminationController extends Controller
 
             foreach ($normalizedItems as $item) {
                 $formattedDate      = $formatTimestamp($item['exam_date']);
-                $formattedStartTime = $formatTimestamp($item['start_time'], $formattedDate);
-                $formattedEndTime   = $formatTimestamp($item['end_time'], $formattedDate);
+                $formattedStartTime = $formatTime($item['start_time']);
+                $formattedEndTime   = $formatTime($item['end_time']);
 
                 $result = DB::select(
-                    'SELECT public.fn_admin_saveroutine(?::bigint, ?::varchar, ?::varchar, ?::timestamp, ?::timestamp, ?::timestamp, ?::varchar, ?::bigint) AS data',
+                    'SELECT public.fn_admin_saveroutine(?::bigint, ?::varchar, ?::varchar, ?::timestamp, ?::time, ?::time, ?::varchar, ?::bigint) AS data',
                     [
                         $item['routine_id'],
                         $item['exam_year'],
@@ -2929,10 +2932,14 @@ class ExaminationController extends Controller
 
                 if ($errorCode !== null && (int) $errorCode !== 0) {
                     $failedCount++;
+                    $errorMessage = $decoded['p_errormessage'] ?? ($decoded['message'] ?? 'Failed to save routine.');
+                    if ((int) $errorCode === 2 && empty($decoded['p_errormessage'])) {
+                        $errorMessage = 'Subject wise routine already exists.';
+                    }
                     $results[] = [
                         'subject_code' => $item['subject_code'],
                         'status'       => (int) $errorCode,
-                        'message'      => $decoded['p_errormessage'] ?? ($decoded['message'] ?? 'Failed to save routine.'),
+                        'message'      => $errorMessage,
                         'data'         => $decoded,
                     ];
                 } else {
@@ -2954,17 +2961,25 @@ class ExaminationController extends Controller
 
             if ($failedCount > 0 && $successCount === 0) {
                 DB::rollBack();
+                $firstResult = $results[0] ?? null;
+                $resStatus   = ($firstResult && isset($firstResult['status'])) ? (int) $firstResult['status'] : 1;
+                $resMessage  = ($firstResult && !empty($firstResult['message']))
+                    ? $firstResult['message']
+                    : ($resStatus === 2 ? 'Subject wise routine already exists.' : 'Failed to save examination routine.');
+
                 return response()->json([
                     'version' => '1.0',
-                    'status'  => 1,
-                    'message' => 'Failed to save examination routine.',
-                    'data'    => [
-                        'total'   => count($normalizedItems),
-                        'success' => $successCount,
-                        'failed'  => $failedCount,
-                        'results' => $results,
-                    ],
-                ], 400);
+                    'status'  => $resStatus,
+                    'message' => $resMessage,
+                    'data'    => (count($normalizedItems) === 1 && !$isRawList && empty($routinesArray))
+                        ? ($firstResult['data'] ?? ['p_errorcode' => $resStatus])
+                        : [
+                            'total'   => count($normalizedItems),
+                            'success' => $successCount,
+                            'failed'  => $failedCount,
+                            'results' => $results,
+                        ],
+                ], 200);
             }
 
             DB::commit();
@@ -2975,8 +2990,8 @@ class ExaminationController extends Controller
                 return response()->json([
                     'version' => '1.0',
                     'status'  => $firstResult['status'],
-                    'message' => 'Examination routine saved successfully',
-                    'data'    => $firstResult['data'] ?? ['p_errorcode' => 0],
+                    'message' => $firstResult['message'] ?? ($firstResult['status'] === 0 ? 'Examination routine saved successfully' : 'Subject wise routine already exists.'),
+                    'data'    => $firstResult['data'] ?? ['p_errorcode' => $firstResult['status']],
                 ], 200);
             }
 

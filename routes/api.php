@@ -440,6 +440,8 @@ Route::prefix('marks')->middleware('authenticate')->group(function () {
 
 Route::prefix('admin')->middleware('authenticate')->group(function () {
      Route::post('/institutes', [AdminInstituteController::class, 'getAllInstitutes']);
+    Route::post('/save-institute', [AdminInstituteController::class, 'saveInstitute']);
+    Route::post('/save-instritute', [AdminInstituteController::class, 'saveInstitute']);
     Route::get('/institute-list', [AdminInstituteController::class, 'getInstituteList']);
     Route::post('/institute-list', [AdminInstituteController::class, 'getInstituteList']);
     Route::get('/ra-institute-list', [AdminInstituteController::class, 'getRaInstituteList']);

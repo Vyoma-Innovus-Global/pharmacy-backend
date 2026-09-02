@@ -701,5 +701,161 @@ class AdminInstituteController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * @OA\Post(
+     *     path="/api/admin/save-institute",
+     *     tags={"Admin - Master Data"},
+     *     summary="Save Institute Details",
+     *     description="Saves or updates institute information. Calls PostgreSQL function: fn_save_instritute",
+     *     security={{"token": {}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"code", "name", "type", "districtname", "contactperson_name", "contactperson_email", "instemail", "address"},
+     *             @OA\Property(property="code", type="string", example="INST001", description="Institute Code (p_code)"),
+     *             @OA\Property(property="name", type="string", example="ABC Pharmacy College", description="Institute Name (p_name)"),
+     *             @OA\Property(property="type", type="string", example="Govt", description="Institute Type (p_type)"),
+     *             @OA\Property(property="districtname", type="string", example="Kolkata", description="District Name (p_districtname)"),
+     *             @OA\Property(property="contactperson_name", type="string", example="John Doe", description="Contact Person Name (p_contactperson_name)"),
+     *             @OA\Property(property="contactperson_email", type="string", example="contact@abc.edu", description="Contact Person Email (p_contactperson_email)"),
+     *             @OA\Property(property="instemail", type="string", example="info@abc.edu", description="Institute Email (p_instemail)"),
+     *             @OA\Property(property="address", type="string", example="123 College Road", description="Address (p_address)")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Institute saved successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="version", type="string", example="1.0"),
+     *             @OA\Property(property="status", type="integer", example=0),
+     *             @OA\Property(property="message", type="string", example="Institute saved successfully."),
+     *             @OA\Property(property="data", type="object")
+     *         )
+     *     ),
+     *     @OA\Response(response=422, description="Validation failed"),
+     *     @OA\Response(response=500, description="Internal server error")
+     * )
+     */
+    public function saveInstitute(Request $request)
+    {
+        $code               = $request->input('code', $request->input('p_code', $request->input('inst_code', $request->input('i_code'))));
+        $name               = $request->input('name', $request->input('p_name', $request->input('inst_name', $request->input('i_name'))));
+        $type               = $request->input('type', $request->input('p_type', $request->input('inst_type', $request->input('institute_type'))));
+        $districtName       = $request->input('districtname', $request->input('district_name', $request->input('p_districtname', $request->input('district', $request->input('dist_name')))));
+        $contactPersonName  = $request->input('contactperson_name', $request->input('contact_person_name', $request->input('p_contactperson_name', $request->input('contact_name'))));
+        $contactPersonEmail = $request->input('contactperson_email', $request->input('contact_person_email', $request->input('p_contactperson_email', $request->input('contact_email'))));
+        $instEmail          = $request->input('instemail', $request->input('inst_email', $request->input('institute_email', $request->input('p_instemail', $request->input('email')))));
+        $address            = $request->input('address', $request->input('inst_address', $request->input('p_address', $request->input('i_address'))));
+
+        $validator = Validator::make([
+            'code'                => $code,
+            'name'                => $name,
+            'type'                => $type,
+            'districtname'        => $districtName,
+            'contactperson_name'  => $contactPersonName,
+            'contactperson_email' => $contactPersonEmail,
+            'instemail'           => $instEmail,
+            'address'             => $address,
+        ], [
+            'code'                => 'required|string|max:50',
+            'name'                => 'required|string|max:255',
+            'type'                => 'required|string|max:50',
+            'districtname'        => 'required|string|max:100',
+            'contactperson_name'  => 'required|string|max:255',
+            'contactperson_email' => 'required|string|max:255',
+            'instemail'           => 'required|string|max:255',
+            'address'             => 'required|string|max:500',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'version' => '1.0',
+                'status'  => 1,
+                'message' => 'Validation failed: ' . $validator->errors()->first(),
+                'errors'  => $validator->errors(),
+                'data'    => $validator->errors(),
+            ], 422);
+        }
+
+        $code               = trim((string) $code);
+        $name               = trim((string) $name);
+        $type               = trim((string) $type);
+        $districtName       = trim((string) $districtName);
+        $contactPersonName  = trim((string) $contactPersonName);
+        $contactPersonEmail = trim((string) $contactPersonEmail);
+        $instEmail          = trim((string) $instEmail);
+        $address            = trim((string) $address);
+
+        Log::channel('daily')->info('[AdminInstitute] fn_save_instritute INPUT', [
+            'code'                => $code,
+            'name'                => $name,
+            'type'                => $type,
+            'districtname'        => $districtName,
+            'contactperson_name'  => $contactPersonName,
+            'contactperson_email' => $contactPersonEmail,
+            'instemail'           => $instEmail,
+            'address'             => $address,
+            'ip'                  => $request->ip(),
+        ]);
+
+        try {
+            $result = DB::select(
+                'SELECT public.fn_save_instritute(?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar) AS data',
+                [
+                    $code,
+                    $name,
+                    $type,
+                    $districtName,
+                    $contactPersonName,
+                    $contactPersonEmail,
+                    $instEmail,
+                    $address,
+                ]
+            );
+
+            if (empty($result)) {
+                return response()->json([
+                    'version' => '1.0',
+                    'status'  => 1,
+                    'message' => 'No data returned from database function.',
+                    'data'    => null,
+                ], 500);
+            }
+
+            $raw = $result[0]->data ?? null;
+            $responseData = is_string($raw) ? json_decode($raw, true) : (array) $raw;
+
+            if (is_string($raw) && json_last_error() !== JSON_ERROR_NONE) {
+                $responseData = $raw;
+            }
+
+            Log::channel('daily')->info('[AdminInstitute] fn_save_instritute OUTPUT', [
+                'result' => $responseData,
+            ]);
+
+            return response()->json([
+                'version' => '1.0',
+                'status'  => 0,
+                'message' => 'Institute saved successfully.',
+                'data'    => $responseData,
+            ], 200);
+
+        } catch (\Exception $e) {
+            Log::channel('daily')->error('[AdminInstitute] fn_save_instritute EXCEPTION', [
+                'message' => $e->getMessage(),
+                'line'    => $e->getLine(),
+                'file'    => $e->getFile(),
+            ]);
+
+            return response()->json([
+                'version' => '1.0',
+                'status'  => 1,
+                'message' => 'An error occurred while saving institute: ' . $e->getMessage(),
+                'data'    => null,
+            ], 500);
+        }
+    }
 }
+
 

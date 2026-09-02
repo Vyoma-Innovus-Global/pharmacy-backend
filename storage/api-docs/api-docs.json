@@ -479,6 +479,118 @@
                 ]
             }
         },
+        "/api/admin/save-institute": {
+            "post": {
+                "tags": [
+                    "Admin - Master Data"
+                ],
+                "summary": "Save Institute Details",
+                "description": "Saves or updates institute information. Calls PostgreSQL function: fn_save_instritute",
+                "operationId": "a19b344a8d86a03af1ffa3b441586973",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "code",
+                                    "name",
+                                    "type",
+                                    "districtname",
+                                    "contactperson_name",
+                                    "contactperson_email",
+                                    "instemail",
+                                    "address"
+                                ],
+                                "properties": {
+                                    "code": {
+                                        "description": "Institute Code (p_code)",
+                                        "type": "string",
+                                        "example": "INST001"
+                                    },
+                                    "name": {
+                                        "description": "Institute Name (p_name)",
+                                        "type": "string",
+                                        "example": "ABC Pharmacy College"
+                                    },
+                                    "type": {
+                                        "description": "Institute Type (p_type)",
+                                        "type": "string",
+                                        "example": "Govt"
+                                    },
+                                    "districtname": {
+                                        "description": "District Name (p_districtname)",
+                                        "type": "string",
+                                        "example": "Kolkata"
+                                    },
+                                    "contactperson_name": {
+                                        "description": "Contact Person Name (p_contactperson_name)",
+                                        "type": "string",
+                                        "example": "John Doe"
+                                    },
+                                    "contactperson_email": {
+                                        "description": "Contact Person Email (p_contactperson_email)",
+                                        "type": "string",
+                                        "example": "contact@abc.edu"
+                                    },
+                                    "instemail": {
+                                        "description": "Institute Email (p_instemail)",
+                                        "type": "string",
+                                        "example": "info@abc.edu"
+                                    },
+                                    "address": {
+                                        "description": "Address (p_address)",
+                                        "type": "string",
+                                        "example": "123 College Road"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Institute saved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "version": {
+                                            "type": "string",
+                                            "example": "1.0"
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "example": 0
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Institute saved successfully."
+                                        },
+                                        "data": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation failed"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                },
+                "security": [
+                    {
+                        "token": []
+                    }
+                ]
+            }
+        },
         "/api/admin/institute-wise-summary": {
             "post": {
                 "tags": [
@@ -1261,8 +1373,8 @@
                 "tags": [
                     "Admin - Master Data"
                 ],
-                "summary": "Get subject details by semester and category",
-                "description": "Calls fn_admin_getsubjects_details.",
+                "summary": "Get subject details by semester, exam year and category",
+                "description": "Calls fn_admin_getroutinesubjects_details.",
                 "operationId": "e7b1fab9a9cb612ecac2b413e073d501",
                 "requestBody": {
                     "required": true,
@@ -1271,14 +1383,22 @@
                             "schema": {
                                 "required": [
                                     "semester_id",
+                                    "exam_year",
                                     "subject_category_id"
                                 ],
                                 "properties": {
                                     "semester_id": {
+                                        "description": "Semester ID (p_semester_id)",
                                         "type": "integer",
                                         "example": 1
                                     },
+                                    "exam_year": {
+                                        "description": "Exam Year (p_examyear)",
+                                        "type": "string",
+                                        "example": "2026"
+                                    },
                                     "subject_category_id": {
+                                        "description": "Subject category ID (p_subject_category_id)",
                                         "type": "integer",
                                         "example": 1
                                     }

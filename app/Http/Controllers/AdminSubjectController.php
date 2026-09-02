@@ -168,15 +168,16 @@ class AdminSubjectController extends Controller
      * @OA\Post(
      *     path="/api/admin/subject-details",
      *     tags={"Admin - Master Data"},
-     *     summary="Get subject details by semester and category",
-     *     description="Calls fn_admin_getsubjects_details.",
+     *     summary="Get subject details by semester, exam year and category",
+     *     description="Calls fn_admin_getroutinesubjects_details.",
      *     security={{"token": {}}},
      *     @OA\RequestBody(
      *         required=true,
      *         @OA\JsonContent(
-     *             required={"semester_id", "subject_category_id"},
-     *             @OA\Property(property="semester_id", type="integer", example=1),
-     *             @OA\Property(property="subject_category_id", type="integer", example=1)
+     *             required={"semester_id", "exam_year", "subject_category_id"},
+     *             @OA\Property(property="semester_id", type="integer", example=1, description="Semester ID (p_semester_id)"),
+     *             @OA\Property(property="exam_year", type="string", example="2026", description="Exam Year (p_examyear)"),
+     *             @OA\Property(property="subject_category_id", type="integer", example=1, description="Subject category ID (p_subject_category_id)")
      *         )
      *     ),
      *     @OA\Response(response=200, description="Subject details retrieved successfully"),
@@ -186,43 +187,57 @@ class AdminSubjectController extends Controller
      */
     public function getSubjectDetails(Request $request)
     {
-        $validator = Validator::make($request->all(), [
-            'semester_id' => 'required|integer|min:1',
+        $semesterId        = $request->input('semester_id', $request->input('p_semester_id', $request->input('semester', $request->input('p_semester'))));
+        $examYear          = $request->input('exam_year', $request->input('p_examyear', $request->input('p_exam_year', $request->input('examyear', $request->input('year')))));
+        $subjectCategoryId = $request->input('subject_category_id', $request->input('p_subject_category_id', $request->input('category_id', $request->input('subject_category'))));
+
+        $validator = Validator::make([
+            'semester_id'         => $semesterId,
+            'exam_year'           => $examYear,
+            'subject_category_id' => $subjectCategoryId,
+        ], [
+            'semester_id'         => 'required|integer|min:1',
+            'exam_year'           => 'required|string|max:20',
             'subject_category_id' => 'required|integer',
         ]);
 
         if ($validator->fails()) {
             return response()->json([
                 'version' => '1.0',
-                'status' => 1,
-                'message' => 'Validation failed.',
-                'data' => $validator->errors(),
+                'status'  => 1,
+                'message' => 'Validation failed: ' . $validator->errors()->first(),
+                'errors'  => $validator->errors(),
+                'data'    => $validator->errors(),
             ], 422);
         }
 
-        $parameters = $validator->validated();
+        $semesterId        = (int) $semesterId;
+        $examYear          = trim((string) $examYear);
+        $subjectCategoryId = (int) $subjectCategoryId;
 
         Log::channel('daily')->info('[getSubjectDetails] INPUT', [
-            'semester_id' => (int) $parameters['semester_id'],
-            'subject_category_id' => (int) $parameters['subject_category_id'],
-            'ip' => $request->ip(),
+            'semester_id'         => $semesterId,
+            'exam_year'           => $examYear,
+            'subject_category_id' => $subjectCategoryId,
+            'ip'                  => $request->ip(),
         ]);
 
         try {
             $result = DB::selectOne(
-                'SELECT public.fn_admin_getsubjects_details(?::integer, ?::integer) AS data',
+                'SELECT public.fn_admin_getroutinesubjects_details(?::integer, ?::varchar, ?::integer) AS data',
                 [
-                    (int) $parameters['semester_id'],
-                    (int) $parameters['subject_category_id'],
+                    $semesterId,
+                    $examYear,
+                    $subjectCategoryId,
                 ]
             );
 
             if (! $result || $result->data === null) {
                 return response()->json([
                     'version' => '1.0',
-                    'status' => 1,
+                    'status'  => 1,
                     'message' => 'No subjects found.',
-                    'data' => [],
+                    'data'    => [],
                 ]);
             }
 
@@ -232,9 +247,9 @@ class AdminSubjectController extends Controller
 
             return response()->json([
                 'version' => '1.0',
-                'status' => 0,
+                'status'  => 0,
                 'message' => 'Subject details retrieved successfully.',
-                'data' => $data,
+                'data'    => $data,
             ]);
         } catch (\JsonException $exception) {
             Log::channel('daily')->error('[getSubjectDetails] Invalid database JSON', [
@@ -243,9 +258,9 @@ class AdminSubjectController extends Controller
 
             return response()->json([
                 'version' => '1.0',
-                'status' => 1,
+                'status'  => 1,
                 'message' => 'Failed to parse database response.',
-                'data' => [],
+                'data'    => [],
             ], 500);
         } catch (\Throwable $exception) {
             Log::channel('daily')->error('[getSubjectDetails] EXCEPTION', [
@@ -254,9 +269,9 @@ class AdminSubjectController extends Controller
 
             return response()->json([
                 'version' => '1.0',
-                'status' => 1,
+                'status'  => 1,
                 'message' => 'Failed to retrieve subject details.',
-                'data' => [],
+                'data'    => [],
             ], 500);
         }
     }
