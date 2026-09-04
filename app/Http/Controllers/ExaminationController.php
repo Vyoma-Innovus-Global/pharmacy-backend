@@ -2669,6 +2669,132 @@ class ExaminationController extends Controller
 
     /**
      * @OA\Post(
+     *     path="/api/examinations/student-count-in-examination-center",
+     *     tags={"Examinations", "Admin - Master Data"},
+     *     summary="Get student count in examination center",
+     *     description="Calls PostgreSQL stored function fn_get_studentcountinexaminationcenter to retrieve examination centers with student counts.",
+     *     security={{"token": {}}},
+     *     @OA\RequestBody(
+     *         required=false,
+     *         @OA\JsonContent(
+     *             @OA\Property(property="code", type="string", example="JCG", description="Optional Examination Center Code to filter (e.g. DestinationInstName)")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Student count fetched successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="version", type="string", example="1.0"),
+     *             @OA\Property(property="status", type="integer", example=0),
+     *             @OA\Property(property="message", type="string", example="Data fetch successfully"),
+     *             @OA\Property(
+     *                 property="data",
+     *                 type="array",
+     *                 @OA\Items(
+     *                     type="object",
+     *                     @OA\Property(property="DestinationInstName", type="string", example="JCG"),
+     *                     @OA\Property(property="TotalStudent", type="integer", example=1),
+     *                     @OA\Property(
+     *                         property="SourceInst",
+     *                         type="array",
+     *                         @OA\Items(
+     *                             type="object",
+     *                             @OA\Property(property="SourceInstCode", type="string", example="AMNA"),
+     *                             @OA\Property(property="StudentCount", type="integer", example=1)
+     *                         )
+     *                     )
+     *                 )
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(response=500, description="Internal server error")
+     * )
+     */
+    public function getStudentCountInExaminationCenter(Request $request)
+    {
+        $code = $request->input('code', $request->input('center_code', $request->input('p_code', $request->input('inst_code', $request->input('institute_code', $request->input('destination_inst_code', $request->input('destination_inst_name')))))));
+
+        Log::channel('daily')->info('[Examinations] fn_get_studentcountinexaminationcenter INPUT', [
+            'code' => $code,
+            'ip'   => $request->ip(),
+        ]);
+
+        try {
+            $result = DB::select('SELECT public.fn_get_studentcountinexaminationcenter() AS data');
+
+            $raw = $result[0]->data ?? null;
+
+            if ($raw === null) {
+                return response()->json([
+                    'version' => '1.0',
+                    'status'  => 0,
+                    'message' => 'Data fetch successfully',
+                    'data'    => [],
+                ], 200);
+            }
+
+            $decoded = is_string($raw) ? json_decode($raw, true) : (array) $raw;
+
+            if (is_string($raw) && json_last_error() !== JSON_ERROR_NONE) {
+                Log::channel('daily')->error('[Examinations] fn_get_studentcountinexaminationcenter JSON decode error', [
+                    'error' => json_last_error_msg(),
+                    'raw'   => $raw,
+                ]);
+
+                return response()->json([
+                    'version' => '1.0',
+                    'status'  => 3,
+                    'message' => 'Failed to parse database response.',
+                    'data'    => null,
+                ], 500);
+            }
+
+            $data = is_array($decoded) ? $decoded : [];
+
+            // If a specific code / destination center was requested, filter matching entries
+            if (!empty($code)) {
+                $trimmedCode = trim((string) $code);
+                $filtered = array_values(array_filter($data, function ($item) use ($trimmedCode) {
+                    if (!is_array($item)) return false;
+                    $destName = $item['DestinationInstName'] ?? ($item['destination_inst_name'] ?? ($item['DestinationInstCode'] ?? ($item['destination_inst_code'] ?? '')));
+                    return strcasecmp(trim((string) $destName), $trimmedCode) === 0;
+                }));
+
+                // If exact filter found matches, return filtered; otherwise return full dataset
+                if (!empty($filtered)) {
+                    $data = $filtered;
+                }
+            }
+
+            Log::channel('daily')->info('[Examinations] fn_get_studentcountinexaminationcenter OUTPUT', [
+                'count' => count($data),
+            ]);
+
+            return response()->json([
+                'version' => '1.0',
+                'status'  => 0,
+                'message' => 'Data fetch successfully',
+                'data'    => $data,
+            ], 200);
+
+        } catch (\Exception $e) {
+            Log::channel('daily')->error('[Examinations] fn_get_studentcountinexaminationcenter EXCEPTION', [
+                'message' => $e->getMessage(),
+                'line'    => $e->getLine(),
+                'file'    => $e->getFile(),
+            ]);
+
+            return response()->json([
+                'version' => '1.0',
+                'status'  => 3,
+                'message' => 'An error occurred while fetching student count: ' . $e->getMessage(),
+                'data'    => null,
+            ], 500);
+        }
+    }
+
+    /**
+     * @OA\Post(
      *     path="/api/examinations/save-routine",
      *     tags={"Examinations", "Schedule"},
      *     summary="Save examination routine / schedule (single or batch)",

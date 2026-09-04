@@ -712,11 +712,11 @@ class AdminInstituteController extends Controller
      *     @OA\RequestBody(
      *         required=true,
      *         @OA\JsonContent(
-     *             required={"code", "name", "type", "districtname", "contactperson_name", "contactperson_email", "instemail", "address"},
+     *             required={"code", "name", "type", "district_id", "contactperson_name", "contactperson_email", "instemail", "address"},
      *             @OA\Property(property="code", type="string", example="INST001", description="Institute Code (p_code)"),
      *             @OA\Property(property="name", type="string", example="ABC Pharmacy College", description="Institute Name (p_name)"),
      *             @OA\Property(property="type", type="string", example="Govt", description="Institute Type (p_type)"),
-     *             @OA\Property(property="districtname", type="string", example="Kolkata", description="District Name (p_districtname)"),
+     *             @OA\Property(property="district_id", type="integer", example=1, description="District ID (p_districtId)"),
      *             @OA\Property(property="contactperson_name", type="string", example="John Doe", description="Contact Person Name (p_contactperson_name)"),
      *             @OA\Property(property="contactperson_email", type="string", example="contact@abc.edu", description="Contact Person Email (p_contactperson_email)"),
      *             @OA\Property(property="instemail", type="string", example="info@abc.edu", description="Institute Email (p_instemail)"),
@@ -742,7 +742,7 @@ class AdminInstituteController extends Controller
         $code               = $request->input('code', $request->input('p_code', $request->input('inst_code', $request->input('i_code'))));
         $name               = $request->input('name', $request->input('p_name', $request->input('inst_name', $request->input('i_name'))));
         $type               = $request->input('type', $request->input('p_type', $request->input('inst_type', $request->input('institute_type'))));
-        $districtName       = $request->input('districtname', $request->input('district_name', $request->input('p_districtname', $request->input('district', $request->input('dist_name')))));
+        $districtId         = $request->input('district_id', $request->input('districtId', $request->input('p_districtId', $request->input('p_district_id', $request->input('districtid', $request->input('district', $request->input('districtname', $request->input('district_name', $request->input('p_districtname')))))))));
         $contactPersonName  = $request->input('contactperson_name', $request->input('contact_person_name', $request->input('p_contactperson_name', $request->input('contact_name'))));
         $contactPersonEmail = $request->input('contactperson_email', $request->input('contact_person_email', $request->input('p_contactperson_email', $request->input('contact_email'))));
         $instEmail          = $request->input('instemail', $request->input('inst_email', $request->input('institute_email', $request->input('p_instemail', $request->input('email')))));
@@ -752,7 +752,7 @@ class AdminInstituteController extends Controller
             'code'                => $code,
             'name'                => $name,
             'type'                => $type,
-            'districtname'        => $districtName,
+            'district_id'         => $districtId,
             'contactperson_name'  => $contactPersonName,
             'contactperson_email' => $contactPersonEmail,
             'instemail'           => $instEmail,
@@ -761,7 +761,7 @@ class AdminInstituteController extends Controller
             'code'                => 'required|string|max:50',
             'name'                => 'required|string|max:255',
             'type'                => 'required|string|max:50',
-            'districtname'        => 'required|string|max:100',
+            'district_id'         => 'required|integer',
             'contactperson_name'  => 'required|string|max:255',
             'contactperson_email' => 'required|string|max:255',
             'instemail'           => 'required|string|max:255',
@@ -781,7 +781,7 @@ class AdminInstituteController extends Controller
         $code               = trim((string) $code);
         $name               = trim((string) $name);
         $type               = trim((string) $type);
-        $districtName       = trim((string) $districtName);
+        $districtId         = (int) $districtId;
         $contactPersonName  = trim((string) $contactPersonName);
         $contactPersonEmail = trim((string) $contactPersonEmail);
         $instEmail          = trim((string) $instEmail);
@@ -791,7 +791,7 @@ class AdminInstituteController extends Controller
             'code'                => $code,
             'name'                => $name,
             'type'                => $type,
-            'districtname'        => $districtName,
+            'district_id'         => $districtId,
             'contactperson_name'  => $contactPersonName,
             'contactperson_email' => $contactPersonEmail,
             'instemail'           => $instEmail,
@@ -801,12 +801,12 @@ class AdminInstituteController extends Controller
 
         try {
             $result = DB::select(
-                'SELECT public.fn_save_instritute(?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar) AS data',
+                'SELECT public.fn_save_instritute(?::varchar, ?::varchar, ?::varchar, ?::integer, ?::varchar, ?::varchar, ?::varchar, ?::varchar) AS data',
                 [
                     $code,
                     $name,
                     $type,
-                    $districtName,
+                    $districtId,
                     $contactPersonName,
                     $contactPersonEmail,
                     $instEmail,

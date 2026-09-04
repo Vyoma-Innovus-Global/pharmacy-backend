@@ -30,6 +30,7 @@ use App\Http\Controllers\AdminSubjectController;
 use App\Http\Controllers\AdminTeacherController;
 use App\Http\Controllers\AdminStudentMarksController;
 use App\Http\Controllers\AdminInstituteWiseSummaryController;
+use App\Http\Controllers\AdminDistrictController;
 use App\Http\Controllers\SmsBroadcastController;
 use App\Http\Controllers\EmailBroadcastController;
 
@@ -242,6 +243,7 @@ Route::prefix('examinations')->middleware('authenticate')->group(function () {
     Route::post('/get-examinationcenter', [ExaminationController::class, 'getExaminationCenter']);
     Route::post('/examination-centers', [ExaminationController::class, 'getExaminationCenter']);
     Route::post('/admin-get-examination-center', [ExaminationController::class, 'getExaminationCenter']);
+    Route::post('/student-count-in-examination-center', [ExaminationController::class, 'getStudentCountInExaminationCenter']);
     Route::post('/save-routine', [ExaminationController::class, 'saveRoutine']);
     Route::post('/admin-save-routine', [ExaminationController::class, 'saveRoutine']);
     Route::post('/routine-list', [ExaminationController::class, 'getRoutineList']);
@@ -464,6 +466,7 @@ Route::prefix('admin')->middleware('authenticate')->group(function () {
     Route::post('/get-examinationcenter', [ExaminationController::class, 'getExaminationCenter']);
     Route::post('/examination-centers', [ExaminationController::class, 'getExaminationCenter']);
     Route::post('/admin-get-examination-center', [ExaminationController::class, 'getExaminationCenter']);
+    Route::post('/student-count-in-examination-center', [ExaminationController::class, 'getStudentCountInExaminationCenter']);
     Route::post('/save-routine', [ExaminationController::class, 'saveRoutine']);
     Route::post('/admin-save-routine', [ExaminationController::class, 'saveRoutine']);
     Route::post('/routine-list', [ExaminationController::class, 'getRoutineList']);
@@ -488,6 +491,7 @@ Route::prefix('admin')->middleware('authenticate')->group(function () {
     Route::post('/departments', [AdminDepartmentController::class, 'getDepartmentsByInst']);
     Route::post('/subjects', [AdminSubjectController::class, 'getDeptAllSubjects']);
     Route::post('/subject-details', [AdminSubjectController::class, 'getSubjectDetails']);
+    Route::post('/get-routine-subject-details', [AdminSubjectController::class, 'getRoutineSubjectDetails']);
     Route::post('/save-bank-info', [AdminController::class, 'saveBankInfo']);
     Route::post('/get-bank-info', [AdminController::class, 'getBankInfo']);
     Route::post('/get-bank-info-by-ifsc', [AdminController::class, 'getBankInfoByIfsc']);
@@ -506,6 +510,7 @@ Route::prefix('admin')->middleware('authenticate')->group(function () {
     Route::post('/save-student-marks', [AdminStudentMarksController::class, 'saveStudentMarks']);
     Route::post('/institute-wise-summary', [AdminInstituteWiseSummaryController::class, 'getInstituteWiseSummary']);
     Route::post('/examiner-wise-summary', [AdminInstituteWiseSummaryController::class, 'getExaminerWiseSummary']);
+    Route::get('/district-list', [AdminDistrictController::class, 'getDistrictListByAdmin']);
 });
 
 Route::prefix('sms')->group(function () {
