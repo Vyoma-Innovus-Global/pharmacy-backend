@@ -243,6 +243,7 @@ Route::prefix('examinations')->middleware('authenticate')->group(function () {
     Route::post('/get-examinationcenter', [ExaminationController::class, 'getExaminationCenter']);
     Route::post('/examination-centers', [ExaminationController::class, 'getExaminationCenter']);
     Route::post('/admin-get-examination-center', [ExaminationController::class, 'getExaminationCenter']);
+    Route::post('/get-source-examination-center-by-instcode', [ExaminationController::class, 'getExaminationCenterByInstCode']);
     Route::post('/student-count-in-examination-center', [ExaminationController::class, 'getStudentCountInExaminationCenter']);
     Route::post('/save-routine', [ExaminationController::class, 'saveRoutine']);
     Route::post('/admin-save-routine', [ExaminationController::class, 'saveRoutine']);
@@ -466,6 +467,11 @@ Route::prefix('admin')->middleware('authenticate')->group(function () {
     Route::post('/get-examinationcenter', [ExaminationController::class, 'getExaminationCenter']);
     Route::post('/examination-centers', [ExaminationController::class, 'getExaminationCenter']);
     Route::post('/admin-get-examination-center', [ExaminationController::class, 'getExaminationCenter']);
+    Route::post('/get-examination-center-by-inst-code', [ExaminationController::class, 'getExaminationCenterByInstCode']);
+    Route::post('/get-examination-center-by-instcode', [ExaminationController::class, 'getExaminationCenterByInstCode']);
+    Route::post('/get-examinationcenter-by-instcode', [ExaminationController::class, 'getExaminationCenterByInstCode']);
+    Route::post('/admin-get-examination-center-by-inst-code', [ExaminationController::class, 'getExaminationCenterByInstCode']);
+    Route::post('/admin-get-examination-center-by-instcode', [ExaminationController::class, 'getExaminationCenterByInstCode']);
     Route::post('/student-count-in-examination-center', [ExaminationController::class, 'getStudentCountInExaminationCenter']);
     Route::post('/save-routine', [ExaminationController::class, 'saveRoutine']);
     Route::post('/admin-save-routine', [ExaminationController::class, 'saveRoutine']);

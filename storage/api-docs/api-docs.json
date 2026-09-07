@@ -146,6 +146,118 @@
                 ]
             }
         },
+        "/api/admin/district-list": {
+            "get": {
+                "tags": [
+                    "Admin - Master Data"
+                ],
+                "summary": "Get district list by admin",
+                "description": "Retrieves the list of all districts for admin. Calls: public.fn_getdistrictlistbyadmin()",
+                "operationId": "fcc49a11e457ca5ee2a0bb795e5eef75",
+                "responses": {
+                    "200": {
+                        "description": "District list retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "version": {
+                                            "type": "string",
+                                            "example": "1.0"
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "example": 0
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Data fetch successfully"
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "districtId": {
+                                                        "type": "integer",
+                                                        "example": 1
+                                                    },
+                                                    "districtName": {
+                                                        "type": "string",
+                                                        "example": "ALIPURDUAR"
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "No districts found",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "version": {
+                                            "type": "string",
+                                            "example": "1.0"
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "example": 1
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "No districts found."
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {}
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "version": {
+                                            "type": "string",
+                                            "example": "1.0"
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "example": 1
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Server error occurred."
+                                        },
+                                        "data": {
+                                            "type": "null"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "token": []
+                    }
+                ]
+            }
+        },
         "/api/admin/institutes": {
             "post": {
                 "tags": [
@@ -496,7 +608,7 @@
                                     "code",
                                     "name",
                                     "type",
-                                    "districtname",
+                                    "district_id",
                                     "contactperson_name",
                                     "contactperson_email",
                                     "instemail",
@@ -518,10 +630,10 @@
                                         "type": "string",
                                         "example": "Govt"
                                     },
-                                    "districtname": {
-                                        "description": "District Name (p_districtname)",
-                                        "type": "string",
-                                        "example": "Kolkata"
+                                    "district_id": {
+                                        "description": "District ID (p_districtId)",
+                                        "type": "integer",
+                                        "example": 1
                                     },
                                     "contactperson_name": {
                                         "description": "Contact Person Name (p_contactperson_name)",
@@ -1373,9 +1485,109 @@
                 "tags": [
                     "Admin - Master Data"
                 ],
-                "summary": "Get subject details by semester, exam year and category",
-                "description": "Calls fn_admin_getroutinesubjects_details.",
+                "summary": "Get subject details by semester and subject category",
+                "description": "Retrieves subject details for a specific semester and subject category. Calls: fn_admin_getsubjects_details",
                 "operationId": "e7b1fab9a9cb612ecac2b413e073d501",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "semester_id",
+                                    "subject_category_id"
+                                ],
+                                "properties": {
+                                    "semester_id": {
+                                        "description": "Semester ID",
+                                        "type": "integer",
+                                        "example": 1
+                                    },
+                                    "subject_category_id": {
+                                        "description": "Subject category ID",
+                                        "type": "integer",
+                                        "example": 1
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Subject details retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "version": {
+                                            "type": "string",
+                                            "example": "1.0"
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "example": 0
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Subject details retrieved successfully."
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation failed",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "version": {
+                                            "type": "string",
+                                            "example": "1.0"
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "example": 1
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Validation failed."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                },
+                "security": [
+                    {
+                        "token": []
+                    }
+                ]
+            }
+        },
+        "/api/admin/routine-subject-details": {
+            "post": {
+                "tags": [
+                    "Admin - Master Data"
+                ],
+                "summary": "Get routine subject details by semester, exam year and category",
+                "description": "Retrieves routine subjects for a specific semester, exam year, and subject category. Calls: fn_admin_getroutinesubjects_details",
+                "operationId": "286783ae655d43a134b414f7879701cb",
                 "requestBody": {
                     "required": true,
                     "content": {
@@ -1388,17 +1600,17 @@
                                 ],
                                 "properties": {
                                     "semester_id": {
-                                        "description": "Semester ID (p_semester_id)",
+                                        "description": "Semester ID",
                                         "type": "integer",
                                         "example": 1
                                     },
                                     "exam_year": {
-                                        "description": "Exam Year (p_examyear)",
+                                        "description": "Exam Year",
                                         "type": "string",
                                         "example": "2026"
                                     },
                                     "subject_category_id": {
-                                        "description": "Subject category ID (p_subject_category_id)",
+                                        "description": "Subject category ID",
                                         "type": "integer",
                                         "example": 1
                                     }
@@ -1410,10 +1622,58 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "Subject details retrieved successfully"
+                        "description": "Routine subject details retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "version": {
+                                            "type": "string",
+                                            "example": "1.0"
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "example": 0
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Routine subject details retrieved successfully."
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
                     },
                     "422": {
-                        "description": "Validation failed"
+                        "description": "Validation failed",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "version": {
+                                            "type": "string",
+                                            "example": "1.0"
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "example": 1
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Validation failed."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
                     },
                     "500": {
                         "description": "Internal server error"
@@ -3336,6 +3596,100 @@
                 ]
             }
         },
+        "/api/examinations/student-count-in-examination-center": {
+            "post": {
+                "tags": [
+                    "Examinations",
+                    "Admin - Master Data"
+                ],
+                "summary": "Get student count in examination center",
+                "description": "Calls PostgreSQL stored function fn_get_studentcountinexaminationcenter to retrieve examination centers with student counts.",
+                "operationId": "e85e6b4a80c72170873848d55fa637f3",
+                "requestBody": {
+                    "required": false,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "code": {
+                                        "description": "Optional Examination Center Code to filter (e.g. DestinationInstName)",
+                                        "type": "string",
+                                        "example": "JCG"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Student count fetched successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "version": {
+                                            "type": "string",
+                                            "example": "1.0"
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "example": 0
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Data fetch successfully"
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "DestinationInstName": {
+                                                        "type": "string",
+                                                        "example": "JCG"
+                                                    },
+                                                    "TotalStudent": {
+                                                        "type": "integer",
+                                                        "example": 1
+                                                    },
+                                                    "SourceInst": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "properties": {
+                                                                "SourceInstCode": {
+                                                                    "type": "string",
+                                                                    "example": "AMNA"
+                                                                },
+                                                                "StudentCount": {
+                                                                    "type": "integer",
+                                                                    "example": 1
+                                                                }
+                                                            },
+                                                            "type": "object"
+                                                        }
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                },
+                "security": [
+                    {
+                        "token": []
+                    }
+                ]
+            }
+        },
         "/api/examinations/save-routine": {
             "post": {
                 "tags": [
@@ -4093,7 +4447,7 @@
                     "Students"
                 ],
                 "summary": "Get appearing candidates details by institute",
-                "description": "Calls PostgreSQL stored function fn_admin_getappearingcandidateddetailsbyinst to retrieve appearing candidate details for a given institute, exam year, semester, and subject.",
+                "description": "Calls PostgreSQL stored function fn_admin_getappearingcandidateddetailsbyinst to retrieve appearing candidate details for a given institute, exam year, semester, subject, and optional source institute.",
                 "operationId": "f628b1e272b5242014a64c045c9f3c03",
                 "requestBody": {
                     "required": true,
@@ -4126,6 +4480,12 @@
                                         "description": "Subject Code (p_subjectcode)",
                                         "type": "string",
                                         "example": "PHCO"
+                                    },
+                                    "source_inst_code": {
+                                        "description": "Source Institute Code (p_sourceinstcode, optional)",
+                                        "type": "string",
+                                        "example": "ADCP",
+                                        "nullable": true
                                     },
                                     "user_id": {
                                         "description": "Admin/User ID (p_userid, optional)",
@@ -4414,6 +4774,107 @@
                                                 }
                                             },
                                             "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation failed"
+                    },
+                    "500": {
+                        "description": "Internal server error"
+                    }
+                },
+                "security": [
+                    {
+                        "token": []
+                    }
+                ]
+            }
+        },
+        "/api/examinations/get-examination-center-by-instcode": {
+            "post": {
+                "tags": [
+                    "Examinations",
+                    "Institutes"
+                ],
+                "summary": "Get examination center source institutes by destination institute code",
+                "description": "Calls PostgreSQL stored function fn_admin_getexaminationcenterbyinstcode to retrieve source institute codes allocated to an examination center.",
+                "operationId": "6836390524d033adf4055c6b546828f5",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "exam_year",
+                                    "semester",
+                                    "inst_code"
+                                ],
+                                "properties": {
+                                    "exam_year": {
+                                        "description": "Exam Year (p_exam_year)",
+                                        "type": "string",
+                                        "example": "2026"
+                                    },
+                                    "semester": {
+                                        "description": "Semester / Part (p_semester)",
+                                        "type": "string",
+                                        "example": "Part-II"
+                                    },
+                                    "inst_code": {
+                                        "description": "Institute Code (p_instcode)",
+                                        "type": "string",
+                                        "example": "JCG"
+                                    },
+                                    "user_id": {
+                                        "description": "Admin/User ID (p_userid, optional)",
+                                        "type": "integer",
+                                        "example": 12
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Examination center source institutes fetched successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "version": {
+                                            "type": "string",
+                                            "example": "1.0"
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "example": 0
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Examination center details fetched successfully"
+                                        },
+                                        "count": {
+                                            "type": "integer",
+                                            "example": 2
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "sourceInstCode": {
+                                                        "type": "string",
+                                                        "example": "ARCP"
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
                                         }
                                     },
                                     "type": "object"
@@ -5140,6 +5601,10 @@
         {
             "name": "Top Sheet",
             "description": "Top Sheet"
+        },
+        {
+            "name": "Institutes",
+            "description": "Institutes"
         }
     ]
 }

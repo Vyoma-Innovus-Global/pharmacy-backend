@@ -3969,7 +3969,7 @@ class ExaminationController extends Controller
      *     path="/api/examinations/get-appearing-candidates-by-inst",
      *     tags={"Examinations", "Students"},
      *     summary="Get appearing candidates details by institute",
-     *     description="Calls PostgreSQL stored function fn_admin_getappearingcandidateddetailsbyinst to retrieve appearing candidate details for a given institute, exam year, semester, and subject.",
+     *     description="Calls PostgreSQL stored function fn_admin_getappearingcandidateddetailsbyinst to retrieve appearing candidate details for a given institute, exam year, semester, subject, and optional source institute.",
      *     security={{"token": {}}},
      *     @OA\RequestBody(
      *         required=true,
@@ -3979,6 +3979,7 @@ class ExaminationController extends Controller
      *             @OA\Property(property="semester", type="string", example="Part-II", description="Semester / Part (p_semester)"),
      *             @OA\Property(property="inst_code", type="string", example="ADCP", description="Institute Code (p_instcode)"),
      *             @OA\Property(property="subject_code", type="string", example="PHCO", description="Subject Code (p_subjectcode)"),
+     *             @OA\Property(property="source_inst_code", type="string", example="ADCP", description="Source Institute Code (p_sourceinstcode, optional)", nullable=true),
      *             @OA\Property(property="user_id", type="integer", example=12, description="Admin/User ID (p_userid, optional)")
      *         )
      *     ),
@@ -4010,11 +4011,12 @@ class ExaminationController extends Controller
      */
     public function getAppearingCandidatesByInst(Request $request)
     {
-        $examYear    = $request->input('exam_year', $request->input('p_exam_year', $request->input('p_examyear', $request->input('examYear', $request->input('year')))));
-        $semester    = $request->input('semester', $request->input('p_semester', $request->input('semester_id', $request->input('semesterId', $request->input('part_sem', $request->input('part_id', $request->input('part')))))));
-        $instCode    = $request->input('inst_code', $request->input('p_instcode', $request->input('p_inst_code', $request->input('institute_code', $request->input('instCode', $request->input('instituteCode', $request->input('i_code', $request->input('institute'))))))));
-        $subjectCode = $request->input('subject_code', $request->input('p_subjectcode', $request->input('p_subject_code', $request->input('subjectcode', $request->input('subjectCode', $request->input('subject'))))));
-        $userId      = $request->input('user_id', $request->input('p_userid', $request->input('p_user_id', $request->input('userId', $request->input('admin_user_id', $request->input('adminUserId', $request->input('userid')))))));
+        $examYear       = $request->input('exam_year', $request->input('p_exam_year', $request->input('p_examyear', $request->input('examYear', $request->input('year')))));
+        $semester       = $request->input('semester', $request->input('p_semester', $request->input('semester_id', $request->input('semesterId', $request->input('part_sem', $request->input('part_id', $request->input('part')))))));
+        $instCode       = $request->input('inst_code', $request->input('p_instcode', $request->input('p_inst_code', $request->input('institute_code', $request->input('instCode', $request->input('instituteCode', $request->input('i_code', $request->input('institute'))))))));
+        $subjectCode    = $request->input('subject_code', $request->input('p_subjectcode', $request->input('p_subject_code', $request->input('subjectcode', $request->input('subjectCode', $request->input('subject'))))));
+        $sourceInstCode = $request->input('source_inst_code', $request->input('p_sourceinstcode', $request->input('p_source_instcode', $request->input('p_source_inst_code', $request->input('source_institute_code', $request->input('source_instcode', $request->input('sourceInstCode', $request->input('sourceInstituteCode', $request->input('source_code', $request->input('src_inst_code'))))))))));
+        $userId         = $request->input('user_id', $request->input('p_userid', $request->input('p_user_id', $request->input('userId', $request->input('admin_user_id', $request->input('adminUserId', $request->input('userid')))))));
 
         if (empty($userId)) {
             try {
@@ -4028,15 +4030,17 @@ class ExaminationController extends Controller
         }
 
         $validator = Validator::make([
-            'exam_year'    => $examYear,
-            'semester'     => $semester,
-            'inst_code'    => $instCode,
-            'subject_code' => $subjectCode,
+            'exam_year'        => $examYear,
+            'semester'         => $semester,
+            'inst_code'        => $instCode,
+            'subject_code'     => $subjectCode,
+            'source_inst_code' => $sourceInstCode,
         ], [
-            'exam_year'    => 'required|string|max:20',
-            'semester'     => 'required|string|max:50',
-            'inst_code'    => 'required|string|max:50',
-            'subject_code' => 'required|string|max:50',
+            'exam_year'        => 'required|string|max:20',
+            'semester'         => 'required|string|max:50',
+            'inst_code'        => 'required|string|max:50',
+            'subject_code'     => 'required|string|max:50',
+            'source_inst_code' => 'nullable|string|max:50',
         ]);
 
         if ($validator->fails()) {
@@ -4049,25 +4053,27 @@ class ExaminationController extends Controller
             ], 422);
         }
 
-        $examYear    = (string) trim($examYear);
-        $semester    = (string) trim($semester);
-        $instCode    = (string) trim($instCode);
-        $subjectCode = (string) trim($subjectCode);
-        $userId      = (int) $userId;
+        $examYear       = (string) trim($examYear);
+        $semester       = (string) trim($semester);
+        $instCode       = (string) trim($instCode);
+        $subjectCode    = (string) trim($subjectCode);
+        $sourceInstCode = $sourceInstCode !== null && trim((string) $sourceInstCode) !== '' ? (string) trim($sourceInstCode) : null;
+        $userId         = (int) $userId;
 
         Log::channel('daily')->info('[Examinations] fn_admin_getappearingcandidateddetailsbyinst INPUT', [
-            'exam_year'    => $examYear,
-            'semester'     => $semester,
-            'inst_code'    => $instCode,
-            'subject_code' => $subjectCode,
-            'user_id'      => $userId,
-            'ip'           => $request->ip(),
+            'exam_year'        => $examYear,
+            'semester'         => $semester,
+            'inst_code'        => $instCode,
+            'subject_code'     => $subjectCode,
+            'source_inst_code' => $sourceInstCode,
+            'user_id'          => $userId,
+            'ip'               => $request->ip(),
         ]);
 
         try {
             $result = DB::select(
-                'SELECT public.fn_admin_getappearingcandidateddetailsbyinst(?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::bigint) AS data',
-                [$examYear, $semester, $instCode, $subjectCode, $userId]
+                'SELECT public.fn_admin_getappearingcandidateddetailsbyinst(?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::bigint) AS data',
+                [$examYear, $semester, $instCode, $subjectCode, $sourceInstCode, $userId]
             );
 
             if (empty($result)) {
@@ -4113,12 +4119,13 @@ class ExaminationController extends Controller
             }
 
             Log::channel('daily')->info('[Examinations] fn_admin_getappearingcandidateddetailsbyinst OUTPUT', [
-                'exam_year'    => $examYear,
-                'semester'     => $semester,
-                'inst_code'    => $instCode,
-                'subject_code' => $subjectCode,
-                'user_id'      => $userId,
-                'count'        => count($candidates),
+                'exam_year'        => $examYear,
+                'semester'         => $semester,
+                'inst_code'        => $instCode,
+                'subject_code'     => $subjectCode,
+                'source_inst_code' => $sourceInstCode,
+                'user_id'          => $userId,
+                'count'            => count($candidates),
             ]);
 
             return response()->json([
@@ -4525,6 +4532,176 @@ class ExaminationController extends Controller
                 'version' => '1.0',
                 'status'  => 3,
                 'message' => 'An error occurred while fetching top sheet list: ' . $e->getMessage(),
+                'data'    => null,
+            ], 500);
+        }
+    }
+
+    /**
+     * @OA\Post(
+     *     path="/api/examinations/get-examination-center-by-instcode",
+     *     tags={"Examinations", "Institutes"},
+     *     summary="Get examination center source institutes by destination institute code",
+     *     description="Calls PostgreSQL stored function fn_admin_getexaminationcenterbyinstcode to retrieve source institute codes allocated to an examination center.",
+     *     security={{"token": {}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"exam_year", "semester", "inst_code"},
+     *             @OA\Property(property="exam_year", type="string", example="2026", description="Exam Year (p_exam_year)"),
+     *             @OA\Property(property="semester", type="string", example="Part-II", description="Semester / Part (p_semester)"),
+     *             @OA\Property(property="inst_code", type="string", example="JCG", description="Institute Code (p_instcode)"),
+     *             @OA\Property(property="user_id", type="integer", example=12, description="Admin/User ID (p_userid, optional)")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Examination center source institutes fetched successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="version", type="string", example="1.0"),
+     *             @OA\Property(property="status", type="integer", example=0),
+     *             @OA\Property(property="message", type="string", example="Examination center details fetched successfully"),
+     *             @OA\Property(property="count", type="integer", example=2),
+     *             @OA\Property(
+     *                 property="data",
+     *                 type="array",
+     *                 @OA\Items(
+     *                     type="object",
+     *                     @OA\Property(property="sourceInstCode", type="string", example="ARCP")
+     *                 )
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(response=422, description="Validation failed"),
+     *     @OA\Response(response=500, description="Internal server error")
+     * )
+     */
+    public function getExaminationCenterByInstCode(Request $request)
+    {
+        $examYear = $request->input('exam_year', $request->input('p_exam_year', $request->input('p_examyear', $request->input('examYear', $request->input('year')))));
+        $semester = $request->input('semester', $request->input('p_semester', $request->input('semester_id', $request->input('semesterId', $request->input('part_sem', $request->input('part_id', $request->input('part')))))));
+        $instCode = $request->input('inst_code', $request->input('p_instcode', $request->input('p_inst_code', $request->input('institute_code', $request->input('instCode', $request->input('instituteCode', $request->input('i_code', $request->input('institute'))))))));
+        $userId   = $request->input('user_id', $request->input('p_userid', $request->input('p_user_id', $request->input('userId', $request->input('admin_user_id', $request->input('adminUserId', $request->input('userid')))))));
+
+        if (empty($userId)) {
+            try {
+                $userId = authUserId();
+            } catch (\Exception $e) {
+                $userId = null;
+            }
+        }
+        if (empty($userId)) {
+            $userId = 1;
+        }
+
+        $validator = Validator::make([
+            'exam_year' => $examYear,
+            'semester'  => $semester,
+            'inst_code' => $instCode,
+        ], [
+            'exam_year' => 'required|string|max:20',
+            'semester'  => 'required|string|max:50',
+            'inst_code' => 'required|string|max:50',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'version' => '1.0',
+                'status'  => 1,
+                'message' => 'Validation failed: ' . $validator->errors()->first(),
+                'errors'  => $validator->errors(),
+                'data'    => null,
+            ], 422);
+        }
+
+        $examYear = (string) trim($examYear);
+        $semester = (string) trim($semester);
+        $instCode = (string) trim($instCode);
+        $userId   = (int) $userId;
+
+        Log::channel('daily')->info('[Examinations] fn_admin_getexaminationcenterbyinstcode INPUT', [
+            'exam_year' => $examYear,
+            'semester'  => $semester,
+            'inst_code' => $instCode,
+            'user_id'   => $userId,
+            'ip'        => $request->ip(),
+        ]);
+
+        try {
+            $result = DB::select(
+                'SELECT public.fn_admin_getexaminationcenterbyinstcode(?::varchar, ?::varchar, ?::varchar, ?::bigint) AS data',
+                [$examYear, $semester, $instCode, $userId]
+            );
+
+            if (empty($result)) {
+                return response()->json([
+                    'version' => '1.0',
+                    'status'  => 0,
+                    'message' => 'No examination center source institutes found.',
+                    'count'   => 0,
+                    'data'    => [],
+                ], 200);
+            }
+
+            $sourceInstitutes = [];
+
+            foreach ($result as $row) {
+                $raw = $row->data ?? null;
+
+                if ($raw === null) {
+                    continue;
+                }
+
+                $decoded = is_string($raw) ? json_decode($raw, true) : (array) $raw;
+
+                if (is_string($raw) && json_last_error() !== JSON_ERROR_NONE) {
+                    Log::channel('daily')->error('[Examinations] fn_admin_getexaminationcenterbyinstcode JSON decode error', [
+                        'error' => json_last_error_msg(),
+                        'raw'   => $raw,
+                    ]);
+
+                    return response()->json([
+                        'version' => '1.0',
+                        'status'  => 3,
+                        'message' => 'Failed to parse database response.',
+                        'data'    => null,
+                    ], 500);
+                }
+
+                if (is_array($decoded) && array_is_list($decoded)) {
+                    $sourceInstitutes = array_merge($sourceInstitutes, $decoded);
+                } elseif (is_array($decoded)) {
+                    $sourceInstitutes[] = $decoded;
+                }
+            }
+
+            Log::channel('daily')->info('[Examinations] fn_admin_getexaminationcenterbyinstcode OUTPUT', [
+                'exam_year' => $examYear,
+                'semester'  => $semester,
+                'inst_code' => $instCode,
+                'user_id'   => $userId,
+                'count'     => count($sourceInstitutes),
+            ]);
+
+            return response()->json([
+                'version' => '1.0',
+                'status'  => 0,
+                'message' => count($sourceInstitutes) > 0 ? 'Examination center details fetched successfully' : 'No examination center source institutes found.',
+                'count'   => count($sourceInstitutes),
+                'data'    => $sourceInstitutes,
+            ], 200);
+
+        } catch (\Exception $e) {
+            Log::channel('daily')->error('[Examinations] fn_admin_getexaminationcenterbyinstcode EXCEPTION', [
+                'message' => $e->getMessage(),
+                'line'    => $e->getLine(),
+                'file'    => $e->getFile(),
+            ]);
+
+            return response()->json([
+                'version' => '1.0',
+                'status'  => 3,
+                'message' => 'An error occurred while fetching examination center details: ' . $e->getMessage(),
                 'data'    => null,
             ], 500);
         }

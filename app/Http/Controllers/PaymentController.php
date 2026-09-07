@@ -1980,17 +1980,23 @@ public function getStudentPaymentTypeByStudentId(Request $request)
 public function getPaymentResponseByStudentId(Request $request)
 {
     $studentId = $request->input('student_id', $request->input('p_student_id'));
-    $paymentPurpose = $request->input('payment_purpose', $request->input('p_paymen_purpouse'));
+    $paymentPurpose = $request->input('payment_purpose', $request->input('p_paymen_purpouse', $request->input('p_payment_purpose', $request->input('purpose'))));
     $year = $request->input('year', $request->input('p_year'));
+    $examYear = $request->input('exam_year', $request->input('examyear', $request->input('examYear', $request->input('p_examyear', $request->input('p_exam_year')))));
+    $semester = $request->input('semester', $request->input('part_sem', $request->input('partSem', $request->input('p_semester', $request->input('p_part_sem')))));
 
     $validator = Validator::make([
         'student_id' => $studentId,
         'payment_purpose' => $paymentPurpose,
         'year' => $year,
+        'exam_year' => $examYear,
+        'semester' => $semester,
     ], [
         'student_id' => 'required|integer',
         'payment_purpose' => 'required|string|max:100',
-        'year' => 'required|string|max:20',
+        'year' => 'nullable|string|max:20',
+        'exam_year' => 'nullable|string|max:20',
+        'semester' => 'nullable|string|max:50',
     ]);
 
     if ($validator->fails()) {
@@ -2005,13 +2011,21 @@ public function getPaymentResponseByStudentId(Request $request)
         'student_id' => $studentId,
         'payment_purpose' => $paymentPurpose,
         'year' => $year,
+        'exam_year' => $examYear,
+        'semester' => $semester,
         'ip' => $request->ip(),
     ]);
 
     try {
         $result = DB::select(
-            'SELECT public.fn_get_payment_response_studentid(?::bigint, ?::varchar, ?::varchar) AS data',
-            [(int) $studentId, $paymentPurpose, $year]
+            'SELECT public.fn_get_payment_response_studentid(?::bigint, ?::varchar, ?::varchar, ?::varchar, ?::varchar) AS data',
+            [
+                (int) $studentId,
+                $paymentPurpose !== null ? (string) $paymentPurpose : null,
+                $year !== null ? (string) $year : null,
+                $examYear !== null ? (string) $examYear : null,
+                $semester !== null ? (string) $semester : null,
+            ]
         );
 
         return $this->dbFunctionJsonResponse($result[0]->data ?? null, 'fn_get_payment_response_studentid');

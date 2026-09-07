@@ -35,7 +35,8 @@ This document provides a comprehensive analysis of all API routes defined in [`r
 | 16 | `fn_admin_getevaluatorinstallocationsummary_v1` |
 | 17 | `fn_admin_getevaluatorsubjectallocationsummary` |
 | 18 | `fn_admin_getexaminationcenter` |
-| 19 | `fn_admin_getinstitutewisesummary` |
+| 19 | `fn_admin_getexaminationcenterbyinstcode` |
+| 20 | `fn_admin_getinstitutewisesummary` |
 | 20 | `fn_admin_getmarksenteredteachersinfo` |
 | 21 | `fn_admin_getreview_evaluatorsubjectallocationsummary` |
 | 22 | `fn_admin_getreviewevaluatorinstallocationsummary` |
@@ -316,6 +317,8 @@ This document provides a comprehensive analysis of all API routes defined in [`r
 | `POST` | `/api/examinations/get-examinationcenter` | Stored Procedure / PostgreSQL Function | `fn_admin_getexaminationcenter` | None (Uses Stored Procedure / Function) |
 | `POST` | `/api/examinations/examination-centers` | Stored Procedure / PostgreSQL Function | `fn_admin_getexaminationcenter` | None (Uses Stored Procedure / Function) |
 | `POST` | `/api/examinations/admin-get-examination-center` | Stored Procedure / PostgreSQL Function | `fn_admin_getexaminationcenter` | None (Uses Stored Procedure / Function) |
+| `POST` | `/api/examinations/get-examination-center-by-instcode` | Stored Procedure / PostgreSQL Function | `fn_admin_getexaminationcenterbyinstcode` | None (Uses Stored Procedure / Function) |
+| `POST` | `/api/examinations/admin-get-examination-center-by-instcode` | Stored Procedure / PostgreSQL Function | `fn_admin_getexaminationcenterbyinstcode` | None (Uses Stored Procedure / Function) |
 | `POST` | `/api/examinations/student-count-in-examination-center` | Stored Procedure / PostgreSQL Function | `fn_get_studentcountinexaminationcenter` | None (Uses Stored Procedure / Function) |
 | `POST` | `/api/examinations/save-routine` | Stored Procedure / PostgreSQL Function | `fn_admin_saveroutine` | None (Uses Stored Procedure / Function) |
 | `POST` | `/api/examinations/admin-save-routine` | Stored Procedure / PostgreSQL Function | `fn_admin_saveroutine` | None (Uses Stored Procedure / Function) |
@@ -414,6 +417,8 @@ This document provides a comprehensive analysis of all API routes defined in [`r
 | `POST` | `/api/admin/get-examinationcenter` | Stored Procedure / PostgreSQL Function | `fn_admin_getexaminationcenter` | None (Uses Stored Procedure / Function) |
 | `POST` | `/api/admin/examination-centers` | Stored Procedure / PostgreSQL Function | `fn_admin_getexaminationcenter` | None (Uses Stored Procedure / Function) |
 | `POST` | `/api/admin/admin-get-examination-center` | Stored Procedure / PostgreSQL Function | `fn_admin_getexaminationcenter` | None (Uses Stored Procedure / Function) |
+| `POST` | `/api/admin/get-examination-center-by-instcode` | Stored Procedure / PostgreSQL Function | `fn_admin_getexaminationcenterbyinstcode` | None (Uses Stored Procedure / Function) |
+| `POST` | `/api/admin/admin-get-examination-center-by-instcode` | Stored Procedure / PostgreSQL Function | `fn_admin_getexaminationcenterbyinstcode` | None (Uses Stored Procedure / Function) |
 | `POST` | `/api/admin/student-count-in-examination-center` | Stored Procedure / PostgreSQL Function | `fn_get_studentcountinexaminationcenter` | None (Uses Stored Procedure / Function) |
 | `POST` | `/api/admin/save-routine` | Stored Procedure / PostgreSQL Function | `fn_admin_saveroutine` | None (Uses Stored Procedure / Function) |
 | `POST` | `/api/admin/admin-save-routine` | Stored Procedure / PostgreSQL Function | `fn_admin_saveroutine` | None (Uses Stored Procedure / Function) |
