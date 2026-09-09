@@ -2115,7 +2115,9 @@ public function savePharmacyPaymentResponse(Request $request)
     ]);
 
     try {
-        $result = DB::select(
+        $formattedDateTime = $trnDateTime ? date('Y-m-d H:i:s', strtotime($trnDateTime)) : null;
+
+        $result = DB::selectOne(
             'SELECT public.fn_savepharmacypaymentresponse(?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::double precision, ?::varchar, ?::varchar, ?::timestamp, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::text, ?::integer) AS data',
             [
                 $orderId,
@@ -2125,7 +2127,7 @@ public function savePharmacyPaymentResponse(Request $request)
                 (float) $amount,
                 $paymentMsg,
                 $paymentBankCode,
-                $trnDateTime,
+                $formattedDateTime,
                 $currency,
                 $paymentMode,
                 $bankRef,
@@ -2135,17 +2137,37 @@ public function savePharmacyPaymentResponse(Request $request)
             ]
         );
 
-        return $this->dbFunctionJsonResponse($result[0]->data ?? null, 'fn_savepharmacypaymentresponse');
-    } catch (\Exception $e) {
+        return $this->dbFunctionJsonResponse($result->data ?? null, 'fn_savepharmacypaymentresponse');
+    } catch (\Throwable $e) {
         Log::channel('daily')->error('[Payment] fn_savepharmacypaymentresponse EXCEPTION', [
             'message' => $e->getMessage(),
             'line' => $e->getLine(),
             'file' => $e->getFile(),
+            'trace' => $e->getTraceAsString(),
         ]);
 
         return response()->json([
             'error' => true,
             'message' => 'Failed to save pharmacy payment response.',
+            'debug_error' => $e->getMessage(),
+            'exception' => [
+                'type' => get_class($e),
+                'message' => $e->getMessage(),
+                'code' => $e->getCode(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ],
+            'debug_input' => [
+                'order_id' => $orderId,
+                'merchant_id' => $merchantId,
+                'transaction_id' => $transactionId,
+                'payment_status' => $paymentStatus,
+                'amount' => $amount,
+                'trn_date_time_raw' => $trnDateTime,
+                'trn_date_time_formatted' => $formattedDateTime ?? null,
+                'currency' => $currency,
+                'payment_type' => $paymentType,
+            ],
         ], 500);
     }
 }
@@ -2288,11 +2310,32 @@ public function getPaymentDetailsByTransNo(Request $request, $transactionNo = nu
 
 public function getPendingPaymentDetails(Request $request)
 {
-    Log::channel('daily')->info('[Payment] pending payment verification INPUT', [
-        'ip' => $request->ip(),
-    ]);
+    try {
+        Log::channel('daily')->info('[Payment] pending payment verification INPUT', [
+            'ip' => $request->ip(),
+        ]);
 
-    return $this->verifyPendingPayments($request);
+        return $this->verifyPendingPayments($request);
+    } catch (\Throwable $e) {
+        Log::channel('daily')->error('[Payment] getPendingPaymentDetails EXCEPTION', [
+            'message' => $e->getMessage(),
+            'line' => $e->getLine(),
+            'file' => $e->getFile(),
+            'trace' => $e->getTraceAsString(),
+        ]);
+
+        return response()->json([
+            'error' => true,
+            'message' => 'Failed to process pending payment details.',
+            'debug_error' => $e->getMessage(),
+            'exception' => [
+                'type' => get_class($e),
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+            ],
+        ], 500);
+    }
 }
 
 /**
@@ -2549,12 +2592,20 @@ public function verifyPendingPayments(Request $request)
         Log::channel('daily')->error('[Payment] Pending payment batch verification failed', [
             'order_id' => $orderId ?: null,
             'message' => $exception->getMessage(),
+            'trace' => $exception->getTraceAsString(),
         ]);
 
         return response()->json([
             'error' => true,
             'message' => 'Unable to verify pending payments at this time.',
-        ], 502);
+            'debug_error' => $exception->getMessage(),
+            'exception' => [
+                'type' => get_class($exception),
+                'message' => $exception->getMessage(),
+                'file' => $exception->getFile(),
+                'line' => $exception->getLine(),
+            ],
+        ], 500);
     }
 }
 
@@ -2653,7 +2704,10 @@ private function dbFunctionJsonResponse($raw, string $functionName)
         return $decoded;
     }
 
-    Log::channel('daily')->info("[Payment] {$functionName} OUTPUT", $decoded);
+    Log::channel('daily')->info(
+        "[Payment] {$functionName} OUTPUT",
+        is_array($decoded) ? (array_is_list($decoded) ? ['data' => $decoded] : $decoded) : ['value' => $decoded]
+    );
 
     return response()->json($decoded, 200);
 }
@@ -2664,6 +2718,7 @@ private function decodeDbFunctionJson($raw, string $functionName)
         return response()->json([
             'error' => true,
             'message' => "No data returned from {$functionName}.",
+            'raw_response' => null,
         ], 404);
     }
 
@@ -2677,6 +2732,8 @@ private function decodeDbFunctionJson($raw, string $functionName)
         return response()->json([
             'error' => true,
             'message' => "Invalid response from {$functionName}.",
+            'raw_response' => $raw,
+            'json_error' => json_last_error_msg(),
         ], 500);
     }
 
