@@ -110,6 +110,8 @@ Route::prefix('enrollment')->middleware('authenticate')->group(function () {
     Route::post('/exam-center-submit', [EnrollmentController::class, 'exam_center_submit']);
     Route::post('/generate-order-id', [PaymentController::class, 'generateEnrollmentStudentOrderId']);
     Route::post('/generate-student-order-id', [PaymentController::class, 'generateEnrollmentStudentOrderId']);
+    Route::post('/report', [ReportController::class, 'getEnrollmentReport']);
+    Route::post('/enrollment-report-count', [ReportController::class, 'getEnrollmentReport']);
 });
 
 Route::prefix('payment')->group(function () {
@@ -360,6 +362,7 @@ Route::prefix('reports')->group(function () {
     Route::post('/student-registration-download', [ReportController::class, 'studentRegistrationDownload']);
     Route::match(['get', 'post'], '/result-download-inst', [ReportController::class, 'resultCertificateDownloadInst']);
     Route::match(['get', 'post'], '/result-certificate-download-inst', [ReportController::class, 'resultCertificateDownloadInst']);
+    Route::post('/get-enrollment-report-count', [ReportController::class, 'getEnrollmentReport']);
 });
 Route::match(['get', 'post'], '/result-download-inst', [ReportController::class, 'resultCertificateDownloadInst']);
 

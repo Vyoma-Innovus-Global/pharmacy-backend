@@ -2095,5 +2095,125 @@ class ReportController extends Controller
         }
     }
 
+    /**
+     * Get enrollment report summary using PostgreSQL function fn_get_enrollment_report.
+     *
+     * POST /reports/enrollment-report
+     *
+     * Calls: public.fn_get_enrollment_report(
+     *   p_admin_user_id BIGINT,
+     *   p_semester VARCHAR,
+     *   p_examyear VARCHAR
+     * )
+     *
+     * Expected Response:
+     * {
+     *   "TotalStudent": 9437,
+     *   "TotalInstReject": 0,
+     *   "TotalInstApprove": 133,
+     *   "TotalInstPending": 1,
+     *   "TotalPaidStudent": 3,
+     *   "TotalNotPaidStudent": 9434
+     * }
+     */
+    public function getEnrollmentReport(Request $request)
+    {
+        $input = function (...$keys) use ($request) {
+            foreach ($keys as $key) {
+                if ($key !== null && $request->has($key)) {
+                    return $request->input($key);
+                }
+            }
+
+            return null;
+        };
+
+        $adminUserId = $input('admin_user_id', 'p_admin_user_id', 'user_id', 'adminId', 'admin_id');
+        $semester    = $input('semester', 'p_semester', 'part_sem', 'part_semester', 'semester_id');
+        $examYear    = $input('examyear', 'exam_year', 'p_examyear', 'exam_yr', 'session_year', 'academic_year');
+
+        $validator = Validator::make([
+            'admin_user_id' => $adminUserId,
+            'semester'      => $semester,
+            'examyear'      => $examYear,
+        ], [
+            'admin_user_id' => 'required|integer',
+            'semester'      => 'required|string|max:50',
+            'examyear'      => 'required|string|max:50',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'error'   => true,
+                'message' => $validator->errors(),
+            ], 422);
+        }
+
+        try {
+            $result = DB::selectOne(
+                'SELECT public.fn_get_enrollment_report(?::bigint, ?::varchar, ?::varchar) AS data',
+                [
+                    (int) $adminUserId,
+                    trim((string) $semester),
+                    trim((string) $examYear)
+                ]
+            );
+
+            if (!$result || !isset($result->data)) {
+                // Fallback in case function returns table/record instead of json scalar
+                $tableResult = DB::select(
+                    'SELECT * FROM public.fn_get_enrollment_report(?::bigint, ?::varchar, ?::varchar)',
+                    [
+                        (int) $adminUserId,
+                        trim((string) $semester),
+                        trim((string) $examYear)
+                    ]
+                );
+
+                if (empty($tableResult)) {
+                    return response()->json([
+                        'error'   => true,
+                        'message' => 'No enrollment report data found.',
+                    ], 404);
+                }
+
+                $reportData = (array) $tableResult[0];
+            } else {
+                $raw = $result->data;
+                if (is_string($raw)) {
+                    $reportData = json_decode($raw, true);
+                    if (json_last_error() !== JSON_ERROR_NONE) {
+                        return response()->json([
+                            'error'   => true,
+                            'message' => 'Failed to parse enrollment report data from database.',
+                        ], 500);
+                    }
+                } else {
+                    $reportData = json_decode(json_encode($raw), true);
+                }
+            }
+
+            if (empty($reportData)) {
+                return response()->json([
+                    'error'   => true,
+                    'message' => 'No enrollment report data found.',
+                ], 404);
+            }
+
+            return response()->json([
+                'error'   => false,
+                'message' => 'Enrollment report retrieved successfully.',
+                'data'    => $reportData,
+            ], 200);
+
+        } catch (\Exception $e) {
+            Log::error('Error in getEnrollmentReport: ' . $e->getMessage());
+
+            return response()->json([
+                'error'   => true,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
 }
 
