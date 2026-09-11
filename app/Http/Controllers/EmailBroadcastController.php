@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\DB;
 use App\Mail\NoticeMail;
 use App\Mail\RegistrationCancellationMail;
+use App\Mail\StudentEnrollmentFeeMail;
+use App\Mail\InstituteFeeAdjustmentMail;
 use App\Models\Registerstudent;
 
 class EmailBroadcastController extends Controller
@@ -283,6 +285,110 @@ West Bengal State Council of Technical & Vocational Education and Skill Developm
         return response()->json([
             'error' => false,
             'message' => 'Bulk Email process completed.',
+            'data' => $results
+        ], 200);
+    }
+
+    /**
+     * Send generic Student Enrollment Balance Fee Email (₹100)
+     * Accepts single "email" string or "emails" array.
+     */
+    public function sendStudentEnrollmentFeeMail(Request $request)
+    {
+        $rawEmails = $request->input('emails', $request->input('email'));
+        $emails = is_array($rawEmails) ? $rawEmails : ($rawEmails ? [$rawEmails] : []);
+
+        if (empty($emails)) {
+            return response()->json([
+                'error' => true,
+                'message' => 'Email ID is required in the request body (e.g. "email" or "emails").'
+            ], 422);
+        }
+
+        $results = [
+            'total' => count($emails),
+            'success' => 0,
+            'failed' => 0,
+            'details' => []
+        ];
+
+        foreach ($emails as $email) {
+            $email = trim($email);
+            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                $results['failed']++;
+                $results['details'][] = ['email' => $email, 'status' => 'failed', 'error' => 'Invalid email address'];
+                continue;
+            }
+
+            try {
+                Mail::to($email)->send(new StudentEnrollmentFeeMail());
+                $results['success']++;
+                $results['details'][] = ['email' => $email, 'status' => 'success'];
+
+                Log::channel('daily')->info('[sendStudentEnrollmentFeeMail] Email sent to: ' . $email);
+            } catch (\Exception $e) {
+                $results['failed']++;
+                $results['details'][] = ['email' => $email, 'status' => 'failed', 'error' => $e->getMessage()];
+
+                Log::channel('daily')->error('[sendStudentEnrollmentFeeMail] Failed sending to: ' . $email . ' Error: ' . $e->getMessage());
+            }
+        }
+
+        return response()->json([
+            'error' => false,
+            'message' => 'Student enrollment fee email process completed.',
+            'data' => $results
+        ], 200);
+    }
+
+    /**
+     * Send generic Institute Fee Adjustment Email (₹150 to ₹250 mark -> ₹100 deficit)
+     * Accepts single "email" string or "emails" array.
+     */
+    public function sendInstituteFeeAdjustmentMail(Request $request)
+    {
+        $rawEmails = $request->input('emails', $request->input('email'));
+        $emails = is_array($rawEmails) ? $rawEmails : ($rawEmails ? [$rawEmails] : []);
+
+        if (empty($emails)) {
+            return response()->json([
+                'error' => true,
+                'message' => 'Email ID is required in the request body (e.g. "email" or "emails").'
+            ], 422);
+        }
+
+        $results = [
+            'total' => count($emails),
+            'success' => 0,
+            'failed' => 0,
+            'details' => []
+        ];
+
+        foreach ($emails as $email) {
+            $email = trim($email);
+            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                $results['failed']++;
+                $results['details'][] = ['email' => $email, 'status' => 'failed', 'error' => 'Invalid email address'];
+                continue;
+            }
+
+            try {
+                Mail::to($email)->send(new InstituteFeeAdjustmentMail());
+                $results['success']++;
+                $results['details'][] = ['email' => $email, 'status' => 'success'];
+
+                Log::channel('daily')->info('[sendInstituteFeeAdjustmentMail] Email sent to: ' . $email);
+            } catch (\Exception $e) {
+                $results['failed']++;
+                $results['details'][] = ['email' => $email, 'status' => 'failed', 'error' => $e->getMessage()];
+
+                Log::channel('daily')->error('[sendInstituteFeeAdjustmentMail] Failed sending to: ' . $email . ' Error: ' . $e->getMessage());
+            }
+        }
+
+        return response()->json([
+            'error' => false,
+            'message' => 'Institute fee adjustment email process completed.',
             'data' => $results
         ], 200);
     }

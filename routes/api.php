@@ -526,4 +526,6 @@ Route::prefix('sms')->group(function () {
 Route::prefix('mail')->group(function () {
     Route::post('/broadcast', [EmailBroadcastController::class, 'sendBulkEmail'])->withoutMiddleware('authenticate');
     Route::post('/send-registration-cancellation-mail', [EmailBroadcastController::class, 'sendRegistrationCancellationMail'])->withoutMiddleware('authenticate');
+    Route::post('/send-student-enrollment-fee-mail', [EmailBroadcastController::class, 'sendStudentEnrollmentFeeMail'])->withoutMiddleware('authenticate');
+    Route::post('/send-institute-fee-adjustment-mail', [EmailBroadcastController::class, 'sendInstituteFeeAdjustmentMail'])->withoutMiddleware('authenticate');
 });

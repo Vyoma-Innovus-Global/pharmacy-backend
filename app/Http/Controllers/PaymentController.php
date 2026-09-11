@@ -1667,9 +1667,14 @@ public function generateStudentOrderId(Request $request)
         $merchantId = env('SBI_MERCHANT_ID');
         $actionUrl = env('SBI_PAYMENT_API');
         $orderId = $payload['order_id'] ?? $payload['orderId'] ?? null;
-        $amount = $payload['payment_amount'] ?? $payload['amount'] ?? null;
+        $defaultAmount = $payload['payment_amount'] ?? $payload['amount'] ?? null;
 
-        if (!$requestParameter && $merchantId && $orderId && $amount !== null) {
+        $amount = $request->input('amount') ?? $request->input('payment_amount') ?? $defaultAmount;
+        if ($request->input('is_paid') == 99 || $request->input('is_repayment') == 1) {
+            $amount = $request->input('amount', $request->input('payment_amount', 1));
+        }
+
+        if ($merchantId && $orderId && $amount !== null) {
             $baseUrl = rtrim(env('APP_URL'), '/') . '/student-payment/';
             $successUrl = "{$baseUrl}success";
             $failUrl = "{$baseUrl}fail";
@@ -1681,6 +1686,9 @@ public function generateStudentOrderId(Request $request)
             $requestParameter = "{$merchantId}|DOM|IN|INR|{$amount}|{$otherData}|{$successUrl}|{$failUrl}|SBIEPAY|{$orderId}|{$marId}|NB|ONLINE|ONLINE,pWhMnIEMc4q6hKdi2Fx50Ii8CKAoSIqv9ScSpwuMHM4=";
         }
 
+        $payload['amount'] = $amount;
+        $payload['payment_amount'] = $amount;
+        $payload['requestParameter'] = $requestParameter;
         $payload['encryptTrans'] = ($paymentKey && $requestParameter)
             ? sbiEncrypt($requestParameter)
             : ($payload['encryptTrans'] ?? $payload['EncryptTrans'] ?? $payload['transaction_id'] ?? null);
@@ -1878,14 +1886,21 @@ public function generateEnrollmentStudentOrderId(Request $request)
         $actionUrl        = env('SBI_PAYMENT_API');
         $paymentKey       = env('SBI_PAYMENT_KEY');
         $orderId          = $payload['order_id'] ?? $payload['orderId'] ?? null;
-        $paymentAmount    = $payload['payment_amount'] ?? $payload['amount'] ?? null;
+        $defaultPayableAmount = $payload['payment_amount'] ?? $payload['amount'] ?? null;
+
+        // Respect amount or repayment flag from request
+        $paymentAmount = $request->input('amount') ?? $request->input('payment_amount') ?? $defaultPayableAmount;
+        if ($request->input('is_paid') == 99 || $request->input('is_repayment') == 1) {
+            $paymentAmount = $request->input('amount', $request->input('payment_amount', 1));
+        }
+
         $requestParameter = $payload['requestParameter']
             ?? $payload['request_parameter']
             ?? $payload['paymentData']
             ?? $payload['payment_data']
             ?? null;
 
-        if (!$requestParameter && $merchantId && $orderId && $paymentAmount !== null) {
+        if ($merchantId && $orderId && $paymentAmount !== null) {
             $baseUrl    = rtrim(env('APP_URL'), '/') . '/student-payment/';
             $successUrl = "{$baseUrl}success";
             $failUrl    = "{$baseUrl}fail";
@@ -1897,6 +1912,9 @@ public function generateEnrollmentStudentOrderId(Request $request)
             $requestParameter = "{$merchantId}|DOM|IN|INR|{$paymentAmount}|{$otherData}|{$successUrl}|{$failUrl}|SBIEPAY|{$orderId}|{$marId}|NB|ONLINE|ONLINE,pWhMnIEMc4q6hKdi2Fx50Ii8CKAoSIqv9ScSpwuMHM4=";
         }
 
+        $payload['amount']           = $paymentAmount;
+        $payload['payment_amount']   = $paymentAmount;
+        $payload['requestParameter'] = $requestParameter;
         $payload['encryptTrans']     = ($paymentKey && $requestParameter)
             ? sbiEncrypt($requestParameter)
             : ($payload['encryptTrans'] ?? $payload['EncryptTrans'] ?? $payload['transaction_id'] ?? null);
