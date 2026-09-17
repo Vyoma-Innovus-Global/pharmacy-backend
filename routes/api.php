@@ -33,6 +33,7 @@ use App\Http\Controllers\AdminInstituteWiseSummaryController;
 use App\Http\Controllers\AdminDistrictController;
 use App\Http\Controllers\SmsBroadcastController;
 use App\Http\Controllers\EmailBroadcastController;
+use App\Http\Controllers\MarksCorrectionController;
 
 
 
@@ -520,6 +521,7 @@ Route::prefix('admin')->middleware('authenticate')->group(function () {
     Route::post('/institute-wise-summary', [AdminInstituteWiseSummaryController::class, 'getInstituteWiseSummary']);
     Route::post('/examiner-wise-summary', [AdminInstituteWiseSummaryController::class, 'getExaminerWiseSummary']);
     Route::get('/district-list', [AdminDistrictController::class, 'getDistrictListByAdmin']);
+    Route::post('/get-student-details-marks-correction', [MarksCorrectionController::class, 'getStudentDetailsMarksCorrection']);
 });
 
 Route::prefix('sms')->group(function () {
