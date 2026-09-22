@@ -33,7 +33,7 @@ class MarksCorrectionController extends Controller
      *         description="Student details retrieved successfully",
      *         @OA\JsonContent(
      *             @OA\Property(property="version", type="string", example="1.0"),
-     *             @OA\Property(property="status", type="integer", example=1),
+     *             @OA\Property(property="status", type="integer", example=0),
      *             @OA\Property(property="message", type="string", example="Data fetched successfully"),
      *             @OA\Property(
      *                 property="data",
@@ -55,7 +55,7 @@ class MarksCorrectionController extends Controller
      *         description="Validation error",
      *         @OA\JsonContent(
      *             @OA\Property(property="version", type="string", example="1.0"),
-     *             @OA\Property(property="status", type="integer", example=0),
+     *             @OA\Property(property="status", type="integer", example=1),
      *             @OA\Property(property="message", type="string", example="Validation failed: The admin user id field is required."),
      *             @OA\Property(property="data", type="array", @OA\Items())
      *         )
@@ -65,7 +65,7 @@ class MarksCorrectionController extends Controller
      *         description="Internal server error",
      *         @OA\JsonContent(
      *             @OA\Property(property="version", type="string", example="1.0"),
-     *             @OA\Property(property="status", type="integer", example=0),
+     *             @OA\Property(property="status", type="integer", example=3),
      *             @OA\Property(property="message", type="string", example="Internal server error: ..."),
      *             @OA\Property(property="data", type="array", @OA\Items())
      *         )
@@ -106,7 +106,7 @@ class MarksCorrectionController extends Controller
 
         $validator = Validator::make($inputData, [
             'admin_user_id' => 'required|integer',
-            'semester_id'   => 'required|string|max:50',
+            'semester_id'   => 'required|integer',
             'exam_year'     => 'required|string|max:20',
             'inst_code'     => 'required|string|max:50',
             'subject_code'  => 'required|string|max:50',
@@ -121,14 +121,14 @@ class MarksCorrectionController extends Controller
 
             return response()->json([
                 'version' => '1.0',
-                'status'  => 0,
+                'status'  => 1,
                 'message' => 'Validation failed: ' . $validator->errors()->first(),
                 'data'    => [],
             ], 400);
         }
 
         $adminUserId  = (int) $inputData['admin_user_id'];
-        $semesterId   = trim((string) $inputData['semester_id']);
+        $semesterId   = trim((int) $inputData['semester_id']);
         $examYear     = trim((string) $inputData['exam_year']);
         $instCode     = strtoupper(trim((string) $inputData['inst_code']));
         $subjectCode  = strtoupper(trim((string) $inputData['subject_code']));
@@ -144,7 +144,7 @@ class MarksCorrectionController extends Controller
         ]);
 
         try {
-            $sql = 'SELECT public.fn_getstudentdetailsmarkscorrection(?::bigint, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar) AS data';
+            $sql = 'SELECT public.fn_getstudentdetailsmarkscorrection(?::bigint, ?::integer, ?::varchar, ?::varchar, ?::varchar, ?::varchar) AS data';
 
             $result = DB::select($sql, [
                 $adminUserId,
@@ -159,7 +159,7 @@ class MarksCorrectionController extends Controller
                 Log::channel('daily')->warning('⚠️ No result returned from fn_getstudentdetailsmarkscorrection');
                 return response()->json([
                     'version' => '1.0',
-                    'status'  => 1,
+                    'status'  => 0,
                     'message' => 'No student details found for marks correction.',
                     'data'    => [],
                 ], 200);
@@ -178,7 +178,7 @@ class MarksCorrectionController extends Controller
 
                 return response()->json([
                     'version' => '1.0',
-                    'status'  => 0,
+                    'status'  => 3,
                     'message' => 'Failed to parse database response.',
                     'data'    => [],
                 ], 500);
@@ -190,7 +190,7 @@ class MarksCorrectionController extends Controller
 
             $responseData = [
                 'version' => '1.0',
-                'status'  => 1,
+                'status'  => 0,
                 'message' => 'Data fetched successfully',
                 'data'    => $data ?? [],
             ];
@@ -209,10 +209,11 @@ class MarksCorrectionController extends Controller
 
             return response()->json([
                 'version' => '1.0',
-                'status'  => 0,
+                'status'  => 3,
                 'message' => 'Internal server error: ' . $e->getMessage(),
                 'data'    => [],
             ], 500);
         }
     }
 }
+

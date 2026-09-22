@@ -34,6 +34,9 @@ use App\Http\Controllers\AdminDistrictController;
 use App\Http\Controllers\SmsBroadcastController;
 use App\Http\Controllers\EmailBroadcastController;
 use App\Http\Controllers\MarksCorrectionController;
+use App\Http\Controllers\AdminTeacherInfoMarksCorrectionController;
+use App\Http\Controllers\AdminSaveTeacherAssignMarksCorrectionController;
+use App\Http\Controllers\AdminMarksCorrectionEvaluatorInstAllocationSummaryController;
 
 
 
@@ -522,6 +525,9 @@ Route::prefix('admin')->middleware('authenticate')->group(function () {
     Route::post('/examiner-wise-summary', [AdminInstituteWiseSummaryController::class, 'getExaminerWiseSummary']);
     Route::get('/district-list', [AdminDistrictController::class, 'getDistrictListByAdmin']);
     Route::post('/get-student-details-marks-correction', [MarksCorrectionController::class, 'getStudentDetailsMarksCorrection']);
+    Route::post('/get-teacher-info-marks-correction', [AdminTeacherInfoMarksCorrectionController::class, 'getTeacherInfoMarksCorrection']);
+    Route::post('/save-teacher-assign-marks-correction', [AdminSaveTeacherAssignMarksCorrectionController::class, 'saveTeacherAssignMarksCorrection']);
+    Route::post('/get-marks-correction-evaluator-inst-allocation-summary', [AdminMarksCorrectionEvaluatorInstAllocationSummaryController::class, 'getMarksCorrectionEvaluatorInstAllocationSummary']);
 });
 
 Route::prefix('sms')->group(function () {
