@@ -37,6 +37,9 @@ use App\Http\Controllers\MarksCorrectionController;
 use App\Http\Controllers\AdminTeacherInfoMarksCorrectionController;
 use App\Http\Controllers\AdminSaveTeacherAssignMarksCorrectionController;
 use App\Http\Controllers\AdminMarksCorrectionEvaluatorInstAllocationSummaryController;
+use App\Http\Controllers\AdminMarksCorrectionStudentMarksInfoController;
+use App\Http\Controllers\AdminSaveMarksCorrectionSubjectMarksController;
+use App\Http\Controllers\AdminMarksCorrectionEvaluatorSubjectAllocationSummaryController;
 
 
 
@@ -528,6 +531,9 @@ Route::prefix('admin')->middleware('authenticate')->group(function () {
     Route::post('/get-teacher-info-marks-correction', [AdminTeacherInfoMarksCorrectionController::class, 'getTeacherInfoMarksCorrection']);
     Route::post('/save-teacher-assign-marks-correction', [AdminSaveTeacherAssignMarksCorrectionController::class, 'saveTeacherAssignMarksCorrection']);
     Route::post('/get-marks-correction-evaluator-inst-allocation-summary', [AdminMarksCorrectionEvaluatorInstAllocationSummaryController::class, 'getMarksCorrectionEvaluatorInstAllocationSummary']);
+    Route::post('/get-marks-correction-student-marks-info', [AdminMarksCorrectionStudentMarksInfoController::class, 'getMarksCorrectionStudentMarksInfo']);
+    Route::post('/save-marks-correction-subject-marks', [AdminSaveMarksCorrectionSubjectMarksController::class, 'saveMarksCorrectionSubjectMarks']);
+    Route::post('/get-marks-correction-evaluator-subject-allocation-summary', [AdminMarksCorrectionEvaluatorSubjectAllocationSummaryController::class, 'getMarksCorrectionEvaluatorSubjectAllocationSummary']);
 });
 
 Route::prefix('sms')->group(function () {

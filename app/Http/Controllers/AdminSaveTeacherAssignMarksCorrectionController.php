@@ -325,7 +325,7 @@ class AdminSaveTeacherAssignMarksCorrectionController extends Controller
                     'p_errorcode'        => 1,
                     'failed_student_ids' => $failedStudentIds,
                 ],
-            ], 400);
+            ], 500);
         }
 
         return response()->json([
