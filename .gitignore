@@ -3,7 +3,16 @@
 /public/build
 /public/hot
 /public/storage
+/public/uploads
+/upload
 /storage/*.key
+/storage/app/*
+!/storage/app/.gitignore
+!/storage/app/public
+/storage/app/public/*
+!/storage/app/public/.gitignore
+/storage/logs/*
+!/storage/logs/.gitignore
 /vendor
 .env
 .env.backup
@@ -14,6 +23,9 @@ Homestead.yaml
 auth.json
 npm-debug.log
 yarn-error.log
+*.log
+.DS_Store
+Thumbs.db
 /.fleet
 /.idea
 /.vscode
