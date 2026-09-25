@@ -161,7 +161,7 @@ class AdminSaveMarksCorrectionSubjectMarksController extends Controller
             'semester'      => 'required|integer',
             'exam_year'     => 'required|string|max:20',
             'subject_code'  => 'required|string|max:50',
-            'marks'         => 'required|integer',
+            'marks'         => 'nullable|integer',
             'exam_status'   => 'required|string|max:20',
             'marks_status'  => 'required|string|max:50',
             'document'      => 'nullable|string|max:255',
@@ -198,7 +198,7 @@ class AdminSaveMarksCorrectionSubjectMarksController extends Controller
                 $semester     = (int) $item['semester'];
                 $examYear     = trim((string) $item['exam_year']);
                 $subjectCode  = strtoupper(trim((string) $item['subject_code']));
-                $marks        = (int) $item['marks'];
+                $marks        = ($item['marks'] !== null && $item['marks'] !== '') ? (int) $item['marks'] : null;
                 $examStatus   = strtoupper(trim((string) $item['exam_status']));
                 $marksStatus  = strtoupper(trim((string) $item['marks_status']));
                 $document     = (string) ($item['document'] ?? '');

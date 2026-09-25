@@ -40,6 +40,8 @@ use App\Http\Controllers\AdminMarksCorrectionEvaluatorInstAllocationSummaryContr
 use App\Http\Controllers\AdminMarksCorrectionStudentMarksInfoController;
 use App\Http\Controllers\AdminSaveMarksCorrectionSubjectMarksController;
 use App\Http\Controllers\AdminMarksCorrectionEvaluatorSubjectAllocationSummaryController;
+use App\Http\Controllers\CDCSaveAnswerscriptIntakeController;
+use App\Http\Controllers\CDCGetAnswerscriptIntakeController;
 
 
 
@@ -534,6 +536,8 @@ Route::prefix('admin')->middleware('authenticate')->group(function () {
     Route::post('/get-marks-correction-student-marks-info', [AdminMarksCorrectionStudentMarksInfoController::class, 'getMarksCorrectionStudentMarksInfo']);
     Route::post('/save-marks-correction-subject-marks', [AdminSaveMarksCorrectionSubjectMarksController::class, 'saveMarksCorrectionSubjectMarks']);
     Route::post('/get-marks-correction-evaluator-subject-allocation-summary', [AdminMarksCorrectionEvaluatorSubjectAllocationSummaryController::class, 'getMarksCorrectionEvaluatorSubjectAllocationSummary']);
+    Route::post('/save-answerscript-intake', [CDCSaveAnswerscriptIntakeController::class, 'saveAnswerscriptIntake']);
+    Route::post('/get-answerscript-intake', [CDCGetAnswerscriptIntakeController::class, 'getAnswerscriptIntake']);
 });
 
 Route::prefix('sms')->group(function () {
