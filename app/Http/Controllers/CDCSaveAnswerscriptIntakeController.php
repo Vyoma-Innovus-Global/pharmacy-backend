@@ -14,7 +14,7 @@ class CDCSaveAnswerscriptIntakeController extends Controller
      *     path="/api/admin/save-answerscript-intake",
      *     tags={"CDC - Answer Scripts"},
      *     summary="Save Answer Script Intake (Single or Bulk)",
-     *     description="Saves answer script intake record by calling public.fn_cdc_saveanswerscriptintake(p_answerscript_id, p_exam_year, p_semester_id, p_inst_code, p_dept_code, p_subject_code, p_total_scripts, p_remarks, p_entry_user_id)",
+     *     description="Saves answer script intake record by calling public.fn_cdc_saveanswerscriptintake(p_answerscript_id, p_exam_year, p_semester_id, p_inst_code, p_dept_code, p_subject_code, p_total_scripts, p_remarks, p_actiontype, p_entry_user_id)",
      *     security={{"token": {}}},
      *     @OA\RequestBody(
      *         required=true,
@@ -28,6 +28,7 @@ class CDCSaveAnswerscriptIntakeController extends Controller
      *             @OA\Property(property="subject_code", type="string", example="PHCE", description="Subject Code"),
      *             @OA\Property(property="total_scripts", type="integer", example=40, description="Total Answer Scripts Count"),
      *             @OA\Property(property="remarks", type="string", example="test", description="Remarks / Notes", nullable=true),
+     *             @OA\Property(property="action_type", type="string", example="Save", description="Action Type (e.g. Save, Delete)", nullable=true),
      *             @OA\Property(property="entry_user_id", type="integer", example=1, description="Entry User ID")
      *         )
      *     ),
@@ -79,6 +80,7 @@ class CDCSaveAnswerscriptIntakeController extends Controller
      *   p_subject_code,
      *   p_total_scripts,
      *   p_remarks,
+     *   p_actiontype,
      *   p_entry_user_id
      * )
      */
@@ -107,6 +109,7 @@ class CDCSaveAnswerscriptIntakeController extends Controller
         $topLevelDeptCode    = $request->input('dept_code') ?? $request->input('p_dept_code') ?? $request->input('deptCode') ?? $request->input('department_code') ?? $request->input('departmentCode') ?? $request->input('department');
         $topLevelEntryUserId = $request->input('entry_user_id') ?? $request->input('p_entry_user_id') ?? $request->input('entryUserId') ?? $request->input('admin_user_id') ?? $request->input('adminUserId') ?? $request->input('user_id') ?? $authUserId;
         $topLevelRemarks     = $request->input('remarks') ?? $request->input('p_remarks') ?? $request->input('remark') ?? $request->input('comment') ?? '';
+        $topLevelActionType  = $request->input('action_type') ?? $request->input('p_actiontype') ?? $request->input('p_action_type') ?? $request->input('actionType') ?? $request->input('action') ?? 'I';
 
         $items = [];
         $rawItems = $request->input('items') ?? $request->input('data') ?? $request->input('scripts') ?? $request->input('answerscripts');
@@ -124,6 +127,7 @@ class CDCSaveAnswerscriptIntakeController extends Controller
                         'subject_code'    => $entry['subject_code'] ?? $entry['p_subject_code'] ?? $entry['subjectCode'] ?? $entry['subject'] ?? null,
                         'total_scripts'   => $entry['total_scripts'] ?? $entry['p_total_scripts'] ?? $entry['totalScripts'] ?? $entry['scripts_count'] ?? $entry['script_count'] ?? null,
                         'remarks'         => $entry['remarks'] ?? $entry['p_remarks'] ?? $entry['remark'] ?? $topLevelRemarks ?? '',
+                        'action_type'     => $entry['action_type'] ?? $entry['p_actiontype'] ?? $entry['p_action_type'] ?? $entry['actionType'] ?? $entry['action'] ?? $topLevelActionType ?? 'I',
                         'entry_user_id'   => $entry['entry_user_id'] ?? $entry['p_entry_user_id'] ?? $entry['entryUserId'] ?? $topLevelEntryUserId,
                     ];
                 }
@@ -141,6 +145,7 @@ class CDCSaveAnswerscriptIntakeController extends Controller
                         'subject_code'    => $entry['subject_code'] ?? $entry['p_subject_code'] ?? $entry['subjectCode'] ?? $entry['subject'] ?? null,
                         'total_scripts'   => $entry['total_scripts'] ?? $entry['p_total_scripts'] ?? $entry['totalScripts'] ?? $entry['scripts_count'] ?? $entry['script_count'] ?? null,
                         'remarks'         => $entry['remarks'] ?? $entry['p_remarks'] ?? $entry['remark'] ?? '',
+                        'action_type'     => $entry['action_type'] ?? $entry['p_actiontype'] ?? $entry['p_action_type'] ?? $entry['actionType'] ?? $entry['action'] ?? 'I',
                         'entry_user_id'   => $entry['entry_user_id'] ?? $entry['p_entry_user_id'] ?? $entry['entryUserId'] ?? $authUserId,
                     ];
                 }
@@ -156,6 +161,7 @@ class CDCSaveAnswerscriptIntakeController extends Controller
                 'subject_code'    => $request->input('subject_code') ?? $request->input('p_subject_code') ?? $request->input('subjectCode') ?? $request->input('subject'),
                 'total_scripts'   => $request->input('total_scripts') ?? $request->input('p_total_scripts') ?? $request->input('totalScripts') ?? $request->input('scripts_count') ?? $request->input('script_count'),
                 'remarks'         => $topLevelRemarks,
+                'action_type'     => $topLevelActionType,
                 'entry_user_id'   => $topLevelEntryUserId,
             ];
         }
@@ -180,6 +186,7 @@ class CDCSaveAnswerscriptIntakeController extends Controller
             'subject_code'    => 'required|string|max:50',
             'total_scripts'   => 'required|integer|min:0',
             'remarks'         => 'nullable|string',
+            'action_type'     => 'nullable|string|max:50',
             'entry_user_id'   => 'required|integer',
         ];
 
@@ -200,7 +207,7 @@ class CDCSaveAnswerscriptIntakeController extends Controller
             }
         }
 
-        $sql = 'SELECT public.fn_cdc_saveanswerscriptintake(?::bigint, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::integer, ?::text, ?::bigint) AS data';
+        $sql = 'SELECT public.fn_cdc_saveanswerscriptintake(?::bigint, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::integer, ?::text, ?::varchar, ?::bigint) AS data';
 
         DB::beginTransaction();
         try {
@@ -226,6 +233,10 @@ class CDCSaveAnswerscriptIntakeController extends Controller
                 $subjectCode  = strtoupper(trim((string) $item['subject_code']));
                 $totalScripts = (int) $item['total_scripts'];
                 $remarks      = (string) ($item['remarks'] ?? '');
+                $actionType   = trim((string) ($item['action_type'] ?? 'Save'));
+                if ($actionType === '' || strcasecmp($actionType, 'I') === 0) {
+                    $actionType = 'Save';
+                }
                 $entryUserId  = (int) $item['entry_user_id'];
 
                 Log::channel('daily')->info("📤 Calling fn_cdc_saveanswerscriptintake [Item {$index}] with parameters:", [
@@ -237,6 +248,7 @@ class CDCSaveAnswerscriptIntakeController extends Controller
                     'p_subject_code'    => $subjectCode,
                     'p_total_scripts'   => $totalScripts,
                     'p_remarks'         => $remarks,
+                    'p_actiontype'      => $actionType,
                     'p_entry_user_id'   => $entryUserId,
                 ]);
 
@@ -249,6 +261,7 @@ class CDCSaveAnswerscriptIntakeController extends Controller
                     $subjectCode,
                     $totalScripts,
                     $remarks,
+                    $actionType,
                     $entryUserId,
                 ]);
 
@@ -265,8 +278,30 @@ class CDCSaveAnswerscriptIntakeController extends Controller
 
                 $errorCode = isset($parsed['p_errorcode']) ? (int) $parsed['p_errorcode'] : 0;
                 if ($errorCode !== 0) {
-                    $errorMsg = $parsed['p_errormsg'] ?? $parsed['message'] ?? "Database function returned error code {$errorCode}";
-                    throw new \Exception("Subject {$subjectCode}: {$errorMsg}");
+                    DB::rollBack();
+
+                    $errorMsg = $parsed['p_errormsg'] ?? $parsed['message'] ?? null;
+                    if (!$errorMsg) {
+                        if ($errorCode === 2) {
+                            $errorMsg = "This combination already exists.";
+                        } elseif ($errorCode === 3) {
+                            $errorMsg = "Record not found.";
+                        } else {
+                            $errorMsg = "Subject {$subjectCode}: Database function returned error code {$errorCode}";
+                        }
+                    }
+
+                    Log::channel('daily')->warning("⚠️ fn_cdc_saveanswerscriptintake returned error code {$errorCode}:", [
+                        'subject_code' => $subjectCode,
+                        'parsed'       => $parsed,
+                    ]);
+
+                    return response()->json([
+                        'version' => '1.0',
+                        'status'  => 1,
+                        'message' => $errorMsg,
+                        'data'    => $parsed,
+                    ], 200);
                 }
 
                 $lastResult = $parsed;

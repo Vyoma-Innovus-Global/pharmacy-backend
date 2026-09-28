@@ -857,6 +857,990 @@
                 ]
             }
         },
+        "/api/admin/get-marks-correction-evaluator-inst-allocation-summary": {
+            "post": {
+                "tags": [
+                    "Admin - Student Marks"
+                ],
+                "summary": "Get marks correction evaluator institute allocation summary",
+                "description": "Fetches evaluator institute allocation summary for marks correction by calling public.fn_admin_getmarkscorrectionevaluatorinstallocationsummary(p_admin_user_id, p_user_type_id, p_evaluator_type_id, p_exam_year, p_semester)",
+                "operationId": "7b47dea6e996e4a953f96ab60dc40e8c",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "admin_user_id",
+                                    "user_type_id",
+                                    "evaluator_type_id",
+                                    "exam_year",
+                                    "semester"
+                                ],
+                                "properties": {
+                                    "admin_user_id": {
+                                        "description": "Admin User ID / Evaluator User ID",
+                                        "type": "integer",
+                                        "example": 661
+                                    },
+                                    "user_type_id": {
+                                        "description": "User Type ID",
+                                        "type": "integer",
+                                        "example": 9
+                                    },
+                                    "evaluator_type_id": {
+                                        "description": "Evaluator Type ID (e.g. 1=Internal, 2=External)",
+                                        "type": "integer",
+                                        "example": 2
+                                    },
+                                    "exam_year": {
+                                        "description": "Exam Year",
+                                        "type": "string",
+                                        "example": "2025"
+                                    },
+                                    "semester": {
+                                        "description": "Semester ID / Number",
+                                        "type": "integer",
+                                        "example": 1
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Allocation summary fetched successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "version": {
+                                            "type": "string",
+                                            "example": "1.0"
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "example": 0
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Data fetch successfully"
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "internal_institutes": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "properties": {
+                                                            "inst_id": {
+                                                                "type": "integer",
+                                                                "example": 1
+                                                            },
+                                                            "inst_code": {
+                                                                "type": "string",
+                                                                "example": "JCG"
+                                                            },
+                                                            "inst_name": {
+                                                                "type": "string",
+                                                                "example": "JNAN CHANDRA GHOSH POLYTECHNIC"
+                                                            },
+                                                            "pending_department": {
+                                                                "type": "integer",
+                                                                "example": 0
+                                                            },
+                                                            "departments": {
+                                                                "type": "array",
+                                                                "items": {
+                                                                    "properties": {
+                                                                        "dept_id": {
+                                                                            "type": "integer",
+                                                                            "example": 1
+                                                                        },
+                                                                        "dept_code": {
+                                                                            "type": "string",
+                                                                            "example": "PHARM"
+                                                                        },
+                                                                        "total_subjects": {
+                                                                            "type": "integer",
+                                                                            "example": 1
+                                                                        },
+                                                                        "total_pending_subjects": {
+                                                                            "type": "integer",
+                                                                            "example": 0
+                                                                        }
+                                                                    },
+                                                                    "type": "object"
+                                                                }
+                                                            }
+                                                        },
+                                                        "type": "object"
+                                                    }
+                                                },
+                                                "external_institutes": {
+                                                    "type": "array",
+                                                    "items": {}
+                                                },
+                                                "other_institutes": {
+                                                    "type": "array",
+                                                    "items": {}
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "version": {
+                                            "type": "string",
+                                            "example": "1.0"
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "example": 1
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Validation failed: ..."
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {}
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "version": {
+                                            "type": "string",
+                                            "example": "1.0"
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "example": 3
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Internal server error: ..."
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {}
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "token": []
+                    }
+                ]
+            }
+        },
+        "/api/admin/get-marks-correction-evaluator-subject-allocation-summary": {
+            "post": {
+                "tags": [
+                    "Admin - Student Marks"
+                ],
+                "summary": "Get marks correction evaluator subject allocation summary",
+                "description": "Fetches evaluator subject allocation summary for marks correction by calling public.fn_admin_getmarkscorrection_evaluatorsubjectallocationsummary(p_admin_user_id, p_user_type_id, p_inst_code, p_evaluator_type_id, p_department_id, p_exam_year, p_semester)",
+                "operationId": "32acd40ec663e5a4ef892f69665864b1",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "admin_user_id",
+                                    "user_type_id",
+                                    "inst_code",
+                                    "evaluator_type_id",
+                                    "department_id",
+                                    "exam_year",
+                                    "semester"
+                                ],
+                                "properties": {
+                                    "admin_user_id": {
+                                        "description": "Admin User ID / Evaluator User ID",
+                                        "type": "integer",
+                                        "example": 661
+                                    },
+                                    "user_type_id": {
+                                        "description": "User Type ID",
+                                        "type": "integer",
+                                        "example": 9
+                                    },
+                                    "inst_code": {
+                                        "description": "Institute Code",
+                                        "type": "string",
+                                        "example": "JCG"
+                                    },
+                                    "evaluator_type_id": {
+                                        "description": "Evaluator Type ID (e.g. 1=Internal, 2=External)",
+                                        "type": "integer",
+                                        "example": 2
+                                    },
+                                    "department_id": {
+                                        "description": "Department ID",
+                                        "type": "integer",
+                                        "example": 1
+                                    },
+                                    "exam_year": {
+                                        "description": "Exam Year",
+                                        "type": "string",
+                                        "example": "2025"
+                                    },
+                                    "semester": {
+                                        "description": "Semester ID / Number",
+                                        "type": "integer",
+                                        "example": 1
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Subject allocation summary retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "version": {
+                                            "type": "string",
+                                            "example": "1.0"
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "example": 0
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Data fetched successfully"
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "adminUserId": {
+                                                        "type": "integer",
+                                                        "example": 661
+                                                    },
+                                                    "totalStudents": {
+                                                        "type": "integer",
+                                                        "example": 7
+                                                    },
+                                                    "pendingSubject": {
+                                                        "type": "integer",
+                                                        "example": 0
+                                                    },
+                                                    "assignedInstCode": {
+                                                        "type": "string",
+                                                        "example": "JCG"
+                                                    },
+                                                    "assignedInstName": {
+                                                        "type": "string",
+                                                        "example": "JNAN CHANDRA GHOSH POLYTECHNIC"
+                                                    },
+                                                    "assignedSubjectCode": {
+                                                        "type": "string",
+                                                        "example": "HUAP"
+                                                    },
+                                                    "assignedSubjectName": {
+                                                        "type": "string",
+                                                        "example": "HUAP"
+                                                    },
+                                                    "assignedDepartmentCode": {
+                                                        "type": "string",
+                                                        "example": "PHARM"
+                                                    },
+                                                    "assignedDepartmentName": {
+                                                        "type": "string",
+                                                        "example": "PHARM"
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "version": {
+                                            "type": "string",
+                                            "example": "1.0"
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "example": 1
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Validation failed: ..."
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {}
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "version": {
+                                            "type": "string",
+                                            "example": "1.0"
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "example": 3
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Internal server error: ..."
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {}
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "token": []
+                    }
+                ]
+            }
+        },
+        "/api/admin/get-marks-correction-student-marks-info": {
+            "post": {
+                "tags": [
+                    "Admin - Student Marks"
+                ],
+                "summary": "Get student marks information for marks correction",
+                "description": "Fetches student marks information for marks correction by calling public.fn_admin_getmarkscorrectionstudentmarksinfo(p_admin_user_id, p_student_id, p_inst_code, p_dept_code, p_subject_code, p_exam_year, p_semester, p_examiner_type)",
+                "operationId": "6ceebc5e4887ff186797acb7a19d59da",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "admin_user_id",
+                                    "inst_code",
+                                    "dept_code",
+                                    "subject_code",
+                                    "exam_year",
+                                    "semester",
+                                    "examiner_type"
+                                ],
+                                "properties": {
+                                    "admin_user_id": {
+                                        "description": "Admin / Evaluator User ID",
+                                        "type": "integer",
+                                        "example": 661
+                                    },
+                                    "student_id": {
+                                        "description": "Student ID (pass 0 for all students)",
+                                        "type": "integer",
+                                        "example": 0
+                                    },
+                                    "inst_code": {
+                                        "description": "Institute Code",
+                                        "type": "string",
+                                        "example": "JCG"
+                                    },
+                                    "dept_code": {
+                                        "description": "Department Code",
+                                        "type": "string",
+                                        "example": "PHARM"
+                                    },
+                                    "subject_code": {
+                                        "description": "Subject Code",
+                                        "type": "string",
+                                        "example": "HUAP"
+                                    },
+                                    "exam_year": {
+                                        "description": "Exam Year",
+                                        "type": "string",
+                                        "example": "2025"
+                                    },
+                                    "semester": {
+                                        "description": "Semester / Part identifier",
+                                        "type": "string",
+                                        "example": "1"
+                                    },
+                                    "examiner_type": {
+                                        "description": "Examiner Type (e.g. EXTERNAL / INTERNAL)",
+                                        "type": "string",
+                                        "example": "EXTERNAL"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Student marks info retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "version": {
+                                            "type": "string",
+                                            "example": "1.0"
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "example": 0
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Data fetched successfully"
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "maxMarks": {
+                                                        "type": "integer",
+                                                        "example": 80
+                                                    },
+                                                    "semester": {
+                                                        "type": "integer",
+                                                        "example": 1
+                                                    },
+                                                    "studentId": {
+                                                        "type": "integer",
+                                                        "example": 3635
+                                                    },
+                                                    "studentNo": {
+                                                        "type": "string",
+                                                        "example": null,
+                                                        "nullable": true
+                                                    },
+                                                    "department": {
+                                                        "type": "string",
+                                                        "example": "PHARM"
+                                                    },
+                                                    "marksStatus": {
+                                                        "type": "string",
+                                                        "example": null,
+                                                        "nullable": true
+                                                    },
+                                                    "studentName": {
+                                                        "type": "string",
+                                                        "example": null,
+                                                        "nullable": true
+                                                    },
+                                                    "studentRoll": {
+                                                        "type": "string",
+                                                        "example": null,
+                                                        "nullable": true
+                                                    },
+                                                    "subjectCode": {
+                                                        "type": "string",
+                                                        "example": "HUAP"
+                                                    },
+                                                    "studentRegNo": {
+                                                        "type": "string",
+                                                        "example": null,
+                                                        "nullable": true
+                                                    },
+                                                    "correctedMarks": {
+                                                        "type": "number",
+                                                        "example": null,
+                                                        "nullable": true
+                                                    },
+                                                    "correctionMarksId": {
+                                                        "type": "integer",
+                                                        "example": 1
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "version": {
+                                            "type": "string",
+                                            "example": "1.0"
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "example": 1
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Validation failed: The admin user id field is required."
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {}
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "version": {
+                                            "type": "string",
+                                            "example": "1.0"
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "example": 3
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Internal server error: ..."
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {}
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "token": []
+                    }
+                ]
+            }
+        },
+        "/api/admin/save-marks-correction-subject-marks": {
+            "post": {
+                "tags": [
+                    "Admin - Student Marks"
+                ],
+                "summary": "Save subject marks for marks correction (Single or Bulk)",
+                "description": "Saves subject marks for student(s) during marks correction by calling public.fn_save_markscorrection_subject_marks(p_student_id, p_reg_no, p_semester, p_exam_year, p_subject_code, p_marks, p_examstatus, p_marksstatus, p_document, p_teacher_id, p_examinert_type)",
+                "operationId": "fb9aca133da2bfd055d9a9abdefc5ad8",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "student_id",
+                                    "reg_no",
+                                    "semester",
+                                    "exam_year",
+                                    "subject_code",
+                                    "marks",
+                                    "exam_status",
+                                    "marks_status",
+                                    "teacher_id",
+                                    "examiner_type"
+                                ],
+                                "properties": {
+                                    "student_id": {
+                                        "description": "Student ID",
+                                        "type": "integer",
+                                        "example": 3635
+                                    },
+                                    "reg_no": {
+                                        "description": "Registration Number",
+                                        "type": "string",
+                                        "example": "PHARM242504509"
+                                    },
+                                    "semester": {
+                                        "description": "Semester (integer)",
+                                        "type": "integer",
+                                        "example": 1
+                                    },
+                                    "exam_year": {
+                                        "description": "Exam Year",
+                                        "type": "string",
+                                        "example": "2025"
+                                    },
+                                    "subject_code": {
+                                        "description": "Subject Code",
+                                        "type": "string",
+                                        "example": "HUAP"
+                                    },
+                                    "marks": {
+                                        "description": "Marks (integer)",
+                                        "type": "integer",
+                                        "example": 70
+                                    },
+                                    "exam_status": {
+                                        "description": "Exam Status (e.g. PR / AB / RA)",
+                                        "type": "string",
+                                        "example": "PR"
+                                    },
+                                    "marks_status": {
+                                        "description": "Marks Status (e.g. DRAFT / FINAL)",
+                                        "type": "string",
+                                        "example": "DRAFT"
+                                    },
+                                    "document": {
+                                        "description": "Document path or identifier",
+                                        "type": "string",
+                                        "example": "D:Admin",
+                                        "nullable": true
+                                    },
+                                    "teacher_id": {
+                                        "description": "Teacher / Evaluator User ID",
+                                        "type": "integer",
+                                        "example": 661
+                                    },
+                                    "examiner_type": {
+                                        "description": "Examiner Type (e.g. EXTERNAL / INTERNAL)",
+                                        "type": "string",
+                                        "example": "EXTERNAL"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Subject marks saved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "version": {
+                                            "type": "string",
+                                            "example": "1.0"
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "example": 0
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Marks saved successfully"
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "p_errorcode": {
+                                                    "type": "integer",
+                                                    "example": 0
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "version": {
+                                            "type": "string",
+                                            "example": "1.0"
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "example": 1
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Validation failed: The student id field is required."
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {}
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "version": {
+                                            "type": "string",
+                                            "example": "1.0"
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "example": 3
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Internal server error: ..."
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {}
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "token": []
+                    }
+                ]
+            }
+        },
+        "/api/admin/save-teacher-assign-marks-correction": {
+            "post": {
+                "tags": [
+                    "Admin - Student Marks"
+                ],
+                "summary": "Save teacher assignment for marks correction (Single or Multiple Students)",
+                "description": "Assigns teacher to student(s) for marks correction by looping public.fn_admin_saveteacherassignmarkscorrection(p_teacher_id, p_student_id, p_student_instcode, p_semester_id, p_subject_code, p_exam_year, p_examiner_type, p_adminuser_id)",
+                "operationId": "218c8586ec81974e848925e97870a14c",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "teacher_id",
+                                    "student_id",
+                                    "student_inst_code",
+                                    "semester_id",
+                                    "subject_code",
+                                    "exam_year",
+                                    "examiner_type",
+                                    "admin_user_id"
+                                ],
+                                "properties": {
+                                    "teacher_id": {
+                                        "description": "Teacher ID",
+                                        "type": "integer",
+                                        "example": 661
+                                    },
+                                    "student_id": {
+                                        "description": "Student ID (single integer or array of student IDs)",
+                                        "oneOf": [
+                                            {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "integer",
+                                                    "example": 3635
+                                                }
+                                            },
+                                            {
+                                                "type": "integer",
+                                                "example": 3635
+                                            }
+                                        ]
+                                    },
+                                    "student_inst_code": {
+                                        "description": "Student Institute Code",
+                                        "type": "string",
+                                        "example": "JCG"
+                                    },
+                                    "semester_id": {
+                                        "description": "Semester ID / Number",
+                                        "type": "integer",
+                                        "example": 1
+                                    },
+                                    "subject_code": {
+                                        "description": "Subject Code",
+                                        "type": "string",
+                                        "example": "HUAP"
+                                    },
+                                    "exam_year": {
+                                        "description": "Exam Year",
+                                        "type": "string",
+                                        "example": "2025"
+                                    },
+                                    "examiner_type": {
+                                        "description": "Examiner Type (EXTERNAL / INTERNAL)",
+                                        "type": "string",
+                                        "example": "EXTERNAL"
+                                    },
+                                    "admin_user_id": {
+                                        "description": "Admin User ID",
+                                        "type": "integer",
+                                        "example": 1
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Teacher assignment saved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "version": {
+                                            "type": "string",
+                                            "example": "1.0"
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "example": 0
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Teacher assigned successfully for 2 student(s)."
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "p_errorcode": {
+                                                    "type": "integer",
+                                                    "example": 0
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "version": {
+                                            "type": "string",
+                                            "example": "1.0"
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "example": 1
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Validation failed: ..."
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {}
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "version": {
+                                            "type": "string",
+                                            "example": "1.0"
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "example": 3
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Internal server error: ..."
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {}
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "token": []
+                    }
+                ]
+            }
+        },
         "/api/admin/semesters": {
             "post": {
                 "tags": [
@@ -1795,6 +2779,152 @@
                 ]
             }
         },
+        "/api/admin/save-teacher-v2": {
+            "post": {
+                "tags": [
+                    "Admin - Teacher"
+                ],
+                "summary": "Save teacher with subject assignments (V2)",
+                "description": "Save teacher information and assign multiple subjects using fn_admin_saveteacherinfo and fn_admin_saveteacherassignsubject_v2",
+                "operationId": "8ec693ff5d84e50b70336b9d10b9e390",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "admin_user_id",
+                                    "teacherInfo",
+                                    "subjectList"
+                                ],
+                                "properties": {
+                                    "admin_user_id": {
+                                        "description": "Admin / Entry User ID",
+                                        "type": "integer",
+                                        "example": 1001
+                                    },
+                                    "teacherInfo": {
+                                        "required": [
+                                            "in_teacher_id",
+                                            "full_name",
+                                            "contact_no",
+                                            "email",
+                                            "highest_qualification",
+                                            "inst_id",
+                                            "inst_name"
+                                        ],
+                                        "properties": {
+                                            "in_teacher_id": {
+                                                "description": "0 for new, ID for update",
+                                                "type": "integer",
+                                                "example": 0
+                                            },
+                                            "full_name": {
+                                                "type": "string",
+                                                "example": "Souvik Nag"
+                                            },
+                                            "contact_no": {
+                                                "type": "string",
+                                                "example": "9876543219"
+                                            },
+                                            "email": {
+                                                "type": "string",
+                                                "example": "souvik@example.com"
+                                            },
+                                            "highest_qualification": {
+                                                "type": "string",
+                                                "example": "M.Tech"
+                                            },
+                                            "aadhar_no": {
+                                                "type": "string",
+                                                "example": "123456789012",
+                                                "nullable": true
+                                            },
+                                            "inst_id": {
+                                                "type": "integer",
+                                                "example": 1
+                                            },
+                                            "inst_name": {
+                                                "type": "string",
+                                                "example": "JNAN CHANDRA GHOSH POLYTECHNIC"
+                                            },
+                                            "designation_id": {
+                                                "type": "string",
+                                                "example": "1",
+                                                "nullable": true
+                                            },
+                                            "image": {
+                                                "type": "string",
+                                                "example": null,
+                                                "nullable": true
+                                            },
+                                            "remarks": {
+                                                "type": "string",
+                                                "example": null,
+                                                "nullable": true
+                                            }
+                                        },
+                                        "type": "object"
+                                    },
+                                    "subjectList": {
+                                        "type": "array",
+                                        "items": {
+                                            "properties": {
+                                                "dept_id": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "semester_id": {
+                                                    "description": "Semester ID (e.g. Part-I, Part-II, or 1)",
+                                                    "type": "string",
+                                                    "example": "Part-I"
+                                                },
+                                                "subject_category_id": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "subject_id": {
+                                                    "type": "integer",
+                                                    "example": 101
+                                                },
+                                                "examiner_type_id": {
+                                                    "description": "Examiner Type ID (1: INTERNAL, 2: EXTERNAL, 3: BOTH)",
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "exam_year": {
+                                                    "description": "Exam Year",
+                                                    "type": "string",
+                                                    "example": "2026"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Teacher saved successfully"
+                    },
+                    "400": {
+                        "description": "Validation error"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    }
+                },
+                "security": [
+                    {
+                        "token": []
+                    }
+                ]
+            }
+        },
         "/api/admin/get-assigned-teachers": {
             "post": {
                 "tags": [
@@ -2464,6 +3594,886 @@
                     },
                     "500": {
                         "description": "Internal server error"
+                    }
+                },
+                "security": [
+                    {
+                        "token": []
+                    }
+                ]
+            }
+        },
+        "/api/admin/get-teacher-info-by-inst-and-subject": {
+            "post": {
+                "tags": [
+                    "Admin - Teacher"
+                ],
+                "summary": "Get Teacher Info by Institute and Subject",
+                "description": "Fetches teacher information for a specific institute, subject, semester, and exam year by calling public.fn_get_teacherinfobyinstandsubject(p_instcode, p_subjectcode, p_semester, p_examyear)",
+                "operationId": "8decde968fa6fc6d10024be5b6acfe14",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "inst_code",
+                                    "subject_code",
+                                    "semester",
+                                    "exam_year"
+                                ],
+                                "properties": {
+                                    "inst_code": {
+                                        "description": "Institute Code (or p_instcode)",
+                                        "type": "string",
+                                        "example": "JCG"
+                                    },
+                                    "subject_code": {
+                                        "description": "Subject Code (or p_subjectcode)",
+                                        "type": "string",
+                                        "example": "PHCE"
+                                    },
+                                    "semester": {
+                                        "description": "Semester / Part Name (or p_semester, e.g. Part-I, Part-II)",
+                                        "type": "string",
+                                        "example": "Part-I"
+                                    },
+                                    "exam_year": {
+                                        "description": "Exam Year (or p_examyear)",
+                                        "type": "string",
+                                        "example": "2025"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Teacher info fetched successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "version": {
+                                            "type": "string",
+                                            "example": "1.0"
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "example": 0
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Teacher info fetched successfully"
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "teacherId": {
+                                                        "type": "integer",
+                                                        "example": 851
+                                                    },
+                                                    "teacherName": {
+                                                        "type": "string",
+                                                        "example": "SEFALI HOTA"
+                                                    },
+                                                    "teacherInstCode": {
+                                                        "type": "string",
+                                                        "example": "JCG"
+                                                    },
+                                                    "teacherInstName": {
+                                                        "type": "string",
+                                                        "example": "JNAN CHANDRA GHOSH POLYTECHNIC"
+                                                    },
+                                                    "teacherPhoneNumber": {
+                                                        "type": "string",
+                                                        "example": "9831575542"
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "version": {
+                                            "type": "string",
+                                            "example": "1.0"
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "example": 1
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Validation failed: ..."
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {}
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "version": {
+                                            "type": "string",
+                                            "example": "1.0"
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "example": 3
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Internal server error: ..."
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {}
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "token": []
+                    }
+                ]
+            }
+        },
+        "/api/admin/get-teacher-info-marks-correction": {
+            "post": {
+                "tags": [
+                    "Admin - Student Marks"
+                ],
+                "summary": "Get teacher info for marks correction",
+                "description": "Fetches teacher info for marks correction by calling public.fn_admin_getteacherinfomarkscorrection(p_admin_userid, p_student_instcode, p_subject_code, p_exam_year, p_semester, p_examinertype)",
+                "operationId": "e2914b4753e97607b5fcdd4365e4c82a",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "admin_user_id",
+                                    "student_inst_code",
+                                    "subject_code",
+                                    "exam_year",
+                                    "semester",
+                                    "examiner_type"
+                                ],
+                                "properties": {
+                                    "admin_user_id": {
+                                        "description": "Admin User ID",
+                                        "type": "integer",
+                                        "example": 12
+                                    },
+                                    "student_inst_code": {
+                                        "description": "Student Institute Code",
+                                        "type": "string",
+                                        "example": "JCG"
+                                    },
+                                    "subject_code": {
+                                        "description": "Subject Code",
+                                        "type": "string",
+                                        "example": "HUAP"
+                                    },
+                                    "exam_year": {
+                                        "description": "Exam Year",
+                                        "type": "string",
+                                        "example": "2025"
+                                    },
+                                    "semester": {
+                                        "description": "Semester ID / Number",
+                                        "type": "integer",
+                                        "example": 1
+                                    },
+                                    "examiner_type": {
+                                        "description": "Examiner Type (e.g. EXTERNAL / INTERNAL)",
+                                        "type": "string",
+                                        "example": "EXTERNAL"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Teacher info retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "version": {
+                                            "type": "string",
+                                            "example": "1.0"
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "example": 0
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Data fetched successfully"
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "teacherId": {
+                                                        "type": "integer",
+                                                        "example": 661
+                                                    },
+                                                    "teacherInstCode": {
+                                                        "type": "string",
+                                                        "example": "TMP"
+                                                    },
+                                                    "teacherPhoneNumber": {
+                                                        "type": "string",
+                                                        "example": "8967975026"
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "version": {
+                                            "type": "string",
+                                            "example": "1.0"
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "example": 1
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Validation failed: The admin user id field is required."
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {}
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "version": {
+                                            "type": "string",
+                                            "example": "1.0"
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "example": 3
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Internal server error: ..."
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {}
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "token": []
+                    }
+                ]
+            }
+        },
+        "/api/admin/get-answerscript-info-by-subject": {
+            "post": {
+                "tags": [
+                    "CDC - Answer Scripts"
+                ],
+                "summary": "Get Answer Script Info by Subject",
+                "description": "Fetches answer script allocation and intake details for a specific subject by calling public.fn_get_answerscriptinfobysubject(p_examyear, p_semester, p_subjectcode)",
+                "operationId": "237c21aeb9675791837c789ad57ccc7d",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "exam_year",
+                                    "semester",
+                                    "subject_code"
+                                ],
+                                "properties": {
+                                    "exam_year": {
+                                        "description": "Exam Year (or p_examyear)",
+                                        "type": "string",
+                                        "example": "2026"
+                                    },
+                                    "semester": {
+                                        "description": "Semester / Part Name (e.g. Part-I, Part-II)",
+                                        "type": "string",
+                                        "example": "Part-II"
+                                    },
+                                    "subject_code": {
+                                        "description": "Subject Code (or p_subjectcode)",
+                                        "type": "string",
+                                        "example": "PHCO"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Answer script info fetched successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "version": {
+                                            "type": "string",
+                                            "example": "1.0"
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "example": 0
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Answer script info fetched successfully"
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "instId": {
+                                                        "type": "integer",
+                                                        "example": 1
+                                                    },
+                                                    "deptCode": {
+                                                        "type": "string",
+                                                        "example": "PHARM"
+                                                    },
+                                                    "instCode": {
+                                                        "type": "string",
+                                                        "example": "JCG"
+                                                    },
+                                                    "instName": {
+                                                        "type": "string",
+                                                        "example": "JNAN CHANDRA GHOSH POLYTECHNIC"
+                                                    },
+                                                    "subjectId": {
+                                                        "type": "integer",
+                                                        "example": 1
+                                                    },
+                                                    "subjectCode": {
+                                                        "type": "string",
+                                                        "example": "PHCO"
+                                                    },
+                                                    "subjectName": {
+                                                        "type": "string",
+                                                        "example": "PHARMACOLOGY"
+                                                    },
+                                                    "assignTeacherId": {
+                                                        "type": "integer",
+                                                        "example": null,
+                                                        "nullable": true
+                                                    },
+                                                    "assignTeacherName": {
+                                                        "type": "string",
+                                                        "example": null,
+                                                        "nullable": true
+                                                    },
+                                                    "totalAnswerScript": {
+                                                        "type": "integer",
+                                                        "example": 45
+                                                    },
+                                                    "assignTeacherPhoneNumber": {
+                                                        "type": "string",
+                                                        "example": null,
+                                                        "nullable": true
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "version": {
+                                            "type": "string",
+                                            "example": "1.0"
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "example": 1
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Validation failed: ..."
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {}
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "version": {
+                                            "type": "string",
+                                            "example": "1.0"
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "example": 3
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Internal server error: ..."
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {}
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "token": []
+                    }
+                ]
+            }
+        },
+        "/api/admin/get-answerscript-intake": {
+            "post": {
+                "tags": [
+                    "CDC - Answer Scripts"
+                ],
+                "summary": "Get Answer Script Intake Details",
+                "description": "Fetches answer script intake details by calling public.fn_cdc_getanswerscriptintake(p_exam_year, p_semester_id, p_inst_code, p_dept_code, p_subject_code, p_entry_user_id)",
+                "operationId": "be98c299fe128edf8606a48d1e5f1ac4",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "exam_year",
+                                    "semester_id",
+                                    "inst_code",
+                                    "dept_code",
+                                    "subject_code",
+                                    "entry_user_id"
+                                ],
+                                "properties": {
+                                    "exam_year": {
+                                        "description": "Exam Year",
+                                        "type": "string",
+                                        "example": "2026"
+                                    },
+                                    "semester_id": {
+                                        "description": "Semester / Part Name (e.g. Part-I, Part-II)",
+                                        "type": "string",
+                                        "example": "Part-II"
+                                    },
+                                    "inst_code": {
+                                        "description": "Institute Code",
+                                        "type": "string",
+                                        "example": "JCG"
+                                    },
+                                    "dept_code": {
+                                        "description": "Department Code",
+                                        "type": "string",
+                                        "example": "PHARM"
+                                    },
+                                    "subject_code": {
+                                        "description": "Subject Code",
+                                        "type": "string",
+                                        "example": "PHCE"
+                                    },
+                                    "entry_user_id": {
+                                        "description": "Entry / Admin User ID",
+                                        "type": "integer",
+                                        "example": 12
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Answer script intake details fetched successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "version": {
+                                            "type": "string",
+                                            "example": "1.0"
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "example": 0
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Answer script intake details fetched successfully"
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "deptCode": {
+                                                    "type": "string",
+                                                    "example": "PHARM"
+                                                },
+                                                "examYear": {
+                                                    "type": "string",
+                                                    "example": "2026"
+                                                },
+                                                "instCode": {
+                                                    "type": "string",
+                                                    "example": "JCG"
+                                                },
+                                                "instName": {
+                                                    "type": "string",
+                                                    "example": null,
+                                                    "nullable": true
+                                                },
+                                                "semesterId": {
+                                                    "type": "string",
+                                                    "example": "Part-II"
+                                                },
+                                                "subjectCode": {
+                                                    "type": "string",
+                                                    "example": "PHCE"
+                                                },
+                                                "subjectName": {
+                                                    "type": "string",
+                                                    "example": null,
+                                                    "nullable": true
+                                                },
+                                                "totalScripts": {
+                                                    "type": "integer",
+                                                    "example": 40
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "version": {
+                                            "type": "string",
+                                            "example": "1.0"
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "example": 1
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Validation failed: ..."
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {}
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "version": {
+                                            "type": "string",
+                                            "example": "1.0"
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "example": 3
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Internal server error: ..."
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {}
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "token": []
+                    }
+                ]
+            }
+        },
+        "/api/admin/save-answerscript-intake": {
+            "post": {
+                "tags": [
+                    "CDC - Answer Scripts"
+                ],
+                "summary": "Save Answer Script Intake (Single or Bulk)",
+                "description": "Saves answer script intake record by calling public.fn_cdc_saveanswerscriptintake(p_answerscript_id, p_exam_year, p_semester_id, p_inst_code, p_dept_code, p_subject_code, p_total_scripts, p_remarks, p_actiontype, p_entry_user_id)",
+                "operationId": "a353c88a222060a09f43a85c0a4c96df",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "exam_year",
+                                    "semester_id",
+                                    "inst_code",
+                                    "dept_code",
+                                    "subject_code",
+                                    "total_scripts",
+                                    "entry_user_id"
+                                ],
+                                "properties": {
+                                    "answerscript_id": {
+                                        "description": "Answer script ID (0 for new record)",
+                                        "type": "integer",
+                                        "example": 0,
+                                        "nullable": true
+                                    },
+                                    "exam_year": {
+                                        "description": "Exam Year",
+                                        "type": "string",
+                                        "example": "2026"
+                                    },
+                                    "semester_id": {
+                                        "description": "Semester / Part Name (e.g. Part-I, Part-II)",
+                                        "type": "string",
+                                        "example": "Part-II"
+                                    },
+                                    "inst_code": {
+                                        "description": "Institute Code",
+                                        "type": "string",
+                                        "example": "JCG"
+                                    },
+                                    "dept_code": {
+                                        "description": "Department Code",
+                                        "type": "string",
+                                        "example": "PHARM"
+                                    },
+                                    "subject_code": {
+                                        "description": "Subject Code",
+                                        "type": "string",
+                                        "example": "PHCE"
+                                    },
+                                    "total_scripts": {
+                                        "description": "Total Answer Scripts Count",
+                                        "type": "integer",
+                                        "example": 40
+                                    },
+                                    "remarks": {
+                                        "description": "Remarks / Notes",
+                                        "type": "string",
+                                        "example": "test",
+                                        "nullable": true
+                                    },
+                                    "action_type": {
+                                        "description": "Action Type (e.g. Save, Delete)",
+                                        "type": "string",
+                                        "example": "Save",
+                                        "nullable": true
+                                    },
+                                    "entry_user_id": {
+                                        "description": "Entry User ID",
+                                        "type": "integer",
+                                        "example": 1
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Answer script intake saved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "version": {
+                                            "type": "string",
+                                            "example": "1.0"
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "example": 0
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Answer script intake saved successfully"
+                                        },
+                                        "data": {
+                                            "properties": {
+                                                "p_errorcode": {
+                                                    "type": "integer",
+                                                    "example": 0
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error or function failure",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "version": {
+                                            "type": "string",
+                                            "example": "1.0"
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "example": 1
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Validation failed: ..."
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {}
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "version": {
+                                            "type": "string",
+                                            "example": "1.0"
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "example": 3
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Internal server error: ..."
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {}
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
@@ -5152,6 +7162,185 @@
                 }
             }
         },
+        "/api/admin/get-student-details-marks-correction": {
+            "post": {
+                "tags": [
+                    "Admin - Student Marks"
+                ],
+                "summary": "Get student details for marks correction",
+                "description": "Fetches student details for marks correction by calling public.fn_getstudentdetailsmarkscorrection(p_admin_user_id, p_semester_id, p_examyear, p_instcode, p_subjectcode, p_markstype)",
+                "operationId": "8ff43fd26438fcd88df41f8e17bbc40d",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "admin_user_id",
+                                    "semester_id",
+                                    "exam_year",
+                                    "inst_code",
+                                    "subject_code",
+                                    "marks_type"
+                                ],
+                                "properties": {
+                                    "admin_user_id": {
+                                        "description": "Admin User ID",
+                                        "type": "integer",
+                                        "example": 12
+                                    },
+                                    "semester_id": {
+                                        "description": "Semester / Part identifier",
+                                        "type": "string",
+                                        "example": "part-II"
+                                    },
+                                    "exam_year": {
+                                        "description": "Exam Year",
+                                        "type": "string",
+                                        "example": "2025"
+                                    },
+                                    "inst_code": {
+                                        "description": "Institute Code",
+                                        "type": "string",
+                                        "example": "JCG"
+                                    },
+                                    "subject_code": {
+                                        "description": "Subject Code",
+                                        "type": "string",
+                                        "example": "PHCE"
+                                    },
+                                    "marks_type": {
+                                        "description": "Marks Type (e.g. Internal / External)",
+                                        "type": "string",
+                                        "example": "Internal"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Student details retrieved successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "version": {
+                                            "type": "string",
+                                            "example": "1.0"
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "example": 0
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Data fetched successfully"
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "instCode": {
+                                                        "type": "string",
+                                                        "example": "JCG"
+                                                    },
+                                                    "studentId": {
+                                                        "type": "integer",
+                                                        "example": 11452
+                                                    },
+                                                    "subjectCode": {
+                                                        "type": "string",
+                                                        "example": "PHCE"
+                                                    },
+                                                    "candidateName": {
+                                                        "type": "string",
+                                                        "example": "MOSRAF HOSSAIN"
+                                                    },
+                                                    "registrationNo": {
+                                                        "type": "string",
+                                                        "example": "PHARM232408597"
+                                                    },
+                                                    "studentInstCode": {
+                                                        "type": "string",
+                                                        "example": "JCG"
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "version": {
+                                            "type": "string",
+                                            "example": "1.0"
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "example": 1
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Validation failed: The admin user id field is required."
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {}
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "version": {
+                                            "type": "string",
+                                            "example": "1.0"
+                                        },
+                                        "status": {
+                                            "type": "integer",
+                                            "example": 3
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Internal server error: ..."
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {}
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "token": []
+                    }
+                ]
+            }
+        },
         "/api/institute-payment": {
             "post": {
                 "tags": [
@@ -5573,6 +7762,10 @@
         {
             "name": "Admin - Reports",
             "description": "Admin - Reports"
+        },
+        {
+            "name": "CDC - Answer Scripts",
+            "description": "CDC - Answer Scripts"
         },
         {
             "name": "Enrollment",

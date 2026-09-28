@@ -423,6 +423,344 @@ class AdminTeacherController extends Controller
 
     /**
      * @OA\Post(
+     *     path="/api/admin/save-teacher-v2",
+     *     tags={"Admin - Teacher"},
+     *     summary="Save teacher with subject assignments (V2)",
+     *     description="Save teacher information and assign multiple subjects using fn_admin_saveteacherinfo and fn_admin_saveteacherassignsubject_v2",
+     *     security={{"token": {}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"admin_user_id", "teacherInfo", "subjectList"},
+     *             @OA\Property(property="admin_user_id", type="integer", example=1001, description="Admin / Entry User ID"),
+     *             @OA\Property(
+     *                 property="teacherInfo",
+     *                 type="object",
+     *                 required={"in_teacher_id", "full_name", "contact_no", "email", "highest_qualification", "inst_id", "inst_name"},
+     *                 @OA\Property(property="in_teacher_id", type="integer", example=0, description="0 for new, ID for update"),
+     *                 @OA\Property(property="full_name", type="string", example="Souvik Nag"),
+     *                 @OA\Property(property="contact_no", type="string", example="9876543219"),
+     *                 @OA\Property(property="email", type="string", example="souvik@example.com"),
+     *                 @OA\Property(property="highest_qualification", type="string", example="M.Tech"),
+     *                 @OA\Property(property="aadhar_no", type="string", example="123456789012", nullable=true),
+     *                 @OA\Property(property="inst_id", type="integer", example=1),
+     *                 @OA\Property(property="inst_name", type="string", example="JNAN CHANDRA GHOSH POLYTECHNIC"),
+     *                 @OA\Property(property="designation_id", type="string", example="1", nullable=true),
+     *                 @OA\Property(property="image", type="string", example=null, nullable=true),
+     *                 @OA\Property(property="remarks", type="string", example=null, nullable=true)
+     *             ),
+     *             @OA\Property(
+     *                 property="subjectList",
+     *                 type="array",
+     *                 @OA\Items(
+     *                     @OA\Property(property="dept_id", type="integer", example=1),
+     *                     @OA\Property(property="semester_id", type="string", example="Part-I", description="Semester ID (e.g. Part-I, Part-II, or 1)"),
+     *                     @OA\Property(property="subject_category_id", type="integer", example=1),
+     *                     @OA\Property(property="subject_id", type="integer", example=101),
+     *                     @OA\Property(property="examiner_type_id", type="integer", example=1, description="Examiner Type ID (1: INTERNAL, 2: EXTERNAL, 3: BOTH)"),
+     *                     @OA\Property(property="exam_year", type="string", example="2026", description="Exam Year")
+     *                 )
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(response=200, description="Teacher saved successfully"),
+     *     @OA\Response(response=400, description="Validation error"),
+     *     @OA\Response(response=401, description="Unauthorized")
+     * )
+     */
+    public function saveTeacherWithSubjectsV2(Request $request)
+    {
+        try {
+            Log::channel('daily')->info('🚀 CONTROLLER HIT - saveTeacherWithSubjectsV2() called');
+            Log::channel('daily')->info('═══════════════════════════════════════════════════════════');
+            Log::channel('daily')->info('🔵 SAVE TEACHER V2 API - FUNCTION INPUT (REQUEST START)');
+            Log::channel('daily')->info('REQUEST METHOD', ['method' => $request->method()]);
+            Log::channel('daily')->info('REQUEST URL', ['url' => $request->fullUrl()]);
+            Log::channel('daily')->info('📥 INCOMING PAYLOAD', ['payload' => $request->all()]);
+            Log::channel('daily')->info('═══════════════════════════════════════════════════════════');
+        } catch (\Exception $logEx) {
+            Log::channel('daily')->error('❌ ERROR IN INITIAL LOGGING V2', ['error' => $logEx->getMessage()]);
+        }
+
+        try {
+            // Validate request structure (mirroring save-teacher with examiner_type_id & exam_year on subjects)
+            $validator = Validator::make($request->all(), [
+                'admin_user_id' => 'required|integer',
+                'teacherInfo' => 'required|array',
+                'teacherInfo.in_teacher_id' => 'required|integer',
+                'teacherInfo.full_name' => 'required|string|max:255',
+                'teacherInfo.contact_no' => 'required|string|max:20',
+                'teacherInfo.email' => 'required|email|max:255',
+                'teacherInfo.highest_qualification' => 'required|string|max:255',
+                'teacherInfo.aadhar_no' => 'nullable|string|max:20',
+                'teacherInfo.inst_id' => 'required|integer',
+                'teacherInfo.inst_name' => 'required|string|max:255',
+                'teacherInfo.designation_id' => 'nullable',
+                'teacherInfo.image' => 'nullable|string',
+                'teacherInfo.remarks' => 'nullable|string',
+                'subjectList' => 'required|array|min:1',
+                'subjectList.*.dept_id' => 'required|integer',
+                'subjectList.*.semester_id' => 'required',
+                'subjectList.*.subject_category_id' => 'required|integer',
+                'subjectList.*.subject_id' => 'required|integer',
+                'subjectList.*.examiner_type_id' => 'nullable|integer',
+                'subjectList.*.exam_year' => 'nullable|string|max:20',
+            ]);
+
+            if ($validator->fails()) {
+                Log::channel('daily')->error('SAVE TEACHER V2 API - Validation Failed:', [
+                    'errors' => $validator->errors()->all(),
+                    'failed_fields' => $validator->errors()->keys()
+                ]);
+                return response()->json([
+                    'version' => '1.0',
+                    'status' => 0,
+                    'message' => 'Validation failed: ' . $validator->errors()->first(),
+                    'data' => []
+                ], 400);
+            }
+
+            Log::channel('daily')->info('✅ VALIDATION PASSED V2 - Processing request');
+
+            $adminUserId = $request->input('admin_user_id');
+            $teacherInfo = $request->input('teacherInfo');
+            $subjectList = $request->input('subjectList');
+
+            Log::channel('daily')->info('📊 Extracted data for V2', [
+                'admin_user_id' => $adminUserId,
+                'teacher_name' => $teacherInfo['full_name'],
+                'subjects_count' => count($subjectList)
+            ]);
+
+            // Step 1: Save Teacher Info (public.fn_admin_saveteacherinfo - identical to V1)
+            Log::channel('daily')->info('🔄 STEP 1: Calling fn_admin_saveteacherinfo', [
+                'p_in_teacher_id' => $teacherInfo['in_teacher_id'],
+                'p_full_name' => $teacherInfo['full_name'],
+                'p_inst_id' => $teacherInfo['inst_id']
+            ]);
+
+            $saveTeacherQuery = "SELECT public.fn_admin_saveteacherinfo(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) as result";
+
+            $teacherResult = DB::selectOne($saveTeacherQuery, [
+                $teacherInfo['in_teacher_id'],
+                $teacherInfo['full_name'],
+                $teacherInfo['contact_no'],
+                $teacherInfo['email'],
+                $teacherInfo['highest_qualification'],
+                $teacherInfo['aadhar_no'] ?? null,
+                $teacherInfo['inst_id'],
+                $teacherInfo['inst_name'],
+                $teacherInfo['designation_id'] !== null ? (string)$teacherInfo['designation_id'] : '1',
+                $teacherInfo['image'] ?? null,
+                $teacherInfo['remarks'] ?? '',
+                $adminUserId
+            ]);
+
+            Log::channel('daily')->info('✅ fn_admin_saveteacherinfo executed V2', [
+                'raw_result' => $teacherResult,
+                'result_json' => $teacherResult->result ?? null
+            ]);
+
+            if (!$teacherResult || !$teacherResult->result) {
+                Log::channel('daily')->error('❌ Teacher save failed - no result returned');
+                return response()->json([
+                    'version' => '1.0',
+                    'status' => 0,
+                    'message' => 'Failed to save teacher information',
+                    'data' => []
+                ], 500);
+            }
+
+            // Parse result JSON: {"p_errorcode": 0, "p_teacher_id": 5}
+            $resultData = is_string($teacherResult->result)
+                ? json_decode($teacherResult->result, true)
+                : (array) $teacherResult->result;
+
+            Log::channel('daily')->info('🔍 Parsed teacher result data V2', ['resultData' => $resultData]);
+
+            if (!$resultData || !isset($resultData['p_errorcode']) || (int)$resultData['p_errorcode'] !== 0) {
+                Log::channel('daily')->error('❌ Teacher save returned error', [
+                    'p_errorcode' => $resultData['p_errorcode'] ?? 'not_found',
+                    'p_teacher_id' => $resultData['p_teacher_id'] ?? 'not_found'
+                ]);
+                return response()->json([
+                    'version' => '1.0',
+                    'status' => 0,
+                    'message' => 'Teacher save returned error code: ' . ($resultData['p_errorcode'] ?? 'unknown'),
+                    'data' => $resultData ?? []
+                ], 400);
+            }
+
+            $teacherId = (int) $resultData['p_teacher_id'];
+            Log::channel('daily')->info('✅ Teacher saved successfully V2', ['teacher_id' => $teacherId]);
+
+            // Step 2: Loop through subjects and assign each using fn_admin_saveteacherassignsubject_v2
+            $assignSubjectQuery = "SELECT public.fn_admin_saveteacherassignsubject_v2(?::bigint, ?::integer, ?::varchar, ?::integer, ?::integer, ?::bigint, ?::bigint, ?::integer, ?::varchar) as result";
+
+            $successCount = 0;
+            $failedSubjects = [];
+            $duplicateAssignmentDetected = false;
+
+            Log::channel('daily')->info('🔄 STEP 2: Starting subject assignment loop V2', ['total_subjects' => count($subjectList)]);
+
+            foreach ($subjectList as $index => $subject) {
+                try {
+                    $deptId            = (int) $subject['dept_id'];
+                    $semesterId        = (string) $subject['semester_id'];
+                    $subjectCategoryId = (int) $subject['subject_category_id'];
+                    $subjectId         = (int) $subject['subject_id'];
+                    $instId            = (int) $teacherInfo['inst_id'];
+                    $examinerTypeId    = (int) ($subject['examiner_type_id'] ?? 1);
+                    $examYear          = (string) ($subject['exam_year'] ?? '2026');
+
+                    Log::channel('daily')->info("📥 Subject #{$index} - Calling fn_admin_saveteacherassignsubject_v2", [
+                        'p_teacher_id'          => $teacherId,
+                        'p_dept_id'             => $deptId,
+                        'p_semester_id'         => $semesterId,
+                        'p_subject_category_id' => $subjectCategoryId,
+                        'p_subject_id'          => $subjectId,
+                        'p_entry_user_id'       => $adminUserId,
+                        'p_inst_id'             => $instId,
+                        'p_examinertype_id'     => $examinerTypeId,
+                        'p_examyear'            => $examYear,
+                    ]);
+
+                    $subjectResult = DB::selectOne($assignSubjectQuery, [
+                        $teacherId,
+                        $deptId,
+                        $semesterId,
+                        $subjectCategoryId,
+                        $subjectId,
+                        $adminUserId,
+                        $instId,
+                        $examinerTypeId,
+                        $examYear,
+                    ]);
+
+                    Log::channel('daily')->info("📤 Subject #{$index} - fn_admin_saveteacherassignsubject_v2 returned", [
+                        'subject_id' => $subjectId,
+                        'raw_result' => $subjectResult,
+                        'result_json' => $subjectResult->result ?? null
+                    ]);
+
+                    if ($subjectResult && $subjectResult->result) {
+                        $subjectResultData = is_string($subjectResult->result)
+                            ? json_decode($subjectResult->result, true)
+                            : (array) $subjectResult->result;
+
+                        $errorCode = isset($subjectResultData['p_errorcode']) ? (int) $subjectResultData['p_errorcode'] : -1;
+
+                        if ($errorCode === 0) {
+                            $successCount++;
+                            Log::channel('daily')->info("✅ Subject #{$index} assigned successfully via V2", ['subject_id' => $subjectId]);
+                        } else {
+                            if ($errorCode === 200) {
+                                $duplicateAssignmentDetected = true;
+                                $errorMessage = 'Teacher already assigned to this subject and institute for this exam year';
+                            } else {
+                                $errorMessage = $subjectResultData['p_errormsg'] ?? 'Subject assignment failed';
+                            }
+
+                            Log::channel('daily')->error("❌ Subject #{$index} failed", [
+                                'subject_id' => $subjectId,
+                                'error_code' => $errorCode
+                            ]);
+
+                            $failedSubjects[] = [
+                                'subject_id'          => $subjectId,
+                                'dept_id'             => $deptId,
+                                'semester_id'         => $semesterId,
+                                'subject_category_id' => $subjectCategoryId,
+                                'error_code'          => $errorCode,
+                                'error_message'       => $errorMessage,
+                                'error_details'       => $subjectResultData
+                            ];
+                        }
+                    } else {
+                        $failedSubjects[] = [
+                            'subject_id' => $subjectId,
+                            'error'      => 'No result returned from database function'
+                        ];
+                    }
+                } catch (\Exception $subjectEx) {
+                    Log::channel('daily')->error('❌ EXCEPTION during subject assignment V2', [
+                        'subject_index' => $index,
+                        'error_message' => $subjectEx->getMessage()
+                    ]);
+
+                    $failedSubjects[] = [
+                        'subject_id' => $subject['subject_id'] ?? null,
+                        'error'      => $subjectEx->getMessage()
+                    ];
+                }
+            }
+
+            Log::channel('daily')->info('AdminTeacherController::saveTeacherWithSubjectsV2 - Completed', [
+                'teacher_id'    => $teacherId,
+                'total_subjects'=> count($subjectList),
+                'success_count' => $successCount,
+                'failed_count'  => count($failedSubjects)
+            ]);
+
+            // Determine overall response
+            if ($successCount === count($subjectList)) {
+                $response = [
+                    'version' => '1.0',
+                    'status'  => 1,
+                    'message' => 'Teacher and all subjects saved successfully',
+                    'data'    => [
+                        'teacher_id'        => $teacherId,
+                        'subjects_assigned' => $successCount,
+                        'total_subjects'    => count($subjectList)
+                    ]
+                ];
+                return response()->json($response, 200);
+            } elseif ($successCount > 0) {
+                $response = [
+                    'version' => '1.0',
+                    'status'  => 1,
+                    'message' => 'Teacher saved, but some subjects failed to assign',
+                    'data'    => [
+                        'teacher_id'        => $teacherId,
+                        'subjects_assigned' => $successCount,
+                        'total_subjects'    => count($subjectList),
+                        'failed_subjects'   => $failedSubjects
+                    ]
+                ];
+                return response()->json($response, 200);
+            } else {
+                $response = [
+                    'version' => '1.0',
+                    'status'  => 0,
+                    'message' => $duplicateAssignmentDetected
+                        ? 'Teacher already assigned to this subject and institute for this exam year'
+                        : 'Teacher saved but all subjects failed to assign',
+                    'data'    => [
+                        'teacher_id'      => $teacherId,
+                        'failed_subjects' => $failedSubjects
+                    ]
+                ];
+                return response()->json($response, 400);
+            }
+
+        } catch (\Exception $e) {
+            Log::channel('daily')->error('🔴 SAVE TEACHER V2 API - EXCEPTION OCCURRED', [
+                'error' => $e->getMessage(),
+                'file'  => $e->getFile(),
+                'line'  => $e->getLine()
+            ]);
+
+            return response()->json([
+                'version' => '1.0',
+                'status'  => 0,
+                'message' => 'Server error: ' . $e->getMessage(),
+                'data'    => []
+            ], 500);
+        }
+    }
+
+    /**
+     * @OA\Post(
      *     path="/api/admin/get-assigned-teachers",
      *     tags={"Admin - Teacher"},
      *     summary="Get assigned teacher information",
@@ -503,7 +841,7 @@ class AdminTeacherController extends Controller
                 'inst_code' => 'required|string',
                 'department_code' => 'nullable|string',
                 'subject_code' => 'nullable|string',
-                'semester_id' => 'nullable|integer',
+                'semester_id' => 'nullable|string',
             ]);
 
             if ($validator->fails()) {
@@ -522,7 +860,7 @@ class AdminTeacherController extends Controller
             $instCode = $request->input('inst_code');
             $departmentCode = $request->input('department_code', '0');
             $subjectCode = $request->input('subject_code', '0');
-            $semesterId = $request->input('semester_id', 0);
+            $semesterId = $request->input('semester_id', "0");
 
             Log::info('CALLING fn_admin_getassignedteacherinfo with parameters:', [
                 'p_admin_user_id' => $adminUserId,

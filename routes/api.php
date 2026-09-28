@@ -42,6 +42,8 @@ use App\Http\Controllers\AdminSaveMarksCorrectionSubjectMarksController;
 use App\Http\Controllers\AdminMarksCorrectionEvaluatorSubjectAllocationSummaryController;
 use App\Http\Controllers\CDCSaveAnswerscriptIntakeController;
 use App\Http\Controllers\CDCGetAnswerscriptIntakeController;
+use App\Http\Controllers\CDCGetAnswerscriptInfoBySubjectController;
+use App\Http\Controllers\AdminTeacherInfoByInstAndSubjectController;
 
 
 
@@ -516,6 +518,7 @@ Route::prefix('admin')->middleware('authenticate')->group(function () {
     Route::post('/dashboard', [AdminController::class, 'getDashboard']);
     Route::post('/get-entered-student-marks-info', [AdminController::class, 'getEnteredStudentMarksInfo']);
     Route::post('/save-teacher', [AdminTeacherController::class, 'saveTeacherWithSubjects']);
+    Route::post('/save-teacher-v2', [AdminTeacherController::class, 'saveTeacherWithSubjectsV2']);
     Route::post('/get-assigned-teachers', [AdminTeacherController::class, 'getAssignedTeacherInfo']);
     Route::post('/get-marks-entered-teachers-info', [AdminTeacherController::class, 'getMarksEnteredTeachersInfo']);
     Route::post('/delete-teacher', [AdminTeacherController::class, 'deleteTeacherInfo']);
@@ -538,6 +541,8 @@ Route::prefix('admin')->middleware('authenticate')->group(function () {
     Route::post('/get-marks-correction-evaluator-subject-allocation-summary', [AdminMarksCorrectionEvaluatorSubjectAllocationSummaryController::class, 'getMarksCorrectionEvaluatorSubjectAllocationSummary']);
     Route::post('/save-answerscript-intake', [CDCSaveAnswerscriptIntakeController::class, 'saveAnswerscriptIntake']);
     Route::post('/get-answerscript-intake', [CDCGetAnswerscriptIntakeController::class, 'getAnswerscriptIntake']);
+    Route::post('/get-answerscript-info-by-subject', [CDCGetAnswerscriptInfoBySubjectController::class, 'getAnswerscriptInfoBySubject']);
+    Route::post('/get-teacher-info-by-inst-and-subject', [AdminTeacherInfoByInstAndSubjectController::class, 'getTeacherInfoByInstAndSubject']);
 });
 
 Route::prefix('sms')->group(function () {

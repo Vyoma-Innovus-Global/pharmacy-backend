@@ -451,6 +451,7 @@ This document provides a comprehensive analysis of all API routes defined in [`r
 | `POST` | `/api/admin/dashboard` | Stored Procedure / PostgreSQL Function | `fn_admin_getdashboard` | None (Uses Stored Procedure / Function) |
 | `POST` | `/api/admin/get-entered-student-marks-info` | Stored Procedure / PostgreSQL Function | `fn_admin_getenteredstudentmarksinfo` | None (Uses Stored Procedure / Function) |
 | `POST` | `/api/admin/save-teacher` | Stored Procedure / PostgreSQL Function | `fn_admin_saveteacherinfo`<br>`fn_admin_saveteacherassignsubject_v1` | None (Uses Stored Procedure / Function) |
+| `POST` | `/api/admin/save-teacher-v2` | Stored Procedure / PostgreSQL Function | `fn_admin_saveteacherinfo`<br>`fn_admin_saveteacherassignsubject_v2` | None (Uses Stored Procedure / Function) |
 | `POST` | `/api/admin/get-assigned-teachers` | Stored Procedure + Query Builder / ORM | `fn_admin_getassignedteacherinfo` | **Models:** `AdminTeacherController` |
 | `POST` | `/api/admin/get-marks-entered-teachers-info` | Stored Procedure + Query Builder / ORM | `fn_admin_getmarksenteredteachersinfo` | **Models:** `AdminTeacherController` |
 | `POST` | `/api/admin/delete-teacher` | Stored Procedure / PostgreSQL Function | `fn_admin_deleteteacherinfo` | None (Uses Stored Procedure / Function) |
