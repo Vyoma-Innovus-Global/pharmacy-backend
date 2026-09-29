@@ -463,8 +463,13 @@ This document provides a comprehensive analysis of all API routes defined in [`r
 | `POST` | `/api/admin/save-review-subject-marks` | Stored Procedure / PostgreSQL Function | `fn_save_review_subject_marks` | None (Uses Stored Procedure / Function) |
 | `POST` | `/api/admin/save-student-marks` | Stored Procedure / PostgreSQL Function | `fn_admin_savestudentmarks_v3` | None (Uses Stored Procedure / Function) |
 | `POST` | `/api/admin/institute-wise-summary` | Stored Procedure / PostgreSQL Function | `fn_admin_getinstitutewisesummary` | None (Uses Stored Procedure / Function) |
-| `POST` | `/api/admin/examiner-wise-summary` | Stored Procedure / PostgreSQL Function | `fn_admin_examinerwisesummary` | None (Uses Stored Procedure / Function) |
 | `GET` | `/api/admin/district-list` | Stored Procedure / PostgreSQL Function | `fn_getdistrictlistbyadmin` | None (Uses Stored Procedure / Function) |
+| `POST` | `/api/admin/save-answerscript-intake` | Stored Procedure / PostgreSQL Function | `fn_cdc_saveanswerscriptintake` | None (Uses Stored Procedure / Function) |
+| `POST` | `/api/admin/get-answerscript-intake` | Stored Procedure / PostgreSQL Function | `fn_cdc_getanswerscriptintake` | None (Uses Stored Procedure / Function) |
+| `POST` | `/api/admin/get-answerscript-info-by-subject` | Stored Procedure / PostgreSQL Function | `fn_get_answerscriptinfobysubject` | None (Uses Stored Procedure / Function) |
+| `POST` | `/api/admin/get-teacher-info-by-inst-and-subject` | Stored Procedure / PostgreSQL Function | `fn_admin_getteacherinfobyinstandsubject` | None (Uses Stored Procedure / Function) |
+| `POST` | `/api/admin/save-cec-answerscript-intake-teacher` | Stored Procedure / PostgreSQL Function | `fn_admin_saveteacherassignsubject_v2` | None (Uses Stored Procedure / Function) |
+| `POST` | `/api/admin/transfer-cec` | Stored Procedure / PostgreSQL Function | `fn_admin_transfer_cec` | None (Uses Stored Procedure / Function) |
 
 
 ### 📁 Module: `api/marks-entry`

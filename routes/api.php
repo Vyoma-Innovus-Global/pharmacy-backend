@@ -44,6 +44,8 @@ use App\Http\Controllers\CDCSaveAnswerscriptIntakeController;
 use App\Http\Controllers\CDCGetAnswerscriptIntakeController;
 use App\Http\Controllers\CDCGetAnswerscriptInfoBySubjectController;
 use App\Http\Controllers\AdminTeacherInfoByInstAndSubjectController;
+use App\Http\Controllers\CECSaveAnswerscriptIntakeTeacherController;
+use App\Http\Controllers\AdminTransferCECController;
 
 
 
@@ -543,6 +545,8 @@ Route::prefix('admin')->middleware('authenticate')->group(function () {
     Route::post('/get-answerscript-intake', [CDCGetAnswerscriptIntakeController::class, 'getAnswerscriptIntake']);
     Route::post('/get-answerscript-info-by-subject', [CDCGetAnswerscriptInfoBySubjectController::class, 'getAnswerscriptInfoBySubject']);
     Route::post('/get-teacher-info-by-inst-and-subject', [AdminTeacherInfoByInstAndSubjectController::class, 'getTeacherInfoByInstAndSubject']);
+    Route::post('/save-cec-answerscript-intake-teacher', [CECSaveAnswerscriptIntakeTeacherController::class, 'saveAnswerscriptIntakeTeacher']);
+    Route::post('/transfer-cec', [AdminTransferCECController::class, 'transferCEC']);
 });
 
 Route::prefix('sms')->group(function () {
