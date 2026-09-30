@@ -123,10 +123,15 @@ class AdminTransferCECController extends Controller
 
         $items = [];
 
-        // 1. Array of IDs in "answerscript_ids" or "answerscriptIds" or "ids"
-        $rawIds = $request->input('answerscript_ids')
+        // 1. Array of IDs in "answerscript_id", "answerscript_ids", "answerscriptIds", "p_answerscriptId", or "ids"
+        $rawAnswerScriptId = $request->input('answerscript_id')
+            ?? $request->input('answerscript_ids')
             ?? $request->input('answerscriptIds')
+            ?? $request->input('p_answerscriptId')
+            ?? $request->input('p_answerscript_id')
             ?? $request->input('ids');
+
+        $rawIds = is_array($rawAnswerScriptId) ? $rawAnswerScriptId : null;
 
         // 2. Array of objects in "items" or "data" or "answerscripts"
         $rawItems = $request->input('items')
@@ -184,7 +189,7 @@ class AdminTransferCECController extends Controller
                 ?? $request->input('p_answerscript_id')
                 ?? $request->input('id');
 
-            if ($singleId !== null && $singleId !== '') {
+            if ($singleId !== null && $singleId !== '' && !is_array($singleId)) {
                 $items[] = [
                     'answerscript_id' => (int) $singleId,
                     'cec_code'        => (string) $topLevelCecCode,
