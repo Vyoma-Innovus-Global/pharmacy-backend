@@ -801,7 +801,8 @@ class AdminTeacherController extends Controller
      *                     @OA\Property(property="subjectCode", type="string", example="PHCE"),
      *                     @OA\Property(property="subjectName", type="string", example="Pharmaceutics"),
      *                     @OA\Property(property="departmentCode", type="string", example="PHARM"),
-     *                     @OA\Property(property="semesterId", type="integer", example=1)
+     *                     @OA\Property(property="semesterId", type="integer", example=1),
+     *                     @OA\Property(property="examYear", type="string", example="2026")
      *                 )
      *             )
      *         )
@@ -849,7 +850,7 @@ class AdminTeacherController extends Controller
                 'inst_code' => 'required|string',
                 'department_code' => 'nullable|string',
                 'subject_code' => 'nullable|string',
-                'semester_id' => 'nullable|string',
+                'semester_id' => 'nullable|integer',
             ]);
 
             if ($validator->fails()) {
@@ -1227,6 +1228,7 @@ class AdminTeacherController extends Controller
                 $grouped[$teacherId] = [
                     'teacherId' => $teacherId,
                     'semesterId' => $row['semesterId'] ?? $row['semester_id'] ?? null,
+                    'examYear' => $row['examYear'] ?? $row['exam_year'] ?? $row['p_examyear'] ?? $row['p_exam_year'] ?? null,
                     'teacherFullName' => $row['teacherFullName'] ?? $row['teacher_full_name'] ?? null,
                     'teacherInstCode' => $row['teacherInstCode'] ?? $row['teacher_inst_code'] ?? null,
                     'teacherInstName' => $row['teacherInstName'] ?? $row['teacher_inst_name'] ?? null,
@@ -1258,6 +1260,7 @@ class AdminTeacherController extends Controller
                 'teacherDeptCode' => $row['teacherDeptCode'] ?? $row['teacher_dept_code'] ?? null,
                 'teacherDeptName' => $row['teacherDeptName'] ?? $row['teacher_dept_name'] ?? null,
                 'semesterId' => $row['semesterId'] ?? $row['semester_id'] ?? null,
+                'examYear' => $row['examYear'] ?? $row['exam_year'] ?? $row['p_examyear'] ?? $row['p_exam_year'] ?? null,
             ];
         }
 

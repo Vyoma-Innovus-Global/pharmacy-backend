@@ -603,6 +603,7 @@ class AdminTeacherController extends Controller
                 $grouped[$teacherId] = [
                     'teacherId' => $teacherId,
                     'semesterId' => $row['semesterId'] ?? $row['semester_id'] ?? null,
+                    'examYear' => $row['examYear'] ?? $row['exam_year'] ?? $row['p_examyear'] ?? $row['p_exam_year'] ?? null,
                     'teacherFullName' => $row['teacherFullName'] ?? $row['teacher_full_name'] ?? null,
                     'teacherInstCode' => $row['teacherInstCode'] ?? $row['teacher_inst_code'] ?? null,
                     'teacherInstName' => $row['teacherInstName'] ?? $row['teacher_inst_name'] ?? null,
@@ -634,6 +635,7 @@ class AdminTeacherController extends Controller
                 'teacherDeptCode' => $row['teacherDeptCode'] ?? $row['teacher_dept_code'] ?? null,
                 'teacherDeptName' => $row['teacherDeptName'] ?? $row['teacher_dept_name'] ?? null,
                 'semesterId' => $row['semesterId'] ?? $row['semester_id'] ?? null,
+                'examYear' => $row['examYear'] ?? $row['exam_year'] ?? $row['p_examyear'] ?? $row['p_exam_year'] ?? null,
             ];
         }
 
