@@ -596,11 +596,25 @@ class AdminTeacherController extends Controller
             Log::channel('daily')->info('✅ Teacher saved successfully V2', ['teacher_id' => $teacherId]);
 
             // Step 2: Loop through subjects and assign each using fn_admin_saveteacherassignsubject_v2
-            $assignSubjectQuery = "SELECT public.fn_admin_saveteacherassignsubject_v2(?::bigint, ?::integer, ?::varchar, ?::integer, ?::integer, ?::bigint, ?::bigint, ?::integer, ?::varchar, ?::varchar) as result";
+            $assignSubjectQuery = "SELECT public.fn_admin_saveteacherassignsubject_v2(?::bigint, ?::integer, ?::varchar, ?::integer, ?::integer, ?::bigint, ?::bigint, ?::integer, ?::varchar, ?::varchar, ?::varchar) as result";
 
             $successCount = 0;
             $failedSubjects = [];
             $duplicateAssignmentDetected = false;
+
+            // Resolve teacher institute code
+            $teacherInstCode = (string) ($teacherInfo['inst_code'] ?? '');
+            if ($teacherInstCode === '' && !empty($teacherInfo['inst_id'])) {
+                $instRow = DB::table('tbl_institute_master')->where('im_id', $teacherInfo['inst_id'])->select('im_code')->first();
+                if ($instRow && !empty($instRow->im_code)) {
+                    $teacherInstCode = (string) $instRow->im_code;
+                } else {
+                    $instRow2 = DB::table('institute_master')->where('i_id', $teacherInfo['inst_id'])->select('i_code')->first();
+                    if ($instRow2 && !empty($instRow2->i_code)) {
+                        $teacherInstCode = (string) $instRow2->i_code;
+                    }
+                }
+            }
 
             Log::channel('daily')->info('🔄 STEP 2: Starting subject assignment loop V2', ['total_subjects' => count($subjectList)]);
 
@@ -616,6 +630,7 @@ class AdminTeacherController extends Controller
                         $subjectCode = $subRow ? (string) $subRow->dsm_subject_id : '';
                     }
                     $instId            = (int) $teacherInfo['inst_id'];
+                    $instCode          = (string) ($subject['inst_code'] ?? $teacherInstCode);
                     $examinerTypeId    = (int) ($subject['examiner_type_id'] ?? 1);
                     $examYear          = (string) ($subject['exam_year'] ?? '2026');
 
@@ -630,6 +645,7 @@ class AdminTeacherController extends Controller
                         'p_examinertype_id'     => $examinerTypeId,
                         'p_examyear'            => $examYear,
                         'p_subject_code'        => $subjectCode,
+                        'p_inst_code'           => $instCode,
                     ]);
 
                     $subjectResult = DB::selectOne($assignSubjectQuery, [
@@ -643,6 +659,7 @@ class AdminTeacherController extends Controller
                         $examinerTypeId,
                         $examYear,
                         $subjectCode,
+                        $instCode,
                     ]);
 
                     Log::channel('daily')->info("📤 Subject #{$index} - fn_admin_saveteacherassignsubject_v2 returned", [

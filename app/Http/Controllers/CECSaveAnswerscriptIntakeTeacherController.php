@@ -370,7 +370,7 @@ class CECSaveAnswerscriptIntakeTeacherController extends Controller
         }
         unset($item);
 
-        $sql = "SELECT public.fn_admin_saveteacherassignsubject_v2(?::bigint, ?::integer, ?::varchar, ?::integer, ?::integer, ?::bigint, ?::bigint, ?::integer, ?::varchar, ?::varchar) AS result";
+        $sql = "SELECT public.fn_admin_saveteacherassignsubject_v2(?::bigint, ?::integer, ?::varchar, ?::integer, ?::integer, ?::bigint, ?::bigint, ?::integer, ?::varchar, ?::varchar, ?::varchar) AS result";
 
         DB::beginTransaction();
         try {
@@ -404,6 +404,18 @@ class CECSaveAnswerscriptIntakeTeacherController extends Controller
 
                 $entryUserId       = (int) $item['entry_user_id'];
                 $instId            = (int) $item['inst_id'];
+                $instCode          = trim((string) ($item['inst_code'] ?? ''));
+                if ($instCode === '' && !empty($instId)) {
+                    $instRow = DB::table('tbl_institute_master')->where('im_id', $instId)->select('im_code')->first();
+                    if ($instRow && !empty($instRow->im_code)) {
+                        $instCode = (string) $instRow->im_code;
+                    } else {
+                        $instRow2 = DB::table('institute_master')->where('i_id', $instId)->select('i_code')->first();
+                        if ($instRow2 && !empty($instRow2->i_code)) {
+                            $instCode = (string) $instRow2->i_code;
+                        }
+                    }
+                }
                 $examinerTypeId    = (int) ($item['examinertype_id'] ?? 1);
                 $examYear          = trim((string) ($item['examyear'] ?? '2026'));
 
@@ -418,6 +430,7 @@ class CECSaveAnswerscriptIntakeTeacherController extends Controller
                     'p_examinertype_id'     => $examinerTypeId,
                     'p_examyear'            => $examYear,
                     'p_subject_code'        => $subjectCode,
+                    'p_inst_code'           => $instCode,
                 ]);
 
                 $spResult = DB::selectOne($sql, [
@@ -431,6 +444,7 @@ class CECSaveAnswerscriptIntakeTeacherController extends Controller
                     $examinerTypeId,
                     $examYear,
                     $subjectCode,
+                    $instCode,
                 ]);
 
                 if (!$spResult || !isset($spResult->result)) {
