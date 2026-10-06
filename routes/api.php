@@ -50,6 +50,7 @@ use App\Http\Controllers\CECSaveTeacherAssignSubjectController;
 use App\Http\Controllers\AdminTransferCECController;
 use App\Http\Controllers\AdminGetExternalExaminerDetailsController;
 use App\Http\Controllers\AdminGetExternalExaminerAnswerScriptDetailsController;
+use App\Http\Controllers\AdminGetScheduleListController;
 
 
 
@@ -555,6 +556,8 @@ Route::prefix('admin')->middleware('authenticate')->group(function () {
     Route::post('/get-external-examiner-details', [AdminGetExternalExaminerDetailsController::class, 'getExternalExaminerDetails']);
     Route::post('/get-external-examiner-answerscript-details', [AdminGetExternalExaminerAnswerScriptDetailsController::class, 'getExternalExaminerAnswerScriptDetails']);
     Route::post('/get-external-examiner-answer-script-details', [AdminGetExternalExaminerAnswerScriptDetailsController::class, 'getExternalExaminerAnswerScriptDetails']);
+    Route::post('/get-schedule-list', [AdminGetScheduleListController::class, 'getScheduleList']);
+    Route::get('/get-schedule-list', [AdminGetScheduleListController::class, 'getScheduleList']);
 });
 
 Route::prefix('sms')->group(function () {
