@@ -48,6 +48,7 @@ use App\Http\Controllers\CECSaveAnswerscriptIntakeTeacherController;
 use App\Http\Controllers\CECSaveTeacherAssignSubjectController;
 use App\Http\Controllers\AdminTransferCECController;
 use App\Http\Controllers\AdminGetExternalExaminerDetailsController;
+use App\Http\Controllers\AdminGetExternalExaminerAnswerScriptDetailsController;
 
 
 
@@ -551,6 +552,8 @@ Route::prefix('admin')->middleware('authenticate')->group(function () {
     Route::post('/save-cec-teacher-assign-subject', [CECSaveTeacherAssignSubjectController::class, 'saveTeacherAssignSubject']);
     Route::post('/transfer-cec', [AdminTransferCECController::class, 'transferCEC']);
     Route::post('/get-external-examiner-details', [AdminGetExternalExaminerDetailsController::class, 'getExternalExaminerDetails']);
+    Route::post('/get-external-examiner-answerscript-details', [AdminGetExternalExaminerAnswerScriptDetailsController::class, 'getExternalExaminerAnswerScriptDetails']);
+    Route::post('/get-external-examiner-answer-script-details', [AdminGetExternalExaminerAnswerScriptDetailsController::class, 'getExternalExaminerAnswerScriptDetails']);
 });
 
 Route::prefix('sms')->group(function () {
