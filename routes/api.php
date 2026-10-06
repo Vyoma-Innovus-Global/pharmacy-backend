@@ -513,6 +513,7 @@ Route::prefix('admin')->middleware('authenticate')->group(function () {
     Route::post('/admit-card-with-routine', [ExaminationController::class, 'getAdmitCardWithRoutine']);
     Route::post('/get-admitcard-with-routine', [ExaminationController::class, 'getAdmitCardWithRoutine']);
     Route::post('/admin-get-student-admit-card-routine', [ExaminationController::class, 'getAdmitCardWithRoutine']);
+    Route::post('/designations', [AdminDesignationController::class, 'getAllDesignations']);
     Route::post('/semesters', [AdminSemesterController::class, 'getAllSemesters']);
     Route::post('/subject-categories', [AdminSubjectCategoryController::class, 'getAllSubjectCategories']);
     Route::post('/departments', [AdminDepartmentController::class, 'getDepartmentsByInst']);
