@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\CECTeacherAssignmentMail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
 
 class CECSaveTeacherAssignSubjectController extends Controller
@@ -573,6 +575,150 @@ class CECSaveTeacherAssignSubjectController extends Controller
 
             DB::commit();
 
+            // Send notification email to assigned teacher(s)
+            $mailResults = [];
+            $skipMail = $request->input('send_mail') === false || $request->input('send_email') === false;
+
+            if (!$skipMail) {
+                $notifiedTeachers = [];
+
+                foreach ($items as $assignedItem) {
+                    $tId     = (int) ($assignedItem['teacher_id'] ?? 0);
+                    $sem     = trim((string) ($assignedItem['semester_id'] ?? 'Part-I'));
+                    $yr      = trim((string) ($assignedItem['examyear'] ?? '2026'));
+                    $adminId = (int) ($assignedItem['entry_user_id'] ?? 1);
+
+                    if ($tId <= 0) {
+                        continue;
+                    }
+
+                    $uniqueKey = "{$adminId}_{$tId}_{$yr}_{$sem}";
+                    if (!isset($notifiedTeachers[$uniqueKey])) {
+                        $notifiedTeachers[$uniqueKey] = [
+                            'admin_user_id' => $adminId,
+                            'teacher_id'    => $tId,
+                            'exam_year'     => $yr,
+                            'semester'      => $sem,
+                        ];
+                    }
+                }
+
+                foreach ($notifiedTeachers as $target) {
+                    try {
+                        $detailsSql = 'SELECT public.fn_admin_getexternalexamineranswerscriptdetails(?::bigint, ?::bigint, ?::varchar, ?::varchar) AS data';
+                        $detailsResult = DB::select($detailsSql, [
+                            $target['admin_user_id'],
+                            $target['teacher_id'],
+                            $target['exam_year'],
+                            $target['semester'],
+                        ]);
+
+                        if (empty($detailsResult) || !isset($detailsResult[0]->data)) {
+                            Log::channel('daily')->warning("⚠️ [CEC Mail] No examiner script details found for teacher ID {$target['teacher_id']}");
+                            $mailResults[] = [
+                                'teacher_id' => $target['teacher_id'],
+                                'status'     => 'no_details_found',
+                            ];
+                            continue;
+                        }
+
+                        $rawDetails = $detailsResult[0]->data;
+                        $detailsData = is_string($rawDetails) ? json_decode($rawDetails, true) : (array) $rawDetails;
+
+                        if (is_array($detailsData) && !empty($detailsData) && !isset($detailsData['p_errorcode'])) {
+                            $first = $detailsData[0] ?? [];
+                            $teacherEmail = trim((string) ($first['teacherEmail'] ?? ''));
+                            $teacherName  = trim((string) ($first['teacherName'] ?? 'Examiner'));
+
+                            // Fallback lookup from tbl_admin_users if teacherEmail is empty or invalid
+                            if (empty($teacherEmail) || !filter_var($teacherEmail, FILTER_VALIDATE_EMAIL)) {
+                                try {
+                                    $userRow = DB::table('tbl_admin_users')
+                                        ->where('au_id', $target['teacher_id'])
+                                        ->first();
+                                    if ($userRow) {
+                                        $fallbackEmail = $userRow->au_email ?? $userRow->email ?? null;
+                                        if (!empty($fallbackEmail) && filter_var($fallbackEmail, FILTER_VALIDATE_EMAIL)) {
+                                            $teacherEmail = trim((string) $fallbackEmail);
+                                        }
+                                        if (empty($teacherName) || $teacherName === 'Examiner') {
+                                            $teacherName = trim((string) ($userRow->au_fullname ?? $userRow->au_name ?? 'Examiner'));
+                                        }
+                                    }
+                                } catch (\Throwable $userEx) {
+                                    Log::channel('daily')->warning("⚠️ [CEC Mail] Fallback lookup in tbl_admin_users failed: " . $userEx->getMessage());
+                                }
+                            }
+
+                            if (!empty($teacherEmail) && filter_var($teacherEmail, FILTER_VALIDATE_EMAIL)) {
+                                $memoNumber = $first['memoNumber'] ?? null;
+                                if (empty($memoNumber)) {
+                                    foreach ($detailsData as $d) {
+                                        if (!empty($d['memoNumber'])) {
+                                            $memoNumber = $d['memoNumber'];
+                                            break;
+                                        }
+                                    }
+                                }
+
+                                $assignmentsList = (isset($first['Assign']) && is_array($first['Assign']))
+                                    ? $first['Assign']
+                                    : $detailsData;
+
+                                $mailPayload = [
+                                    'teacher_name'        => $teacherName,
+                                    'teacher_email'       => $teacherEmail,
+                                    'teacher_phone'       => $first['teacherPhoneNumber'] ?? '',
+                                    'teacher_designation' => $first['teacherDesignation'] ?? '',
+                                    'teacher_inst_name'   => $first['teacherInstName'] ?? $first['teacherinstName'] ?? '',
+                                    'teacher_inst_code'   => $first['teacherInstCode'] ?? '',
+                                    'memo_number'         => $memoNumber,
+                                    'exam_year'           => $target['exam_year'],
+                                    'semester'            => $target['semester'],
+                                    'assignments'         => $assignmentsList,
+                                ];
+
+                                Mail::to($teacherEmail)->send(new CECTeacherAssignmentMail($mailPayload));
+
+                                $mailResults[] = [
+                                    'teacher_id' => $target['teacher_id'],
+                                    'email'      => $teacherEmail,
+                                    'status'     => 'sent',
+                                ];
+
+                                Log::channel('daily')->info("📧 [CEC Mail] Assignment notification email successfully sent to {$teacherEmail} (Teacher ID: {$target['teacher_id']})");
+                            } else {
+                                Log::channel('daily')->warning("⚠️ [CEC Mail] Teacher ID {$target['teacher_id']} has no valid email ('{$teacherEmail}'). Skipping mail.");
+                                $mailResults[] = [
+                                    'teacher_id' => $target['teacher_id'],
+                                    'email'      => $teacherEmail,
+                                    'status'     => 'skipped_no_valid_email',
+                                ];
+                            }
+                        } else {
+                            Log::channel('daily')->warning("⚠️ [CEC Mail] fn_admin_getexternalexamineranswerscriptdetails returned error or empty list for teacher ID {$target['teacher_id']}:", [
+                                'raw' => $rawDetails,
+                            ]);
+                            $mailResults[] = [
+                                'teacher_id' => $target['teacher_id'],
+                                'status'     => 'details_error',
+                            ];
+                        }
+                    } catch (\Throwable $mailEx) {
+                        Log::channel('daily')->error("❌ [CEC Mail] Exception sending assignment email to teacher ID {$target['teacher_id']}: " . $mailEx->getMessage(), [
+                            'trace' => $mailEx->getTraceAsString(),
+                        ]);
+                        $mailResults[] = [
+                            'teacher_id' => $target['teacher_id'],
+                            'status'     => 'failed',
+                            'error'      => $mailEx->getMessage(),
+                        ];
+                    }
+                }
+            }
+
+            $hasMailSent = !empty($mailResults) && collect($mailResults)->contains('status', 'sent');
+
             $responseData = [
                 'version' => '1.0',
                 'status'  => 1,
@@ -581,6 +727,8 @@ class CECSaveTeacherAssignSubjectController extends Controller
                     : 'Teacher assigned to subject successfully',
                 'data'    => [
                     'p_errorcode' => 0,
+                    'mail_sent'   => $hasMailSent,
+                    'mail_status' => $mailResults,
                 ],
             ];
 

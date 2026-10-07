@@ -203,11 +203,72 @@ class AdminGetExternalExaminerAnswerScriptDetailsController extends Controller
                 'count' => is_array($data) ? count($data) : 0,
             ]);
 
+            // Group raw records by teacher
+            $rawList = is_array($data) ? $data : [];
+            $groupedTeachers = [];
+
+            foreach ($rawList as $idx => $row) {
+                if (!is_array($row)) {
+                    continue;
+                }
+
+                $key = !empty($row['teacherEmail'])
+                    ? strtolower(trim((string) $row['teacherEmail']))
+                    : (!empty($row['teacherPhoneNumber'])
+                        ? trim((string) $row['teacherPhoneNumber'])
+                        : (!empty($row['teacherName']) ? trim((string) $row['teacherName']) : 'teacher_' . $idx));
+
+                if (!isset($groupedTeachers[$key])) {
+                    $groupedTeachers[$key] = [
+                        'teacherName'        => $row['teacherName'] ?? null,
+                        'teacherPhoneNumber' => $row['teacherPhoneNumber'] ?? null,
+                        'teacherEmail'       => $row['teacherEmail'] ?? null,
+                        'teacherDesignation' => $row['teacherDesignation'] ?? null,
+                        'teacherInstCode'    => $row['teacherInstCode'] ?? null,
+                        'teacherInstName'    => $row['teacherInstName'] ?? $row['teacherinstName'] ?? null,
+                        'memoNumber'         => $row['memoNumber'] ?? null,
+                        'Assign'             => [],
+                    ];
+                } else {
+                    if (empty($groupedTeachers[$key]['teacherName']) && !empty($row['teacherName'])) {
+                        $groupedTeachers[$key]['teacherName'] = $row['teacherName'];
+                    }
+                    if (empty($groupedTeachers[$key]['teacherPhoneNumber']) && !empty($row['teacherPhoneNumber'])) {
+                        $groupedTeachers[$key]['teacherPhoneNumber'] = $row['teacherPhoneNumber'];
+                    }
+                    if (empty($groupedTeachers[$key]['teacherEmail']) && !empty($row['teacherEmail'])) {
+                        $groupedTeachers[$key]['teacherEmail'] = $row['teacherEmail'];
+                    }
+                    if (empty($groupedTeachers[$key]['teacherDesignation']) && !empty($row['teacherDesignation'])) {
+                        $groupedTeachers[$key]['teacherDesignation'] = $row['teacherDesignation'];
+                    }
+                    if (empty($groupedTeachers[$key]['teacherInstCode']) && !empty($row['teacherInstCode'])) {
+                        $groupedTeachers[$key]['teacherInstCode'] = $row['teacherInstCode'];
+                    }
+                    if (empty($groupedTeachers[$key]['teacherInstName'])) {
+                        $groupedTeachers[$key]['teacherInstName'] = $row['teacherInstName'] ?? $row['teacherinstName'] ?? null;
+                    }
+                    if (empty($groupedTeachers[$key]['memoNumber']) && !empty($row['memoNumber'])) {
+                        $groupedTeachers[$key]['memoNumber'] = $row['memoNumber'];
+                    }
+                }
+
+                $groupedTeachers[$key]['Assign'][] = [
+                    'instCode'       => $row['instCode'] ?? null,
+                    'instName'       => $row['instName'] ?? null,
+                    'subjectCode'    => $row['subjectCode'] ?? null,
+                    'subjectName'    => $row['subjectName'] ?? null,
+                    'totalAnsScript' => isset($row['totalAnsScript']) ? (int) $row['totalAnsScript'] : null,
+                ];
+            }
+
+            $formattedData = array_values($groupedTeachers);
+
             $responseData = [
                 'version' => '1.0',
                 'status'  => 0,
                 'message' => 'External examiner answer script details fetched successfully',
-                'data'    => $data ?? [],
+                'data'    => $formattedData,
             ];
 
             Log::channel('daily')->info('📤 FINAL RESPONSE:', $responseData);
