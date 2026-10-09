@@ -130,4 +130,15 @@ class AdminScheduleController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * POST /api/admin/schedule/save
+     * POST /api/admin/schedule/save-details
+     *
+     * Saves or updates schedule details by calling public.fn_save_schedule_details.
+     */
+    public function saveScheduleDetails(Request $request)
+    {
+        return app(AdminSaveScheduleDetailsController::class)->saveScheduleDetails($request);
+    }
 }

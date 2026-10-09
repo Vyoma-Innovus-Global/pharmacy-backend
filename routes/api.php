@@ -51,6 +51,7 @@ use App\Http\Controllers\AdminTransferCECController;
 use App\Http\Controllers\AdminGetExternalExaminerDetailsController;
 use App\Http\Controllers\AdminGetExternalExaminerAnswerScriptDetailsController;
 use App\Http\Controllers\AdminGetScheduleListController;
+use App\Http\Controllers\AdminSaveScheduleDetailsController;
 
 
 
@@ -456,6 +457,8 @@ Route::prefix('evaluator')->middleware('authenticate')->group(function () {
 
 Route::prefix('admin/schedule')->middleware('authenticate')->group(function () {
     Route::post('/check', [AdminScheduleController::class, 'checkSchedule']);
+    Route::post('/save', [AdminSaveScheduleDetailsController::class, 'saveScheduleDetails']);
+    Route::post('/save-details', [AdminSaveScheduleDetailsController::class, 'saveScheduleDetails']);
 });
 
 Route::prefix('marks')->middleware('authenticate')->group(function () {
@@ -550,6 +553,8 @@ Route::prefix('admin')->middleware('authenticate')->group(function () {
     Route::post('/save-answerscript-intake', [CDCSaveAnswerscriptIntakeController::class, 'saveAnswerscriptIntake']);
     Route::post('/get-answerscript-intake', [CDCGetAnswerscriptIntakeController::class, 'getAnswerscriptIntake']);
     Route::post('/get-answerscript-info-by-subject', [CDCGetAnswerscriptInfoBySubjectController::class, 'getAnswerscriptInfoBySubject']);
+    Route::post('/collect-answerscript', [CDCGetAnswerscriptInfoBySubjectController::class, 'collectAnswerscript']);
+    Route::post('/collect-answerscripts', [CDCGetAnswerscriptInfoBySubjectController::class, 'collectAnswerscript']);
     Route::post('/get-teacher-info-by-inst-and-subject', [AdminTeacherInfoByInstAndSubjectController::class, 'getTeacherInfoByInstAndSubject']);
     Route::post('/save-cec-answerscript-intake-teacher', [CECSaveAnswerscriptIntakeTeacherController::class, 'saveAnswerscriptIntakeTeacher']);
     Route::post('/save-cec-teacher-assign-subject', [CECSaveTeacherAssignSubjectController::class, 'saveTeacherAssignSubject']);
@@ -558,7 +563,7 @@ Route::prefix('admin')->middleware('authenticate')->group(function () {
     Route::post('/get-external-examiner-answerscript-details', [AdminGetExternalExaminerAnswerScriptDetailsController::class, 'getExternalExaminerAnswerScriptDetails']);
     Route::post('/get-external-examiner-answer-script-details', [AdminGetExternalExaminerAnswerScriptDetailsController::class, 'getExternalExaminerAnswerScriptDetails']);
     Route::post('/get-schedule-list', [AdminGetScheduleListController::class, 'getScheduleList']);
-    Route::get('/get-schedule-list', [AdminGetScheduleListController::class, 'getScheduleList']);
+    Route::post('/save-schedule-details', [AdminSaveScheduleDetailsController::class, 'saveScheduleDetails']);   
 });
 
 Route::prefix('sms')->group(function () {

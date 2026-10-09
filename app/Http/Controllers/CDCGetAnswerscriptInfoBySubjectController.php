@@ -220,4 +220,336 @@ class CDCGetAnswerscriptInfoBySubjectController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * @OA\Post(
+     *     path="/api/admin/collect-answerscript",
+     *     tags={"CDC - Answer Scripts"},
+     *     summary="Collect Answer Script",
+     *     description="Marks answer script(s) as collected by calling public.fn_admin_collectanswerscript(p_answerscript_id, p_usertype_id, p_evalutour_id, p_adminuser_id)",
+     *     security={{"token": {}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"answerscript_id"},
+     *             @OA\Property(property="answerscript_id", type="integer", example=21, description="Answer script ID (or array of IDs / objects for bulk collection)"),
+     *             @OA\Property(property="usertype_id", type="integer", example=1, description="User Type ID (defaults to 1 or auth user)", nullable=true),
+     *             @OA\Property(property="evalutour_id", type="integer", example=1, description="Evaluator / Examiner ID (p_evalutour_id)", nullable=true),
+     *             @OA\Property(property="adminuser_id", type="integer", example=1, description="Admin User ID (defaults to auth user)", nullable=true)
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Answer script collected successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="version", type="string", example="1.0"),
+     *             @OA\Property(property="status", type="integer", example=0),
+     *             @OA\Property(property="message", type="string", example="Answer script collected successfully"),
+     *             @OA\Property(property="data", type="object")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=400,
+     *         description="Validation error",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="version", type="string", example="1.0"),
+     *             @OA\Property(property="status", type="integer", example=1),
+     *             @OA\Property(property="message", type="string", example="Validation failed: ..."),
+     *             @OA\Property(property="data", type="array", @OA\Items())
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Internal server error",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="version", type="string", example="1.0"),
+     *             @OA\Property(property="status", type="integer", example=3),
+     *             @OA\Property(property="message", type="string", example="Internal server error: ..."),
+     *             @OA\Property(property="data", type="array", @OA\Items())
+     *         )
+     *     )
+     * )
+     *
+     * POST /api/admin/collect-answerscript
+     * POST /api/admin/collect-answerscripts
+     *
+     * Calls: public.fn_admin_collectanswerscript(
+     *   p_answerscript_id,
+     *   p_usertype_id,
+     *   p_evalutour_id,
+     *   p_adminuser_id
+     * )
+     */
+    public function collectAnswerscript(Request $request)
+    {
+        Log::channel('daily')->info('🚀 === COLLECT ANSWER SCRIPT API - REQUEST START ===');
+        Log::channel('daily')->info('📥 REQUEST INPUT:', [
+            'full_request' => $request->all(),
+            'method'       => $request->method(),
+            'url'          => $request->fullUrl(),
+            'ip'           => $request->ip(),
+        ]);
+
+        // Attempt to extract authenticated user_id from middleware header if available
+        $authUserId = null;
+        $authUserTypeId = null;
+        $authUserData = $request->header('auth_user_data');
+        if ($authUserData) {
+            $decodedAuth = is_string($authUserData) ? json_decode($authUserData, true) : (array) $authUserData;
+            $authUserId = $decodedAuth['user_id'] ?? null;
+            $authUserTypeId = $decodedAuth['user_type_id'] ?? $decodedAuth['usertype_id'] ?? null;
+        }
+
+        // Shared top-level fallbacks
+        $topLevelUserTypeId = $request->input('usertype_id')
+            ?? $request->input('p_usertype_id')
+            ?? $request->input('user_type_id')
+            ?? $request->input('userTypeId')
+            ?? $request->input('usertypeId')
+            ?? $authUserTypeId
+            ?? 1;
+
+        $topLevelEvaluatorId = $request->input('evalutour_id')
+            ?? $request->input('p_evalutour_id')
+            ?? $request->input('evalutourId')
+            ?? $request->input('evaluator_id')
+            ?? $request->input('p_evaluator_id')
+            ?? $request->input('evaluatorId')
+            ?? $request->input('examiner_id')
+            ?? $request->input('examinerId')
+            ?? $request->input('teacher_id')
+            ?? $request->input('teacherId')
+            ?? 0;
+
+        $topLevelAdminUserId = $request->input('adminuser_id')
+            ?? $request->input('p_adminuser_id')
+            ?? $request->input('adminuserId')
+            ?? $request->input('admin_user_id')
+            ?? $request->input('adminUserId')
+            ?? $request->input('user_id')
+            ?? $request->input('userId')
+            ?? $request->input('entry_user_id')
+            ?? $request->input('entryUserId')
+            ?? $authUserId
+            ?? 1;
+
+        // Build list of records to process (supports single item, array of IDs, or array of objects)
+        $items = [];
+        $isBulk = false;
+
+        $rawItems = $request->input('items')
+            ?? $request->input('data')
+            ?? $request->input('scripts')
+            ?? $request->input('answerscripts');
+
+        $rawScriptIds = $request->input('answerscript_ids')
+            ?? $request->input('answerscriptIds')
+            ?? $request->input('answer_script_ids')
+            ?? $request->input('ids');
+
+        if (is_array($rawItems)) {
+            $isBulk = true;
+            foreach ($rawItems as $entry) {
+                if (is_array($entry)) {
+                    $items[] = [
+                        'answerscript_id' => $entry['answerscript_id'] ?? $entry['p_answerscript_id'] ?? $entry['answerscriptId'] ?? $entry['id'] ?? null,
+                        'usertype_id'     => $entry['usertype_id'] ?? $entry['p_usertype_id'] ?? $entry['user_type_id'] ?? $topLevelUserTypeId,
+                        'evalutour_id'    => $entry['evalutour_id'] ?? $entry['p_evalutour_id'] ?? $entry['evaluator_id'] ?? $topLevelEvaluatorId,
+                        'adminuser_id'    => $entry['adminuser_id'] ?? $entry['p_adminuser_id'] ?? $entry['admin_user_id'] ?? $topLevelAdminUserId,
+                    ];
+                } elseif (is_numeric($entry)) {
+                    $items[] = [
+                        'answerscript_id' => (int) $entry,
+                        'usertype_id'     => $topLevelUserTypeId,
+                        'evalutour_id'    => $topLevelEvaluatorId,
+                        'adminuser_id'    => $topLevelAdminUserId,
+                    ];
+                }
+            }
+        } elseif (is_array($rawScriptIds)) {
+            $isBulk = true;
+            foreach ($rawScriptIds as $scriptId) {
+                if (is_numeric($scriptId)) {
+                    $items[] = [
+                        'answerscript_id' => (int) $scriptId,
+                        'usertype_id'     => $topLevelUserTypeId,
+                        'evalutour_id'    => $topLevelEvaluatorId,
+                        'adminuser_id'    => $topLevelAdminUserId,
+                    ];
+                }
+            }
+        } elseif (is_array($request->all()) && isset($request->all()[0])) {
+            $isBulk = true;
+            foreach ($request->all() as $entry) {
+                if (is_array($entry)) {
+                    $items[] = [
+                        'answerscript_id' => $entry['answerscript_id'] ?? $entry['p_answerscript_id'] ?? $entry['answerscriptId'] ?? $entry['id'] ?? null,
+                        'usertype_id'     => $entry['usertype_id'] ?? $entry['p_usertype_id'] ?? $entry['user_type_id'] ?? $topLevelUserTypeId,
+                        'evalutour_id'    => $entry['evalutour_id'] ?? $entry['p_evalutour_id'] ?? $entry['evaluator_id'] ?? $topLevelEvaluatorId,
+                        'adminuser_id'    => $entry['adminuser_id'] ?? $entry['p_adminuser_id'] ?? $entry['admin_user_id'] ?? $topLevelAdminUserId,
+                    ];
+                } elseif (is_numeric($entry)) {
+                    $items[] = [
+                        'answerscript_id' => (int) $entry,
+                        'usertype_id'     => $topLevelUserTypeId,
+                        'evalutour_id'    => $topLevelEvaluatorId,
+                        'adminuser_id'    => $topLevelAdminUserId,
+                    ];
+                }
+            }
+        } else {
+            // Single object request
+            $singleScriptId = $request->input('answerscript_id')
+                ?? $request->input('p_answerscript_id')
+                ?? $request->input('answerscriptId')
+                ?? $request->input('answer_script_id')
+                ?? $request->input('answerScriptId')
+                ?? $request->input('id');
+
+            $items[] = [
+                'answerscript_id' => $singleScriptId,
+                'usertype_id'     => $topLevelUserTypeId,
+                'evalutour_id'    => $topLevelEvaluatorId,
+                'adminuser_id'    => $topLevelAdminUserId,
+            ];
+        }
+
+        if (empty($items)) {
+            return response()->json([
+                'version' => '1.0',
+                'status'  => 1,
+                'message' => 'Validation failed: No answer script ID provided.',
+                'data'    => [],
+            ], 400);
+        }
+
+        // Validate each item
+        foreach ($items as $index => $item) {
+            $validator = Validator::make($item, [
+                'answerscript_id' => 'required|integer|min:1',
+                'usertype_id'     => 'required|integer',
+                'evalutour_id'    => 'nullable|integer',
+                'adminuser_id'    => 'required|integer|min:1',
+            ]);
+
+            if ($validator->fails()) {
+                Log::channel('daily')->error("❌ VALIDATION FAILED on collect answerscript item {$index}:", [
+                    'errors' => $validator->errors()->all(),
+                    'item'   => $item,
+                ]);
+
+                return response()->json([
+                    'version' => '1.0',
+                    'status'  => 1,
+                    'message' => ($isBulk ? "Item {$index}: " : '') . 'Validation failed: ' . $validator->errors()->first(),
+                    'data'    => [],
+                ], 400);
+            }
+        }
+
+        $sql = 'SELECT public.fn_admin_collectanswerscript(?::bigint, ?::integer, ?::integer, ?::bigint) AS result';
+
+        DB::beginTransaction();
+        try {
+            $results = [];
+            $failedList = [];
+
+            foreach ($items as $index => $item) {
+                $scriptId    = (int) $item['answerscript_id'];
+                $userTypeId  = (int) $item['usertype_id'];
+                $evaluatorId = (int) ($item['evalutour_id'] ?? 0);
+                $adminUserId = (int) $item['adminuser_id'];
+
+                Log::channel('daily')->info("📤 Calling fn_admin_collectanswerscript for item {$index}:", [
+                    'p_answerscript_id' => $scriptId,
+                    'p_usertype_id'     => $userTypeId,
+                    'p_evalutour_id'    => $evaluatorId,
+                    'p_adminuser_id'    => $adminUserId,
+                ]);
+
+                $res = DB::select($sql, [
+                    $scriptId,
+                    $userTypeId,
+                    $evaluatorId,
+                    $adminUserId,
+                ]);
+
+                $raw = $res[0]->result ?? null;
+                $decoded = is_string($raw) ? json_decode($raw, true) : (array) $raw;
+
+                if (is_array($decoded) && isset($decoded['p_errorcode']) && (int) $decoded['p_errorcode'] !== 0) {
+                    $failedList[] = [
+                        'answerscript_id' => $scriptId,
+                        'error'           => $decoded['p_errormsg'] ?? 'Database returned error code ' . $decoded['p_errorcode'],
+                    ];
+                } else {
+                    $results[] = [
+                        'answerscript_id'        => $scriptId,
+                        'is_examiner_collection' => 10,
+                        'status'                 => 'Collected',
+                    ];
+                }
+            }
+
+            if (!empty($failedList)) {
+                DB::rollBack();
+                Log::channel('daily')->warning('⚠️ Some items failed to collect in transaction, rolled back:', [
+                    'failed' => $failedList,
+                ]);
+
+                return response()->json([
+                    'version' => '1.0',
+                    'status'  => 1,
+                    'message' => 'Failed to collect answer script(s): ' . ($failedList[0]['error'] ?? 'Unknown error'),
+                    'data'    => [
+                        'failed'  => $failedList,
+                        'results' => $results,
+                    ],
+                ], 400);
+            }
+
+            DB::commit();
+
+            Log::channel('daily')->info('✅ Answer script(s) collected successfully:', [
+                'count' => count($results),
+            ]);
+
+            if (!$isBulk && count($results) === 1) {
+                return response()->json([
+                    'version' => '1.0',
+                    'status'  => 0,
+                    'message' => 'Answer script collected successfully',
+                    'data'    => $results[0],
+                ], 200);
+            }
+
+            return response()->json([
+                'version' => '1.0',
+                'status'  => 0,
+                'message' => 'Answer script(s) collected successfully',
+                'data'    => [
+                    'total_collected' => count($results),
+                    'items'           => $results,
+                ],
+            ], 200);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            Log::channel('daily')->error('🔥 EXCEPTION in collectAnswerscript:', [
+                'message' => $e->getMessage(),
+                'file'    => $e->getFile(),
+                'line'    => $e->getLine(),
+                'trace'   => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'version' => '1.0',
+                'status'  => 3,
+                'message' => 'Internal server error: ' . $e->getMessage(),
+                'data'    => [],
+            ], 500);
+        }
+    }
 }
+
