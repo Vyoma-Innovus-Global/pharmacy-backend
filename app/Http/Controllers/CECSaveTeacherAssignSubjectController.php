@@ -717,22 +717,54 @@ class CECSaveTeacherAssignSubjectController extends Controller
                 }
             }
 
-            $hasMailSent = !empty($mailResults) && collect($mailResults)->contains('status', 'sent');
+            $mailCollection = collect($mailResults);
+            $sentMails      = $mailCollection->where('status', 'sent');
+            $failedMails    = $mailCollection->where('status', 'failed');
+            $skippedMails   = $mailCollection->filter(function ($item) {
+                return in_array($item['status'] ?? '', ['skipped_no_valid_email', 'no_details_found', 'details_error']);
+            });
+
+            $hasMailSent    = $sentMails->isNotEmpty();
+            $hasMailFailed  = $failedMails->isNotEmpty();
+            $hasMailSkipped = $skippedMails->isNotEmpty();
+
+            $baseMsg = $isBulk
+                ? "Teacher assigned to {$successCount} answerscript(s) successfully"
+                : 'Teacher assigned to subject successfully';
+
+            $mailWarning = null;
+            if ($hasMailFailed) {
+                $failedCount = $failedMails->count();
+                $firstError  = $failedMails->first()['error'] ?? 'Mail server error';
+                $mailWarning = $failedCount === 1
+                    ? "Email delivery failed for examiner: {$firstError}"
+                    : "Email delivery failed for {$failedCount} examiner(s).";
+                $message = "{$baseMsg}, but email delivery failed.";
+            } elseif ($hasMailSkipped && !$hasMailSent) {
+                $mailWarning = 'Examiner does not have a valid email address configured. Email notification skipped.';
+                $message = "{$baseMsg} (email notification skipped: no valid email address).";
+            } elseif ($hasMailSent) {
+                $message = "{$baseMsg} and notification email sent successfully.";
+            } else {
+                $message = $baseMsg;
+            }
 
             $responseData = [
                 'version' => '1.0',
                 'status'  => 1,
-                'message' => $isBulk
-                    ? "Teacher assigned to {$successCount} answerscript(s) successfully"
-                    : 'Teacher assigned to subject successfully',
+                'message' => $message,
                 'data'    => [
-                    'p_errorcode' => 0,
-                    'mail_sent'   => $hasMailSent,
-                    'mail_status' => $mailResults,
+                    'p_errorcode'   => 0,
+                    'mail_sent'     => $hasMailSent,
+                    'mail_failed'   => $hasMailFailed,
+                    'email_sent'    => $hasMailSent,
+                    'email_failed'  => $hasMailFailed,
+                    'mail_warning'  => $mailWarning,
+                    'mail_status'   => $mailResults,
                 ],
             ];
 
-            Log::channel('daily')->info('✅ CEC teacher assignment completed successfully:', $responseData);
+            Log::channel('daily')->info('✅ CEC teacher assignment completed:', $responseData);
 
             return response()->json($responseData, 200);
 

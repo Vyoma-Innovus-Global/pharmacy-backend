@@ -533,6 +533,7 @@ Route::prefix('admin')->middleware('authenticate')->group(function () {
     Route::post('/get-assigned-teachers', [AdminTeacherController::class, 'getAssignedTeacherInfo']);
     Route::post('/get-marks-entered-teachers-info', [AdminTeacherController::class, 'getMarksEnteredTeachersInfo']);
     Route::post('/delete-teacher', [AdminTeacherController::class, 'deleteTeacherInfo']);
+    Route::post('/delete-teacher-subject', [AdminTeacherController::class, 'deleteTeacherSubjectInfo']);
     Route::post('/get-evaluator-subject-allocation-summary', [AdminTeacherController::class, 'getEvaluatorSubjectAllocationSummary']);
     Route::post('/get-review-evaluator-subject-allocation-summary', [AdminTeacherController::class, 'getReviewEvaluatorSubjectAllocationSummary']);
     Route::post('/get-review-evaluator-inst-allocation-summary', [AdminTeacherController::class, 'getReviewEvaluatorInstAllocationSummary']);
@@ -575,4 +576,5 @@ Route::prefix('mail')->group(function () {
     Route::post('/send-registration-cancellation-mail', [EmailBroadcastController::class, 'sendRegistrationCancellationMail'])->withoutMiddleware('authenticate');
     Route::post('/send-student-enrollment-fee-mail', [EmailBroadcastController::class, 'sendStudentEnrollmentFeeMail'])->withoutMiddleware('authenticate');
     Route::post('/send-institute-fee-adjustment-mail', [EmailBroadcastController::class, 'sendInstituteFeeAdjustmentMail'])->withoutMiddleware('authenticate');
+    Route::post('/send-cec-teacher-assignment-mail', [EmailBroadcastController::class, 'sendCECTeacherAssignmentMail'])->withoutMiddleware('authenticate');
 });

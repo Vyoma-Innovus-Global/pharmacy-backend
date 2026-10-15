@@ -11,6 +11,7 @@ use App\Mail\NoticeMail;
 use App\Mail\RegistrationCancellationMail;
 use App\Mail\StudentEnrollmentFeeMail;
 use App\Mail\InstituteFeeAdjustmentMail;
+use App\Mail\CECTeacherAssignmentMail;
 use App\Models\Registerstudent;
 
 class EmailBroadcastController extends Controller
@@ -391,5 +392,96 @@ West Bengal State Council of Technical & Vocational Education and Skill Developm
             'message' => 'Institute fee adjustment email process completed.',
             'data' => $results
         ], 200);
+    }
+
+    /**
+     * Send or test CEC Teacher Assignment Mail directly.
+     *
+     * POST /api/mail/send-cec-teacher-assignment-mail
+     *
+     * Body can provide either:
+     * 1) Top-level fields:
+     *    - email / teacher_email: Recipient's email address (required)
+     *    - teacher_name: Examiner's Name
+     *    - teacher_phone: Contact Number
+     *    - teacher_designation: Designation
+     *    - teacher_inst_name: Parent Institute
+     *    - teacher_inst_code: Institute Code
+     *    - memo_number: Memo Number
+     *    - exam_year: e.g. '2026'
+     *    - semester: e.g. 'Part-I'
+     *    - assignments: array of allocated answer script items
+     * 2) Or a nested 'mailData' / 'mail_data' array
+     *
+     * Optionally pass "preview": true to return the rendered HTML without sending.
+     */
+    public function sendCECTeacherAssignmentMail(Request $request)
+    {
+        try {
+            $email = $request->input('email', $request->input('teacher_email', $request->input('to', '')));
+
+            $validator = Validator::make([
+                'email' => $email,
+            ], [
+                'email' => 'required|email',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'error' => true,
+                    'message' => 'A valid recipient email is required in the request body (key: "email" or "teacher_email").',
+                    'errors' => $validator->errors(),
+                ], 422);
+            }
+
+            $rawMailData = $request->input('mailData', $request->input('mail_data', null));
+
+            if (is_array($rawMailData)) {
+                $mailPayload = $rawMailData;
+                if (empty($mailPayload['teacher_email'])) {
+                    $mailPayload['teacher_email'] = $email;
+                }
+                if (!isset($mailPayload['assignments']) || !is_array($mailPayload['assignments'])) {
+                    $mailPayload['assignments'] = [];
+                }
+            } else {
+                $mailPayload = [
+                    'teacher_name'        => $request->input('teacher_name', $request->input('teacherName', 'Examiner Name')),
+                    'teacher_email'       => $email,
+                    'teacher_phone'       => $request->input('teacher_phone', $request->input('teacherPhoneNumber', $request->input('phone', ''))),
+                    'teacher_designation' => $request->input('teacher_designation', $request->input('teacherDesignation', $request->input('designation', ''))),
+                    'teacher_inst_name'   => $request->input('teacher_inst_name', $request->input('teacherInstName', $request->input('inst_name', ''))),
+                    'teacher_inst_code'   => $request->input('teacher_inst_code', $request->input('teacherInstCode', $request->input('inst_code', ''))),
+                    'memo_number'         => $request->input('memo_number', $request->input('memoNumber', '')),
+                    'exam_year'           => $request->input('exam_year', $request->input('examYear', '2026')),
+                    'semester'            => $request->input('semester', 'Part-I'),
+                    'assignments'         => $request->input('assignments', []),
+                ];
+            }
+
+            // Preview mode if requested
+            if ($request->boolean('preview')) {
+                return new CECTeacherAssignmentMail($mailPayload);
+            }
+
+            Mail::to($email)->send(new CECTeacherAssignmentMail($mailPayload));
+
+            Log::channel('daily')->info("📧 [CEC Test Mail] Assignment notification email successfully sent to {$email}");
+
+            return response()->json([
+                'error' => false,
+                'message' => 'CEC Teacher Assignment mail sent successfully.',
+                'recipient' => $email,
+                'mail_data' => $mailPayload,
+            ], 200);
+
+        } catch (\Exception $e) {
+            Log::channel('daily')->error('[sendCECTeacherAssignmentMail] Failed sending to: ' . ($email ?? 'unknown') . ' Error: ' . $e->getMessage());
+
+            return response()->json([
+                'error' => true,
+                'message' => 'Failed to send mail: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 }

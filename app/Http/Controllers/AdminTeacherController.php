@@ -203,20 +203,33 @@ class AdminTeacherController extends Controller
             }
 
             // Parse the result JSON: {"p_errorcode": 0, "p_teacher_id": 5}
-            $resultData = json_decode($teacherResult->result, true);
+            $resultData = is_string($teacherResult->result)
+                ? json_decode($teacherResult->result, true)
+                : (array) $teacherResult->result;
             Log::channel('daily')->info('🔍 Parsed result data', ['resultData' => $resultData]);
 
-            if (!$resultData || !isset($resultData['p_errorcode']) || $resultData['p_errorcode'] != 0) {
+            if (!$resultData || !isset($resultData['p_errorcode']) || (int)$resultData['p_errorcode'] !== 0) {
+                $errorCode = isset($resultData['p_errorcode']) ? (int)$resultData['p_errorcode'] : -1;
                 Log::channel('daily')->error('❌ Teacher save returned error', [
                     'p_errorcode' => $resultData['p_errorcode'] ?? 'not_found',
                     'p_teacher_id' => $resultData['p_teacher_id'] ?? 'not_found'
                 ]);
+
+                $errorMessage = $resultData['p_message'] ?? $resultData['message'] ?? null;
+                if (!$errorMessage) {
+                    if ($errorCode === 2) {
+                        $errorMessage = 'This phone number is already registered with another institute.';
+                    } else {
+                        $errorMessage = 'Teacher save returned error code: ' . ($resultData['p_errorcode'] ?? 'unknown');
+                    }
+                }
+
                 return response()->json([
                     'version' => '1.0',
                     'status' => 0,
-                    'message' => 'Teacher save returned error code: ' . ($resultData['p_errorcode'] ?? 'unknown'),
+                    'message' => $errorMessage,
                     'data' => $resultData ?? []
-                ], 500);
+                ], 400);
             }
 
             $teacherId = $resultData['p_teacher_id'];
@@ -580,14 +593,25 @@ class AdminTeacherController extends Controller
             Log::channel('daily')->info('🔍 Parsed teacher result data V2', ['resultData' => $resultData]);
 
             if (!$resultData || !isset($resultData['p_errorcode']) || (int)$resultData['p_errorcode'] !== 0) {
+                $errorCode = isset($resultData['p_errorcode']) ? (int)$resultData['p_errorcode'] : -1;
                 Log::channel('daily')->error('❌ Teacher save returned error', [
                     'p_errorcode' => $resultData['p_errorcode'] ?? 'not_found',
                     'p_teacher_id' => $resultData['p_teacher_id'] ?? 'not_found'
                 ]);
+
+                $errorMessage = $resultData['p_message'] ?? $resultData['message'] ?? null;
+                if (!$errorMessage) {
+                    if ($errorCode === 2) {
+                        $errorMessage = 'This phone number is already registered with another institute.';
+                    } else {
+                        $errorMessage = 'Teacher save returned error code: ' . ($resultData['p_errorcode'] ?? 'unknown');
+                    }
+                }
+
                 return response()->json([
                     'version' => '1.0',
                     'status' => 0,
-                    'message' => 'Teacher save returned error code: ' . ($resultData['p_errorcode'] ?? 'unknown'),
+                    'message' => $errorMessage,
                     'data' => $resultData ?? []
                 ], 400);
             }
@@ -1223,6 +1247,137 @@ class AdminTeacherController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Delete teacher subject info via fn_admin_deleteteachersubjectinfo
+     *
+     * Parameters:
+     * - p_exam_year character varying
+     * - p_subject_code character varying
+     * - p_semester_id character varying
+     * - p_teacher_id bigint
+     * - p_entry_user_id bigint
+     * - p_remarks text
+     */
+    public function deleteTeacherSubjectInfo(Request $request)
+    {
+        Log::info('=== DELETE TEACHER SUBJECT INFO API - REQUEST START ===', [
+            'payload' => $request->all(),
+            'method' => $request->method(),
+            'url' => $request->fullUrl(),
+        ]);
+
+        $validator = Validator::make($request->all(), [
+            'exam_year' => 'required',
+            'subject_code' => 'required',
+            'semester_id' => 'required',
+            'teacher_id' => 'required|integer',
+            'admin_user_id' => 'nullable|integer|required_without:entry_user_id',
+            'entry_user_id' => 'nullable|integer|required_without:admin_user_id',
+            'remarks' => 'nullable|string',
+        ]);
+
+        if ($validator->fails()) {
+            Log::error('DELETE TEACHER SUBJECT INFO API - Validation Failed:', [
+                'errors' => $validator->errors()->all(),
+            ]);
+
+            return response()->json([
+                'version' => '1.0',
+                'status' => 0,
+                'message' => 'Validation failed: ' . $validator->errors()->first(),
+                'data' => [],
+            ], 400);
+        }
+
+        $examYear = (string) $request->input('exam_year');
+        $subjectCode = (string) ($request->input('subject_code') ?? $request->input('subject_Code'));
+        $semesterId = (string) $request->input('semester_id');
+        $teacherId = (int) $request->input('teacher_id');
+        $entryUserId = (int) ($request->input('admin_user_id') ?? $request->input('entry_user_id'));
+        $remarks = (string) $request->input('remarks', '');
+
+        try {
+            Log::info('Calling fn_admin_deleteteachersubjectinfo with parameters:', [
+                'p_exam_year' => $examYear,
+                'p_subject_code' => $subjectCode,
+                'p_semester_id' => $semesterId,
+                'p_teacher_id' => $teacherId,
+                'p_entry_user_id' => $entryUserId,
+                'p_remarks' => $remarks,
+            ]);
+
+            $result = DB::selectOne(
+                'SELECT public.fn_admin_deleteteachersubjectinfo(?, ?, ?, ?, ?, ?) AS result',
+                [$examYear, $subjectCode, $semesterId, $teacherId, $entryUserId, $remarks]
+            );
+
+            Log::info('OUTPUT from fn_admin_deleteteachersubjectinfo:', [
+                'raw_result' => $result,
+                'result_json' => $result->result ?? null,
+            ]);
+
+            if (!$result || !isset($result->result) || $result->result === null) {
+                return response()->json([
+                    'version' => '1.0',
+                    'status' => 0,
+                    'message' => 'No response returned from delete teacher subject function',
+                    'data' => [],
+                ], 500);
+            }
+
+            $data = is_string($result->result)
+                ? json_decode($result->result, true)
+                : (array) $result->result;
+
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                Log::error('DELETE TEACHER SUBJECT INFO API - JSON parsing error:', [
+                    'error' => json_last_error_msg(),
+                    'raw' => $result->result,
+                ]);
+
+                return response()->json([
+                    'version' => '1.0',
+                    'status' => 0,
+                    'message' => 'Failed to parse database response',
+                    'data' => [],
+                ], 500);
+            }
+
+            $errorCode = (int) ($data['p_errorcode'] ?? -1);
+            $message = $data['p_message'] ?? $data['message'] ?? null;
+
+            if (!$message) {
+                $messages = [
+                    0 => 'Teacher subject deleted successfully',
+                    700 => 'Teacher does not exist',
+                    810 => 'Teacher marks entry exists, delete not possible',
+                ];
+                $message = $messages[$errorCode] ?? ('Teacher subject delete returned error code: ' . $errorCode);
+            }
+
+            return response()->json([
+                'version' => '1.0',
+                'status' => $errorCode === 0 ? 1 : 0,
+                'message' => $message,
+                'data' => $data,
+            ], 200);
+
+        } catch (\Exception $e) {
+            Log::error('AdminTeacherController::deleteTeacherSubjectInfo - Exception', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'version' => '1.0',
+                'status' => 0,
+                'message' => 'Server error: ' . $e->getMessage(),
+                'data' => [],
+            ], 500);
+        }
+    }
+
 
     /**
      * Group flat teacher-subject rows into one record per teacher with assignments[].
