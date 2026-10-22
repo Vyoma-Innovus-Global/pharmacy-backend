@@ -673,7 +673,8 @@ class CECSaveTeacherAssignSubjectController extends Controller
                                     'teacher_inst_name'   => $first['teacherInstName'] ?? $first['teacherinstName'] ?? '',
                                     'teacher_inst_code'   => $first['teacherInstCode'] ?? '',
                                     'memo_number'         => $memoNumber,
-                                    'exam_year'           => $target['exam_year'],
+                                    'exam_month'          => 'September',
+                                    'exam_year'           => !empty($target['exam_year']) ? $target['exam_year'] : '2026',
                                     'semester'            => $target['semester'],
                                     'assignments'         => $assignmentsList,
                                 ];

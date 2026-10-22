@@ -29,11 +29,12 @@ class CECTeacherAssignmentMail extends Mailable
      */
     public function envelope(): Envelope
     {
+        $examMonth = $this->mailData['exam_month'] ?? 'September';
         $examYear = $this->mailData['exam_year'] ?? '2026';
         $semester = $this->mailData['semester'] ?? 'Part-I';
 
         return new Envelope(
-            subject: "Appointment as Examiner – Pharmacy Examination {$examYear} ({$semester})",
+            subject: "Appointment as Examiner – Pharmacy Examination {$examMonth} {$examYear} ({$semester})",
         );
     }
 

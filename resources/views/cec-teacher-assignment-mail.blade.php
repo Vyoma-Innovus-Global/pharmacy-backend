@@ -28,7 +28,7 @@
         <!-- Notification Message -->
         <p style="font-size: 14px; color: #334155;">
             You have been appointed as an Examiner for the evaluation of answer scripts for the Pharmacy Examination held in
-            <strong>{{ $mailData['exam_year'] ?? '2026' }} ({{ $mailData['semester'] ?? 'Part-I' }})</strong>.
+            <strong>{{ $mailData['exam_month'] ?? 'September' }} {{ $mailData['exam_year'] ?? '2026' }} ({{ $mailData['semester'] ?? 'Part-I' }})</strong>.
             The details of your assigned answer scripts are provided below:
         </p>
 
@@ -91,7 +91,11 @@
                         <strong>{{ $item['instCode'] ?? '' }}</strong> - {{ $item['instName'] ?? 'N/A' }}
                     </td>
                     <td style="padding: 9px 10px; border: 1px solid #e2e8f0;">
-                        <strong>{{ $item['subjectCode'] ?? '' }}</strong> - {{ $item['subjectName'] ?? 'N/A' }}
+                        <strong>{{ $item['subjectCode'] ?? '' }}</strong>
+                        @if(!empty($item['subjectQCode']))
+                            <span style="color: #64748b; font-size: 12px;">[{{ $item['subjectQCode'] }}]</span>
+                        @endif
+                        - {{ $item['subjectName'] ?? 'N/A' }}
                     </td>
                     <td style="padding: 9px 10px; border: 1px solid #e2e8f0; text-align: center; font-weight: bold; color: #0f172a;">
                         {{ $item['totalAnsScript'] ?? '-' }}

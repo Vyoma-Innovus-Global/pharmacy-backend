@@ -453,6 +453,7 @@ West Bengal State Council of Technical & Vocational Education and Skill Developm
                     'teacher_inst_name'   => $request->input('teacher_inst_name', $request->input('teacherInstName', $request->input('inst_name', ''))),
                     'teacher_inst_code'   => $request->input('teacher_inst_code', $request->input('teacherInstCode', $request->input('inst_code', ''))),
                     'memo_number'         => $request->input('memo_number', $request->input('memoNumber', '')),
+                    'exam_month'          => $request->input('exam_month', $request->input('examMonth', 'September')),
                     'exam_year'           => $request->input('exam_year', $request->input('examYear', '2026')),
                     'semester'            => $request->input('semester', 'Part-I'),
                     'assignments'         => $request->input('assignments', []),
