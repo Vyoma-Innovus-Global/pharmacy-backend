@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -187,16 +187,43 @@
                 $obtained_marks = $studentData['totalMarksObtained'] ?? $studentData['obtained_marks'] ?? '';
 
                 $back_papers = '';
+                $back_papers_count = 0;
                 if (!empty($studentData['backPapers'])) {
-                    $back_papers = is_array($studentData['backPapers'])
-                        ? implode(', ', array_filter($studentData['backPapers']))
-                        : (string) $studentData['backPapers'];
+                    if (is_array($studentData['backPapers'])) {
+                        $filtered = array_filter($studentData['backPapers']);
+                        $back_papers_count = count($filtered);
+                        $back_papers = implode(', ', $filtered);
+                    } else {
+                        $back_papers = (string) $studentData['backPapers'];
+                        $back_papers_count = count(array_filter(explode(',', $back_papers)));
+                    }
                 } elseif (!empty($studentData['backPapersSubjectName'])) {
-                    $back_papers = $studentData['backPapersSubjectName'];
+                    $back_papers = (string) $studentData['backPapersSubjectName'];
+                    $back_papers_count = count(array_filter(explode(',', $back_papers)));
                 } elseif (!empty($studentData['back_papers'])) {
-                    $back_papers = is_array($studentData['back_papers'])
-                        ? implode(', ', array_filter($studentData['back_papers']))
-                        : (string) $studentData['back_papers'];
+                    if (is_array($studentData['back_papers'])) {
+                        $filtered = array_filter($studentData['back_papers']);
+                        $back_papers_count = count($filtered);
+                        $back_papers = implode(', ', $filtered);
+                    } else {
+                        $back_papers = (string) $studentData['back_papers'];
+                        $back_papers_count = count(array_filter(explode(',', $back_papers)));
+                    }
+                }
+
+                // If string contains multiple formatted entries like [CODE] or commas, count them reliably
+                if (preg_match_all('/\[[A-Za-z0-9_-]+\]/', $back_papers, $matches)) {
+                    $back_papers_count = max($back_papers_count, count($matches[0]));
+                }
+
+                // Dynamic style adjustment for back papers when there are more than 2 subjects to prevent overlap
+                $back_papers_extra_style = '';
+                if ($back_papers_count > 4) {
+                    $back_papers_extra_style = 'font-size: 8.5px; line-height: 1.1; max-width: 10.5cm; white-space: normal;';
+                } elseif ($back_papers_count > 2) {
+                    $back_papers_extra_style = 'font-size: 10px; line-height: 1.15; max-width: 10.5cm; white-space: normal;';
+                } else {
+                    $back_papers_extra_style = 'max-width: 10.5cm; white-space: normal;';
                 }
 
                 $percentage = $studentData['percentage'] ?? '';
@@ -270,7 +297,7 @@
             <!-- Footer Section -->
             <div class="field bold" style="{{ $st['total_marks'] ?? '' }}">{{ $total_marks }}</div>
             <div class="field bold" style="{{ $st['obtained_marks'] ?? '' }}">{{ $obtained_marks }}</div>
-            <div class="field bold" style="{{ $st['back_papers'] ?? '' }}">{{ $back_papers }}</div>
+            <div class="field bold" style="{{ $st['back_papers'] ?? '' }} {{ $back_papers_extra_style }}">{{ $back_papers }}</div>
             <div class="field bold" style="{{ $st['percentage'] ?? '' }}">{{ $percentage }}</div>
             <div class="field bold" style="{{ $st['result_status'] ?? '' }}">{{ $result_status }}</div>
             <div class="field bold" style="{{ $st['cautionary_text'] ?? '' }}">{{ $cautionary_text }}</div>

@@ -381,9 +381,11 @@ Route::prefix('reports')->group(function () {
     Route::post('/student-registration-download', [ReportController::class, 'studentRegistrationDownload']);
     Route::match(['get', 'post'], '/result-download-inst', [ReportController::class, 'resultCertificateDownloadInst']);
     Route::match(['get', 'post'], '/result-certificate-download-inst', [ReportController::class, 'resultCertificateDownloadInst']);
+    Route::post('/review-result-download-inst', [ReportController::class, 'reviewResultCertificateDownloadInst']);
     Route::post('/get-enrollment-report-count', [ReportController::class, 'getEnrollmentReport']);
 });
 Route::match(['get', 'post'], '/result-download-inst', [ReportController::class, 'resultCertificateDownloadInst']);
+Route::post('/review-result-download-inst', [ReportController::class, 'reviewResultCertificateDownloadInst']);
 
 Route::prefix('review')->middleware('authenticate')->group(function () {
 
@@ -528,6 +530,10 @@ Route::prefix('admin')->middleware('authenticate')->group(function () {
     Route::post('/get-bank-info-by-ifsc', [AdminController::class, 'getBankInfoByIfsc']);
     Route::post('/dashboard', [AdminController::class, 'getDashboard']);
     Route::post('/get-entered-student-marks-info', [AdminController::class, 'getEnteredStudentMarksInfo']);
+    Route::post('/save-user-info', [AdminController::class, 'saveUserInfo']);
+    Route::post('/save-user-assign-subject-v2', [AdminController::class, 'saveUserAssignSubjectV2']);
+    Route::post('/get-user-inst-allocation-summary', [AdminController::class, 'getUserInstAllocationSummary']);
+    Route::post('/get-user-subject-allocation-summary', [AdminController::class, 'getUserSubjectAllocationSummary']);
     Route::post('/save-teacher', [AdminTeacherController::class, 'saveTeacherWithSubjects']);
     Route::post('/save-teacher-v2', [AdminTeacherController::class, 'saveTeacherWithSubjectsV2']);
     Route::post('/get-assigned-teachers', [AdminTeacherController::class, 'getAssignedTeacherInfo']);
