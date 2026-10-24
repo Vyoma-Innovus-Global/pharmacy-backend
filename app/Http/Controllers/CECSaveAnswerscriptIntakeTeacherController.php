@@ -14,12 +14,12 @@ class CECSaveAnswerscriptIntakeTeacherController extends Controller
      *     path="/api/admin/save-cec-answerscript-intake-teacher",
      *     tags={"CEC - Answer Scripts"},
      *     summary="Save CEC Answer Script Intake Teacher Assignment (Single or Bulk)",
-     *     description="Saves teacher subject assignment for CEC answerscript intake by calling public.fn_admin_saveteacherassignsubject_v2(p_teacher_id, p_dept_id, p_semester_id, p_subject_category_id, p_subject_id, p_entry_user_id, p_inst_id, p_examinertype_id, p_examyear, p_subject_code)",
+     *     description="Saves teacher subject assignment for CEC answerscript intake by calling public.fn_admin_saveteacherassignsubject_v2(p_teacher_id, p_dept_id, p_semester_id, p_subject_category_id, p_subject_id, p_entry_user_id, p_inst_id, p_examinertype_id, p_examyear, p_subject_code, p_inst_code)",
      *     security={{"token": {}}},
      *     @OA\RequestBody(
      *         required=true,
      *         @OA\JsonContent(
-     *             required={"teacher_id", "subject_id"},
+     *             required={"teacher_id", "subject_id", "subject_code"},
      *             @OA\Property(property="teacher_id", type="integer", example=661, description="Teacher / Evaluator User ID"),
      *             @OA\Property(property="dept_id", type="integer", example=1, description="Department ID (Default: 1 for PHARM)", default=1),
      *             @OA\Property(property="semester_id", type="string", example="Part-I", description="Semester / Part Name or Number (e.g. Part-I, Part-II, 1, 2)"),
@@ -88,7 +88,8 @@ class CECSaveAnswerscriptIntakeTeacherController extends Controller
      *   p_inst_id,
      *   p_examinertype_id,
      *   p_examyear,
-     *   p_subject_code
+     *   p_subject_code,
+     *   p_inst_code
      * )
      */
     public function saveAnswerscriptIntakeTeacher(Request $request)
@@ -299,6 +300,7 @@ class CECSaveAnswerscriptIntakeTeacherController extends Controller
             'semester_id'         => 'required',
             'subject_category_id' => 'nullable|integer',
             'subject_id'          => 'required|integer',
+            'subject_code'        => 'required|string|max:50',
             'entry_user_id'       => 'required|integer',
             'inst_id'             => 'nullable|integer',
             'examinertype_id'     => 'nullable',
@@ -306,6 +308,11 @@ class CECSaveAnswerscriptIntakeTeacherController extends Controller
         ];
 
         foreach ($items as $index => &$item) {
+            // Trim subject_code if present
+            if (isset($item['subject_code']) && is_string($item['subject_code'])) {
+                $item['subject_code'] = trim($item['subject_code']);
+            }
+
             // Resolve Institute ID if missing
             if (empty($item['inst_id'])) {
                 if (!empty($item['inst_code'])) {
@@ -335,7 +342,9 @@ class CECSaveAnswerscriptIntakeTeacherController extends Controller
             // Normalization of examiner_type
             if (is_string($item['examinertype_id'])) {
                 $rawExType = strtoupper(trim($item['examinertype_id']));
-                if ($rawExType === 'INTERNAL' || $rawExType === 'INT' || $rawExType === '2') {
+                if ($rawExType === 'INTERNAL' || $rawExType === 'INT' || $rawExType === '1') {
+                    $item['examinertype_id'] = 1;
+                } elseif ($rawExType === 'EXTERNAL' || $rawExType === 'EXT' || $rawExType === '2') {
                     $item['examinertype_id'] = 2;
                 } else {
                     $item['examinertype_id'] = 1;
@@ -473,7 +482,7 @@ class CECSaveAnswerscriptIntakeTeacherController extends Controller
                 } else {
                     $errorMsg = $errorCode === 200
                         ? "Teacher already assigned to this subject and institute for exam year {$examYear}"
-                        : ($parsed['p_errormsg'] ?? "Database function returned error code {$errorCode}");
+                        : ($parsed['p_errormsg'] ?? $parsed['p_message'] ?? "Database function returned error code {$errorCode}");
 
                     if ($errorCode === 200) {
                         $duplicateCount++;

@@ -466,10 +466,13 @@ class AdminTeacherController extends Controller
      *                 property="subjectList",
      *                 type="array",
      *                 @OA\Items(
+     *                     required={"dept_id", "semester_id", "subject_category_id", "subject_id", "subject_code"},
      *                     @OA\Property(property="dept_id", type="integer", example=1),
-     *                     @OA\Property(property="semester_id", type="string", example="Part-I", description="Semester ID (e.g. Part-I, Part-II, or 1)"),
-     *                     @OA\Property(property="subject_category_id", type="integer", example=1),
-     *                     @OA\Property(property="subject_id", type="integer", example=101),
+     *                     @OA\Property(property="semester_id", type="string", example="Part-II", description="Semester ID (e.g. Part-I, Part-II, or 1)"),
+     *                     @OA\Property(property="subject_category_id", type="integer", example=2),
+     *                     @OA\Property(property="subject_id", type="integer", example=6),
+     *                     @OA\Property(property="subject_code", type="string", example="PHCOP", description="Subject Code"),
+     *                     @OA\Property(property="inst_code", type="string", example="RBPI", description="Institute Code (optional, defaults to teacher institute)"),
      *                     @OA\Property(property="examiner_type_id", type="integer", example=1, description="Examiner Type ID (1: INTERNAL, 2: EXTERNAL, 3: BOTH)"),
      *                     @OA\Property(property="exam_year", type="string", example="2026", description="Exam Year")
      *                 )
@@ -516,9 +519,9 @@ class AdminTeacherController extends Controller
                 'subjectList.*.semester_id' => 'required',
                 'subjectList.*.subject_category_id' => 'required|integer',
                 'subjectList.*.subject_id' => 'required|integer',
+                'subjectList.*.subject_code' => 'required|string|max:50',
                 'subjectList.*.examiner_type_id' => 'nullable|integer',
                 'subjectList.*.exam_year' => 'nullable|string|max:20',
-                'subjectList.*.subject_code' => 'nullable|string|max:50',
             ]);
 
             if ($validator->fails()) {
@@ -645,18 +648,25 @@ class AdminTeacherController extends Controller
             foreach ($subjectList as $index => $subject) {
                 try {
                     $deptId            = (int) $subject['dept_id'];
-                    $semesterId        = (string) $subject['semester_id'];
+                    $rawSem            = trim((string) $subject['semester_id']);
+                    if ($rawSem === '1' || strcasecmp($rawSem, 'Part_I') === 0 || strcasecmp($rawSem, 'Part-1') === 0) {
+                        $semesterId = 'Part-I';
+                    } elseif ($rawSem === '2' || strcasecmp($rawSem, 'Part_II') === 0 || strcasecmp($rawSem, 'Part-2') === 0) {
+                        $semesterId = 'Part-II';
+                    } else {
+                        $semesterId = $rawSem;
+                    }
                     $subjectCategoryId = (int) $subject['subject_category_id'];
                     $subjectId         = (int) $subject['subject_id'];
-                    $subjectCode       = (string) ($subject['subject_code'] ?? '');
+                    $subjectCode       = trim((string) ($subject['subject_code'] ?? ''));
                     if ($subjectCode === '' && !empty($subjectId)) {
                         $subRow = DB::table('tbl_department_subjects_master')->where('dsm_id', $subjectId)->select('dsm_subject_id')->first();
-                        $subjectCode = $subRow ? (string) $subRow->dsm_subject_id : '';
+                        $subjectCode = $subRow ? trim((string) $subRow->dsm_subject_id) : '';
                     }
                     $instId            = (int) $teacherInfo['inst_id'];
-                    $instCode          = (string) ($subject['inst_code'] ?? $teacherInstCode);
+                    $instCode          = trim((string) ($subject['inst_code'] ?? $teacherInstCode));
                     $examinerTypeId    = (int) ($subject['examiner_type_id'] ?? 1);
-                    $examYear          = (string) ($subject['exam_year'] ?? '2026');
+                    $examYear          = trim((string) ($subject['exam_year'] ?? '2026'));
 
                     Log::channel('daily')->info("📥 Subject #{$index} - Calling fn_admin_saveteacherassignsubject_v2", [
                         'p_teacher_id'          => $teacherId,
@@ -707,7 +717,7 @@ class AdminTeacherController extends Controller
                                 $duplicateAssignmentDetected = true;
                                 $errorMessage = 'Teacher already assigned to this subject and institute for this exam year';
                             } else {
-                                $errorMessage = $subjectResultData['p_errormsg'] ?? 'Subject assignment failed';
+                                $errorMessage = $subjectResultData['p_errormsg'] ?? $subjectResultData['p_message'] ?? 'Subject assignment failed';
                             }
 
                             Log::channel('daily')->error("❌ Subject #{$index} failed", [

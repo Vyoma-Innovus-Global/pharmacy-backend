@@ -173,16 +173,7 @@ class CECSaveTeacherAssignSubjectController extends Controller
             ?? $request->input('p_subject_id')
             ?? $request->input('subjectId');
 
-        // Look up subject_code from tbl_department_subjects_master if only subject_id is provided
-        if (empty($topLevelSubjectCode) && !empty($topLevelSubjectId)) {
-            $subRow = DB::table('tbl_department_subjects_master')
-                ->where('dsm_id', (int) $topLevelSubjectId)
-                ->select('dsm_subject_id')
-                ->first();
-            if ($subRow && !empty($subRow->dsm_subject_id)) {
-                $topLevelSubjectCode = trim((string) $subRow->dsm_subject_id);
-            }
-        }
+       
 
         $rawAnswerscriptId = $request->input('answerscript_id')
             ?? $request->input('p_answerscript_id')
