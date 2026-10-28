@@ -63,6 +63,7 @@ This document provides a comprehensive analysis of all API routes defined in [`r
 | 44 | `fn_admin_saveroutine` |
 | 45 | `fn_admin_savestudentmarks` |
 | 46 | `fn_admin_savestudentmarks_v3` |
+| 47 | `fn_admin_savestudentmarks_v4` |
 | 47 | `fn_admin_saveteacherassignmarkscorrection` |
 | 48 | `fn_admin_saveteacherassignsubject_v1` |
 | 49 | `fn_admin_saveteacherassignsubject_v2` |
@@ -487,7 +488,8 @@ This document provides a comprehensive analysis of all API routes defined in [`r
 | `POST` | `/api/admin/get-bank-info-by-ifsc` | Stored Procedure / PostgreSQL Function | `fn_admin_getbankinfobyifsc` | None (Uses Stored Procedure / Function) |
 | `POST` | `/api/admin/dashboard` | Stored Procedure / PostgreSQL Function | `fn_admin_getdashboard` | None (Uses Stored Procedure / Function) |
 | `POST` | `/api/admin/get-entered-student-marks-info` | Stored Procedure / PostgreSQL Function | `fn_admin_getenteredstudentmarksinfo` | None (Uses Stored Procedure / Function) |
-| `POST` | `/api/admin/save-user-info` | Stored Procedure / PostgreSQL Function | `fn_admin_saveuserinfo` | None (Uses Stored Procedure / Function) |
+| `POST` | `/api/admin/save-scrutinizer-user-info` | Stored Procedure / PostgreSQL Function | `fn_admin_saveuserinfo`<br>`fn_admin_saveuserassignsubject_v2` | None (Uses Stored Procedure / Function) |
+| `POST` | `/api/admin/save-user-info` | Stored Procedure / PostgreSQL Function | `fn_admin_saveuserinfo`<br>`fn_admin_saveuserassignsubject_v2` | None (Uses Stored Procedure / Function) |
 | `POST` | `/api/admin/save-user-assign-subject-v2` | Stored Procedure / PostgreSQL Function | `fn_admin_saveuserassignsubject_v2` | None (Uses Stored Procedure / Function) |
 | `POST` | `/api/admin/get-user-inst-allocation-summary` | Stored Procedure / PostgreSQL Function | `fn_admin_getuserinstallocationsummary` | None (Uses Stored Procedure / Function) |
 | `POST` | `/api/admin/get-user-subject-allocation-summary` | Stored Procedure / PostgreSQL Function | `fn_admin_getusersubjectallocationsummary` | None (Uses Stored Procedure / Function) |
@@ -503,7 +505,8 @@ This document provides a comprehensive analysis of all API routes defined in [`r
 | `POST` | `/api/admin/get-review-student-marks-info` | Stored Procedure / PostgreSQL Function | `fn_admin_getreviewstudentmarksinfo` | None (Uses Stored Procedure / Function) |
 | `POST` | `/api/admin/save-review-teacher-assign-subject` | Stored Procedure / PostgreSQL Function | `fn_admin_savereviewteacherassignsubject` | None (Uses Stored Procedure / Function) |
 | `POST` | `/api/admin/save-review-subject-marks` | Stored Procedure / PostgreSQL Function | `fn_save_review_subject_marks` | None (Uses Stored Procedure / Function) |
-| `POST` | `/api/admin/save-student-marks` | Stored Procedure / PostgreSQL Function | `fn_admin_savestudentmarks_v3` | None (Uses Stored Procedure / Function) |
+| `POST` | `/api/admin/save-student-marks` | Stored Procedure / PostgreSQL Function | `fn_admin_savestudentmarks_v4` | None (Uses Stored Procedure / Function) |
+| `POST` | `/api/admin/save-student-marks-v4` | Stored Procedure / PostgreSQL Function | `fn_admin_savestudentmarks_v4` | None (Uses Stored Procedure / Function) |
 | `POST` | `/api/admin/institute-wise-summary` | Stored Procedure / PostgreSQL Function | `fn_admin_getinstitutewisesummary` | None (Uses Stored Procedure / Function) |
 | `POST` | `/api/admin/examiner-wise-summary` | Stored Procedure / PostgreSQL Function | `fn_admin_examinerwisesummary` | None (Uses Stored Procedure / Function) |
 | `GET` | `/api/admin/district-list` | Stored Procedure / PostgreSQL Function | `fn_getdistrictlistbyadmin` | None (Uses Stored Procedure / Function) |

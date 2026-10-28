@@ -10,10 +10,10 @@ use Illuminate\Support\Facades\Validator;
 class AdminStudentMarksController extends Controller
 {
     /**
-     * Save Student Marks (Bulk) - Updated for v3
+     * Save Student Marks (Bulk) - Updated for v4
      *
      * This endpoint handles bulk saving of student marks by calling
-     * fn_admin_savestudentmarks_v3 stored procedure in a loop for each student.
+     * fn_admin_savestudentmarks_v4 stored procedure in a loop for each student.
      *
      * @param Request $request
      * @return \Illuminate\Http\JsonResponse
@@ -26,6 +26,7 @@ class AdminStudentMarksController extends Controller
      *       "p_external_marks": 75.0,
      *       "p_internal_marks": 28.0,
      *       "p_doc": "marksheet.pdf",
+     *       "p_external_exam_status_code": "PASS",
      *       "p_exam_status_code": "PASS",
      *       "p_submit_type_id": 5,
      *       "p_evaluator_type_id": 1,
@@ -63,8 +64,8 @@ class AdminStudentMarksController extends Controller
      * @OA\Post(
      *     path="/api/admin/save-student-marks",
      *     tags={"Admin - Student Marks"},
-     *     summary="Save student marks (bulk)",
-     *     description="Save marks for one or multiple students using fn_admin_savestudentmarks_v3 stored procedure",
+     *     summary="Save student marks (bulk v4)",
+     *     description="Save marks for one or multiple students using fn_admin_savestudentmarks_v4 stored procedure",
      *     security={{"token": {}}},
      *     @OA\RequestBody(
      *         required=true,
@@ -80,6 +81,7 @@ class AdminStudentMarksController extends Controller
      *                     @OA\Property(property="p_external_marks", type="number", format="double", example=75, nullable=true),
      *                     @OA\Property(property="p_internal_marks", type="number", format="double", example=28, nullable=true),
      *                     @OA\Property(property="p_doc", type="string", example="marksheet.pdf", nullable=true),
+     *                     @OA\Property(property="p_external_exam_status_code", type="string", example="PASS", nullable=true),
      *                     @OA\Property(property="p_exam_status_code", type="string", example="PASS"),
      *                     @OA\Property(property="p_submit_type_id", type="integer", example=5),
      *                     @OA\Property(property="p_evaluator_type_id", type="integer", example=1),
@@ -131,7 +133,7 @@ class AdminStudentMarksController extends Controller
      */
     public function saveStudentMarks(Request $request)
     {
-        Log::channel('daily')->info('🚀 === SAVE STUDENT MARKS API - REQUEST START ===');
+        Log::channel('daily')->info('🚀 === SAVE STUDENT MARKS API (v4) - REQUEST START ===');
         Log::channel('daily')->info('📥 REQUEST INPUT:', [
             'full_request' => $request->all(),
             'headers' => $request->headers->all(),
@@ -140,18 +142,45 @@ class AdminStudentMarksController extends Controller
         ]);
 
         try {
+            // Support both {"marks": [...]} array or single record payload
+            $rawMarks = $request->input('marks');
+            if (!is_array($rawMarks)) {
+                if ($request->has('p_marks_id') || $request->has('marks_id')) {
+                    $rawMarks = [$request->all()];
+                } else {
+                    $rawMarks = [];
+                }
+            }
+
+            // Normalize parameter keys (allow both with and without "p_" prefix)
+            $normalizedMarks = array_map(function ($item) {
+                return [
+                    'p_marks_id'                  => $item['p_marks_id'] ?? $item['marks_id'] ?? null,
+                    'p_external_marks'            => $item['p_external_marks'] ?? $item['external_marks'] ?? null,
+                    'p_internal_marks'            => $item['p_internal_marks'] ?? $item['internal_marks'] ?? null,
+                    'p_doc'                       => $item['p_doc'] ?? $item['doc'] ?? null,
+                    'p_external_exam_status_code' => $item['p_external_exam_status_code'] ?? $item['external_exam_status_code'] ?? null,
+                    'p_exam_status_code'          => $item['p_exam_status_code'] ?? $item['exam_status_code'] ?? null,
+                    'p_submit_type_id'            => $item['p_submit_type_id'] ?? $item['submit_type_id'] ?? null,
+                    'p_evaluator_type_id'         => $item['p_evaluator_type_id'] ?? $item['evaluator_type_id'] ?? null,
+                    'p_admin_user_id'             => $item['p_admin_user_id'] ?? $item['admin_user_id'] ?? null,
+                    'p_remarks'                   => $item['p_remarks'] ?? $item['remarks'] ?? '',
+                ];
+            }, $rawMarks);
+
             // Validate main request structure
-            $validator = Validator::make($request->all(), [
-                'marks' => 'required|array|min:1',
-                'marks.*.p_marks_id' => 'required|integer',
-                'marks.*.p_external_marks' => 'nullable|numeric',
-                'marks.*.p_internal_marks' => 'nullable|numeric',
-                'marks.*.p_doc' => 'nullable|string',
-                'marks.*.p_exam_status_code' => 'required|string|max:10',
-                'marks.*.p_submit_type_id' => 'required|integer',
-                'marks.*.p_evaluator_type_id' => 'required|integer',
-                'marks.*.p_admin_user_id' => 'required|integer',
-                'marks.*.p_remarks' => 'nullable|string',
+            $validator = Validator::make(['marks' => $normalizedMarks], [
+                'marks'                               => 'required|array|min:1',
+                'marks.*.p_marks_id'                  => 'required|integer',
+                'marks.*.p_external_marks'            => 'nullable|numeric',
+                'marks.*.p_internal_marks'            => 'nullable|numeric',
+                'marks.*.p_doc'                       => 'nullable|string',
+                'marks.*.p_external_exam_status_code' => 'nullable|string|max:50',
+                'marks.*.p_exam_status_code'          => 'required|string|max:50',
+                'marks.*.p_submit_type_id'            => 'required|integer',
+                'marks.*.p_evaluator_type_id'         => 'required|integer',
+                'marks.*.p_admin_user_id'             => 'required|integer',
+                'marks.*.p_remarks'                   => 'nullable|string',
             ]);
 
             if ($validator->fails()) {
@@ -167,8 +196,7 @@ class AdminStudentMarksController extends Controller
                 ], 400);
             }
 
-            $marksData = $request->input('marks');
-            $totalRecords = count($marksData);
+            $totalRecords = count($normalizedMarks);
             $successCount = 0;
             $failedCount = 0;
             $results = [];
@@ -176,7 +204,7 @@ class AdminStudentMarksController extends Controller
             Log::channel('daily')->info("🔵 Processing {$totalRecords} student marks records");
 
             // Process each marks record
-            foreach ($marksData as $index => $marks) {
+            foreach ($normalizedMarks as $index => $marks) {
                 $marksId = $marks['p_marks_id'];
 
                 try {
@@ -184,40 +212,49 @@ class AdminStudentMarksController extends Controller
                         'input_data' => $marks
                     ]);
 
-                    // Function signature: fn_admin_savestudentmarks_v3(
-                    //   p_marks_id, p_external_marks, p_internal_marks, p_doc,
-                    //   p_exam_status_code, p_submit_type_id, p_evaluator_type_id,
-                    //   p_admin_user_id, p_remarks
+                    // Function signature: fn_admin_savestudentmarks_v4(
+                    //   1: p_marks_id bigint,
+                    //   2: p_external_marks double precision,
+                    //   3: p_internal_marks double precision,
+                    //   4: p_doc text,
+                    //   5: p_external_exam_status_code character varying,  -- new
+                    //   6: p_exam_status_code character varying,
+                    //   7: p_submit_type_id integer,
+                    //   8: p_evaluator_type_id integer,
+                    //   9: p_admin_user_id bigint,
+                    //  10: p_remarks text
                     // )
 
                     $functionParams = [
-                        $marks['p_marks_id'],
-                        $marks['p_external_marks'] ?? null,
-                        $marks['p_internal_marks'] ?? null,
-                        $marks['p_doc'] ?? null,
-                        $marks['p_exam_status_code'],
-                        $marks['p_submit_type_id'],
-                        $marks['p_evaluator_type_id'],
-                        $marks['p_admin_user_id'],
-                        $marks['p_remarks'] ?? ''
+                        (int) $marks['p_marks_id'],
+                        $marks['p_external_marks'] !== null ? (float) $marks['p_external_marks'] : null,
+                        $marks['p_internal_marks'] !== null ? (float) $marks['p_internal_marks'] : null,
+                        $marks['p_doc'] !== null ? (string) $marks['p_doc'] : null,
+                        $marks['p_external_exam_status_code'] !== null ? strtoupper(trim((string) $marks['p_external_exam_status_code'])) : null,
+                        strtoupper(trim((string) $marks['p_exam_status_code'])),
+                        (int) $marks['p_submit_type_id'],
+                        (int) $marks['p_evaluator_type_id'],
+                        (int) $marks['p_admin_user_id'],
+                        $marks['p_remarks'] !== null ? (string) $marks['p_remarks'] : ''
                     ];
 
-                    Log::channel('daily')->info("📤 Calling fn_admin_savestudentmarks_v3 with parameters:", [
+                    Log::channel('daily')->info("📤 Calling fn_admin_savestudentmarks_v4 with parameters:", [
                         'params_array' => $functionParams,
                         'params_named' => [
-                            'p_marks_id' => $functionParams[0],
-                            'p_external_marks' => $functionParams[1],
-                            'p_internal_marks' => $functionParams[2],
-                            'p_doc' => $functionParams[3],
-                            'p_exam_status_code' => $functionParams[4],
-                            'p_submit_type_id' => $functionParams[5],
-                            'p_evaluator_type_id' => $functionParams[6],
-                            'p_admin_user_id' => $functionParams[7],
-                            'p_remarks' => $functionParams[8]
+                            'p_marks_id'                  => $functionParams[0],
+                            'p_external_marks'            => $functionParams[1],
+                            'p_internal_marks'            => $functionParams[2],
+                            'p_doc'                       => $functionParams[3],
+                            'p_external_exam_status_code' => $functionParams[4],
+                            'p_exam_status_code'          => $functionParams[5],
+                            'p_submit_type_id'            => $functionParams[6],
+                            'p_evaluator_type_id'         => $functionParams[7],
+                            'p_admin_user_id'             => $functionParams[8],
+                            'p_remarks'                   => $functionParams[9]
                         ]
                     ]);
 
-                    $sql = "SELECT public.fn_admin_savestudentmarks_v3(?, ?, ?, ?, ?, ?, ?, ?, ?) as result";
+                    $sql = "SELECT public.fn_admin_savestudentmarks_v4(?, ?, ?, ?, ?, ?, ?, ?, ?, ?) as result";
 
                     Log::channel('daily')->info("🔍 Executing SQL:", [
                         'sql' => $sql,
@@ -228,10 +265,10 @@ class AdminStudentMarksController extends Controller
 
                     // The function returns JSON: {"p_errorcode": 0}
                     $resultJson = $result->result ?? '{"p_errorcode": 1}';
-                    $resultData = json_decode($resultJson, true);
+                    $resultData = is_string($resultJson) ? json_decode($resultJson, true) : (array) $resultJson;
                     $resultCode = $resultData['p_errorcode'] ?? 1;
 
-                    Log::channel('daily')->info("📥 Function fn_admin_savestudentmarks_v3 returned:", [
+                    Log::channel('daily')->info("📥 Function fn_admin_savestudentmarks_v4 returned:", [
                         'marks_id' => $marksId,
                         'raw_result' => $result,
                         'result_json' => $resultJson,
@@ -251,7 +288,7 @@ class AdminStudentMarksController extends Controller
                             Log::channel('daily')->info("✅ SUCCESS: Marks saved for marks_id: {$marksId}");
                             break;
                         case 1:
-                            $message = 'Exception occurred';
+                            $message = $resultData['p_errormessage'] ?? 'Exception occurred';
                             $failedCount++;
                             Log::channel('daily')->error("❌ FAILED: Exception occurred for marks_id: {$marksId}");
                             break;
@@ -266,7 +303,7 @@ class AdminStudentMarksController extends Controller
                             Log::channel('daily')->error("❌ FAILED: Invalid Marks Info for marks_id: {$marksId}");
                             break;
                         default:
-                            $message = 'Unknown error';
+                            $message = $resultData['p_errormessage'] ?? "Error (code: {$resultCode})";
                             $failedCount++;
                             Log::channel('daily')->error("❌ FAILED: Unknown error (code: {$resultCode}) for marks_id: {$marksId}");
                             break;

@@ -530,6 +530,7 @@ Route::prefix('admin')->middleware('authenticate')->group(function () {
     Route::post('/get-bank-info-by-ifsc', [AdminController::class, 'getBankInfoByIfsc']);
     Route::post('/dashboard', [AdminController::class, 'getDashboard']);
     Route::post('/get-entered-student-marks-info', [AdminController::class, 'getEnteredStudentMarksInfo']);
+    Route::post('/save-scrutinizer-user-info', [AdminController::class, 'saveUserInfo']);
     Route::post('/save-user-info', [AdminController::class, 'saveUserInfo']);
     Route::post('/save-user-assign-subject-v2', [AdminController::class, 'saveUserAssignSubjectV2']);
     Route::post('/get-user-inst-allocation-summary', [AdminController::class, 'getUserInstAllocationSummary']);
@@ -547,6 +548,7 @@ Route::prefix('admin')->middleware('authenticate')->group(function () {
     Route::post('/save-review-teacher-assign-subject', [AdminTeacherController::class, 'saveReviewTeacherAssignSubject']);
     Route::post('/save-review-subject-marks', [AdminStudentMarksController::class, 'saveReviewSubjectMarks']);
     Route::post('/save-student-marks', [AdminStudentMarksController::class, 'saveStudentMarks']);
+    Route::post('/save-student-marks-v4', [AdminStudentMarksController::class, 'saveStudentMarks']);
     Route::post('/institute-wise-summary', [AdminInstituteWiseSummaryController::class, 'getInstituteWiseSummary']);
     Route::post('/examiner-wise-summary', [AdminInstituteWiseSummaryController::class, 'getExaminerWiseSummary']);
     Route::get('/district-list', [AdminDistrictController::class, 'getDistrictListByAdmin']);
