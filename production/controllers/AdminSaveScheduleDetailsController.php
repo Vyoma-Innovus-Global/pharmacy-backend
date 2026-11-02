@@ -224,10 +224,10 @@ class AdminSaveScheduleDetailsController extends Controller
         $semesterId   = (int) $inputData['semester_id'];
         $scheduleType = (string) $inputData['schedule_type'];
 
-        // Normalize dates to 'Y-m-d' format for PostgreSQL date type
-        $startDate = Carbon::parse($inputData['start_date'])->format('Y-m-d');
-        $endDate   = Carbon::parse($inputData['end_date'])->format('Y-m-d');
-        $extndDate = !empty($inputData['extnd_date']) ? Carbon::parse($inputData['extnd_date'])->format('Y-m-d') : null;
+        // Normalize dates to 'Y-m-d H:i:s' format for PostgreSQL timestamp type
+        $startDate = Carbon::parse($inputData['start_date'])->format('Y-m-d H:i:s');
+        $endDate   = Carbon::parse($inputData['end_date'])->format('Y-m-d H:i:s');
+        $extndDate = !empty($inputData['extnd_date']) ? Carbon::parse($inputData['extnd_date'])->format('Y-m-d H:i:s') : null;
 
         $adminUserId  = (int) $inputData['admin_user_id'];
 
@@ -244,7 +244,7 @@ class AdminSaveScheduleDetailsController extends Controller
         ]);
 
         try {
-            $sql = 'SELECT public.fn_save_schedule_details(?::bigint, ?::bigint, ?::bigint, ?::varchar, ?::date, ?::date, ?::date, ?::smallint, ?::bigint) AS data';
+            $sql = 'SELECT public.fn_save_schedule_details(?::bigint, ?::bigint, ?::bigint, ?::varchar, ?::timestamp, ?::timestamp, ?::timestamp, ?::smallint, ?::bigint) AS data';
 
             $result = DB::selectOne($sql, [
                 $scheduleId,

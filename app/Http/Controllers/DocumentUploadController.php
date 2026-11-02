@@ -23,11 +23,11 @@ class DocumentUploadController extends Controller
     {
         // Validate request
         $validator = Validator::make($request->all(), [
-            'document' => 'required|file|mimes:pdf,doc,docx,jpg,jpeg,png|max:10240', // Max 10MB
+            'document' => 'required|file|mimes:pdf,doc,docx,jpg,jpeg,png|max:2048', // Max 2MB
         ], [
             'document.required' => 'Please select a document to upload.',
             'document.mimes' => 'Only PDF, DOC, DOCX, JPG, JPEG, and PNG files are allowed.',
-            'document.max' => 'File size must not exceed 10MB.',
+            'document.max' => 'File size must not exceed 2MB.',
         ]);
 
         if ($validator->fails()) {

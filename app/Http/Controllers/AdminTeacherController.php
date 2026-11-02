@@ -1409,6 +1409,7 @@ class AdminTeacherController extends Controller
             if (!isset($grouped[$teacherId])) {
                 $grouped[$teacherId] = [
                     'teacherId' => $teacherId,
+                    'roleId' => $row['roleId'] ?? $row['role_id'] ?? null,
                     'semesterId' => $row['semesterId'] ?? $row['semester_id'] ?? null,
                     'examYear' => $row['examYear'] ?? $row['exam_year'] ?? $row['p_examyear'] ?? $row['p_exam_year'] ?? null,
                     'teacherFullName' => $row['teacherFullName'] ?? $row['teacher_full_name'] ?? null,
@@ -1428,8 +1429,25 @@ class AdminTeacherController extends Controller
                 continue;
             }
 
-            $existingIds = array_column($grouped[$teacherId]['assignments'], 'assignedSubjectId');
-            if (in_array($subjectId, $existingIds, true)) {
+            $subjectCode = $row['assignedSubjectCode'] ?? $row['assigned_subject_code'] ?? '';
+            $semesterVal = $row['semesterId'] ?? $row['semester_id'] ?? '';
+            $examYearVal = $row['examYear'] ?? $row['exam_year'] ?? $row['p_examyear'] ?? $row['p_exam_year'] ?? '';
+
+            // Check uniqueness using a composite key so same subject ID across different semesters/years or subject codes is preserved
+            $isDuplicate = false;
+            foreach ($grouped[$teacherId]['assignments'] as $existingAssignment) {
+                if (
+                    (int)$existingAssignment['assignedSubjectId'] === (int)$subjectId &&
+                    (string)$existingAssignment['assignedSubjectCode'] === (string)$subjectCode &&
+                    (string)$existingAssignment['semesterId'] === (string)$semesterVal &&
+                    (string)$existingAssignment['examYear'] === (string)$examYearVal
+                ) {
+                    $isDuplicate = true;
+                    break;
+                }
+            }
+
+            if ($isDuplicate) {
                 continue;
             }
 

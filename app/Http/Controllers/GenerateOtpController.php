@@ -285,7 +285,7 @@ class GenerateOtpController extends Controller
                 'p_otp'           => $deliveryBlocked && Config::get('app.env') !== 'production' ? $otp : null,
             ], 200);
 
-        } catch (\Throwable $e) {
+        } catch (\Throwable $e) { 
             $logger->error('[generate] EXCEPTION', [
                 'message' => $e->getMessage(),
                 'exception' => get_class($e),
