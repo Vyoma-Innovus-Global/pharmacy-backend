@@ -1497,6 +1497,251 @@ class AdminController extends Controller
         }
     }
 
+    /**
+     * Add or update user using public.fn_admin_saveuser
+     *
+     * POST /api/admin/addUser
+     *
+     * Calls: public.fn_admin_saveuser(
+     *   p_user_id BIGINT,
+     *   p_full_name VARCHAR,
+     *   p_username VARCHAR,
+     *   p_role_id INTEGER,
+     *   p_designation_id INTEGER,
+     *   p_phone_number VARCHAR,
+     *   p_email_id VARCHAR,
+     *   p_institute_code VARCHAR,
+     *   p_entry_user_id BIGINT
+     * )
+     */
+    public function addUser(Request $request)
+    {
+        Log::channel('daily')->info('=== ADD USER API - REQUEST START ===', [
+            'payload' => $request->all(),
+            'url'     => $request->fullUrl(),
+            'method'  => $request->method(),
+        ]);
+
+        $userId        = $request->input('user_id', $request->input('p_user_id'));
+        $fullName      = $request->input('full_name', $request->input('p_full_name'));
+        $username      = $request->input('username', $request->input('p_username'));
+        // Support 'roll' from payload or 'role_id' / 'p_role_id'
+        $roleId        = $request->input('roll', $request->input('role_id', $request->input('p_role_id')));
+        // Support 'designation' or 'designation_id' / 'p_designation_id'
+        $designationId = $request->input('designation', $request->input('designation_id', $request->input('p_designation_id')));
+        $phoneNumber   = $request->input('phone_number', $request->input('contact_no', $request->input('p_phone_number')));
+        $emailId       = $request->input('email_id', $request->input('email', $request->input('p_email_id')));
+        $instCode      = $request->input('institute_code', $request->input('inst_code', $request->input('p_institute_code')));
+        $entryUserId   = $request->input('entry_user_id', $request->input('admin_user_id', $request->input('p_entry_user_id', auth()->id() ?? 0)));
+
+        // Clean string "null" or empty string to actual null for institute_code
+        if ($instCode === 'null' || $instCode === 'NULL' || trim((string)$instCode) === '') {
+            $instCode = null;
+        }
+
+        $validator = Validator::make([
+            'user_id'        => $userId,
+            'full_name'      => $fullName,
+            'username'       => $username,
+            'role_id'        => $roleId,
+            'designation_id' => $designationId,
+            'phone_number'   => $phoneNumber,
+            'email_id'       => $emailId,
+            'institute_code' => $instCode,
+            'entry_user_id'  => $entryUserId,
+        ], [
+            'user_id'        => 'nullable|integer',
+            'full_name'      => 'required|string|max:255',
+            'username'       => 'required|string|max:100',
+            'role_id'        => 'required|integer',
+            'designation_id' => 'required|integer',
+            'phone_number'   => 'required|string|max:20',
+            'email_id'       => 'nullable|email|max:150',
+            'institute_code' => 'nullable|string|max:50',
+            'entry_user_id'  => 'required|integer',
+        ]);
+
+        if ($validator->fails()) {
+            Log::channel('daily')->warning('Add User Validation Failed', ['errors' => $validator->errors()]);
+            return response()->json([
+                'version' => '1.0',
+                'status'  => 0,
+                'error'   => true,
+                'message' => $validator->errors(),
+                'data'    => null,
+            ], 422);
+        }
+
+        try {
+            $sql = 'SELECT public.fn_admin_saveuser(
+                ?::bigint,
+                ?::varchar,
+                ?::varchar,
+                ?::integer,
+                ?::integer,
+                ?::varchar,
+                ?::varchar,
+                ?::varchar,
+                ?::bigint
+            ) AS data';
+
+            $bindings = [
+                (int) $userId,
+                (string) $fullName,
+                (string) $username,
+                (int) $roleId,
+                (int) $designationId,
+                (string) $phoneNumber,
+                $emailId !== null ? (string) $emailId : null,
+                $instCode !== null ? (string) $instCode : null,
+                (int) $entryUserId,
+            ];
+
+            Log::channel('daily')->info('Executing fn_admin_saveuser', ['bindings' => $bindings]);
+
+            $result = DB::selectOne($sql, $bindings);
+
+            if (!$result || !isset($result->data)) {
+                Log::channel('daily')->error('No data returned from fn_admin_saveuser');
+                return response()->json([
+                    'version' => '1.0',
+                    'status'  => 0,
+                    'error'   => true,
+                    'message' => 'No response from database function.',
+                    'data'    => null,
+                ], 500);
+            }
+
+            $raw = $result->data;
+            $data = is_string($raw) ? json_decode($raw, true) : (array) $raw;
+
+            if (is_string($raw) && json_last_error() !== JSON_ERROR_NONE) {
+                // If it returns plain string/scalar or invalid JSON
+                $data = ['result' => $raw];
+            }
+
+            Log::channel('daily')->info('fn_admin_saveuser response', ['data' => $data]);
+
+            $errorCode = isset($data['p_errorcode']) ? (int) $data['p_errorcode'] : (isset($data['errorcode']) ? (int) $data['errorcode'] : 0);
+
+            if ($errorCode !== 0 && isset($data['p_errorcode'])) {
+                return response()->json([
+                    'version' => '1.0',
+                    'status'  => 0,
+                    'error'   => true,
+                    'message' => $data['p_message'] ?? $data['message'] ?? 'Failed to save user.',
+                    'data'    => $data,
+                ], 400);
+            }
+
+            return response()->json([
+                'version' => '1.0',
+                'status'  => 1,
+                'error'   => false,
+                'message' => $data['p_message'] ?? $data['message'] ?? 'User saved successfully',
+                'data'    => $data,
+            ], 200);
+
+        } catch (\Exception $e) {
+            Log::channel('daily')->error('Exception in addUser', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'version' => '1.0',
+                'status'  => 0,
+                'error'   => true,
+                'message' => 'An error occurred: ' . $e->getMessage(),
+                'data'    => null,
+            ], 500);
+        }
+    }
+
+    /**
+     * Get user list using public.fn_get_user_list
+     *
+     * POST /api/admin/get-user-list
+     *
+     * Calls: public.fn_get_user_list(p_adminuserid BIGINT)
+     */
+    public function getUserList(Request $request)
+    {
+        Log::channel('daily')->info('=== GET USER LIST API - REQUEST START ===', [
+            'payload' => $request->all(),
+            'url'     => $request->fullUrl(),
+            'method'  => $request->method(),
+        ]);
+
+        $adminUserId = $request->input('admin_user_id', $request->input('adminuserid', $request->input('p_adminuserid', $request->input('user_id', auth()->id()))));
+
+        $validator = Validator::make([
+            'admin_user_id' => $adminUserId,
+        ], [
+            'admin_user_id' => 'required|integer',
+        ]);
+
+        if ($validator->fails()) {
+            Log::channel('daily')->warning('Get User List Validation Failed', ['errors' => $validator->errors()]);
+            return response()->json([
+                'version' => '1.0',
+                'status'  => 0,
+                'error'   => true,
+                'message' => $validator->errors(),
+                'data'    => [],
+            ], 422);
+        }
+
+        try {
+            $sql = 'SELECT public.fn_get_user_list(?::bigint) AS data';
+
+            Log::channel('daily')->info('Executing fn_get_user_list', ['admin_user_id' => $adminUserId]);
+
+            $result = DB::selectOne($sql, [(int) $adminUserId]);
+
+            if (!$result || !isset($result->data)) {
+                Log::channel('daily')->warning('No data returned from fn_get_user_list');
+                return response()->json([
+                    'version' => '1.0',
+                    'status'  => 1,
+                    'error'   => false,
+                    'message' => 'No users found.',
+                    'data'    => [],
+                ], 200);
+            }
+
+            $raw = $result->data;
+            $data = is_string($raw) ? json_decode($raw, true) : (array) $raw;
+
+            if (is_string($raw) && json_last_error() !== JSON_ERROR_NONE) {
+                $data = [];
+            }
+
+            Log::channel('daily')->info('fn_get_user_list response count:', ['count' => is_array($data) ? count($data) : 0]);
+
+            return response()->json([
+                'version' => '1.0',
+                'status'  => 1,
+                'error'   => false,
+                'message' => 'Users fetched successfully',
+                'data'    => $data,
+            ], 200);
+
+        } catch (\Exception $e) {
+            Log::channel('daily')->error('Exception in getUserList', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'version' => '1.0',
+                'status'  => 0,
+                'error'   => true,
+                'message' => 'An error occurred: ' . $e->getMessage(),
+                'data'    => [],
+            ], 500);
+        }
+    }
 }
 
 

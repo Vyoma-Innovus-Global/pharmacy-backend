@@ -532,6 +532,8 @@ Route::prefix('admin')->middleware('authenticate')->group(function () {
     Route::post('/get-entered-student-marks-info', [AdminController::class, 'getEnteredStudentMarksInfo']);
     Route::post('/save-scrutinizer-user-info', [AdminController::class, 'saveUserInfo']);
     Route::post('/save-user-info', [AdminController::class, 'saveUserInfo']);
+    Route::post('/addUser', [AdminController::class, 'addUser']);
+    Route::post('/get-user-list', [AdminController::class, 'getUserList']);
     Route::post('/save-user-assign-subject-v2', [AdminController::class, 'saveUserAssignSubjectV2']);
     Route::post('/get-user-inst-allocation-summary', [AdminController::class, 'getUserInstAllocationSummary']);
     Route::post('/get-user-subject-allocation-summary', [AdminController::class, 'getUserSubjectAllocationSummary']);
