@@ -19,10 +19,10 @@ class CDCGetAnswerscriptIntakeController extends Controller
      *     @OA\RequestBody(
      *         required=true,
      *         @OA\JsonContent(
-     *             required={"exam_year", "semester_id", "inst_code", "dept_code", "subject_code", "entry_user_id"},
+     *             required={"exam_year", "semester_id", "dept_code", "subject_code", "entry_user_id"},
      *             @OA\Property(property="exam_year", type="string", example="2026", description="Exam Year"),
      *             @OA\Property(property="semester_id", type="string", example="Part-II", description="Semester / Part Name (e.g. Part-I, Part-II)"),
-     *             @OA\Property(property="inst_code", type="string", example="JCG", description="Institute Code"),
+     *             @OA\Property(property="inst_code", type="string", example="JCG", nullable=true, description="Institute Code (optional, can be empty string or null)"),
      *             @OA\Property(property="dept_code", type="string", example="PHARM", description="Department Code"),
      *             @OA\Property(property="subject_code", type="string", example="PHCE", description="Subject Code"),
      *             @OA\Property(property="entry_user_id", type="integer", example=12, description="Entry / Admin User ID")
@@ -113,7 +113,7 @@ class CDCGetAnswerscriptIntakeController extends Controller
         $validator = Validator::make($inputData, [
             'exam_year'     => 'required|string|max:20',
             'semester_id'   => 'required',
-            'inst_code'     => 'required|string|max:50',
+            'inst_code'     => 'nullable|string|max:50',
             'dept_code'     => 'required|string|max:50',
             'subject_code'  => 'required|string|max:50',
             'entry_user_id' => 'required|integer',
@@ -145,7 +145,9 @@ class CDCGetAnswerscriptIntakeController extends Controller
             $semesterId = $rawSem;
         }
 
-        $instCode    = strtoupper(trim((string) $inputData['inst_code']));
+        $rawInstCode = trim((string) ($inputData['inst_code'] ?? ''));
+        // Database function expects empty string '' when all institutes are requested: (asi_inst_code = p_inst_code OR p_inst_code = '')
+        $instCode    = ($rawInstCode === '' || strcasecmp($rawInstCode, 'null') === 0) ? '' : strtoupper($rawInstCode);
         $deptCode    = strtoupper(trim((string) $inputData['dept_code']));
         $subjectCode = strtoupper(trim((string) $inputData['subject_code']));
         $entryUserId = (int) $inputData['entry_user_id'];
