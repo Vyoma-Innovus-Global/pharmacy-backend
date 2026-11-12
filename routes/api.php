@@ -55,6 +55,7 @@ use App\Http\Controllers\AdminSaveScheduleDetailsController;
 use App\Http\Controllers\AdminSaveCDCController;
 use App\Http\Controllers\AdminSaveCDCInstMapController;
 use App\Http\Controllers\AdminSaveCECInstMapController;
+use App\Http\Controllers\AdminSaveCECController;
 
 
 
@@ -583,6 +584,7 @@ Route::prefix('admin')->middleware('authenticate')->group(function () {
     Route::post('/get-cdc-details', [AdminSaveCDCInstMapController::class, 'getCDCDetails']);
     Route::post('/get-cec-details-by-cdc', [AdminSaveCDCInstMapController::class, 'getCECDetailsByCDC']);
     Route::post('/save-cec-inst-map', [AdminSaveCECInstMapController::class, 'saveCECInstMap']);
+    Route::post('/save-cec', [AdminSaveCECController::class, 'saveCEC']);
 });
 
 Route::prefix('sms')->group(function () {

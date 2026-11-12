@@ -6,14 +6,14 @@ This document provides a comprehensive analysis of all API routes defined in [`r
 
 | Metric | Count |
 |:---|:---|
-| **Total API Route Endpoints** | **405** |
-| **Routes Using Stored Procedures / Functions Only** | **239** |
+| **Total API Route Endpoints** | **406** |
+| **Routes Using Stored Procedures / Functions Only** | **240** |
 | **Routes Using Hybrid (Stored Procedure + ORM / Query Builder)** | **8** |
 | **Routes Using Eloquent ORM / Query Builder (`DB::table`) Only** | **119** |
 | **Routes Using Non-DB / External Service / Utility (e.g. Mail/SMS/PDF/Zip)** | **39** |
-| **Unique Stored Procedures / Database Functions Identified** | **127** |
+| **Unique Stored Procedures / Database Functions Identified** | **128** |
 
-### 📋 List of Unique Stored Procedures / PostgreSQL Functions (127 total)
+### 📋 List of Unique Stored Procedures / PostgreSQL Functions (128 total)
 
 | # | Stored Procedure / Function Name |
 |---|----------------------------------|
@@ -60,7 +60,8 @@ This document provides a comprehensive analysis of all API routes defined in [`r
 | 41 | `fn_admin_getusersubjectallocationsummary` |
 | 42 | `fn_admin_savebankinfo` |
 | 43 | `fn_admin_savecdc` |
-| 44 | `fn_admin_savecec_inst_map` |
+| 44 | `fn_admin_savecec` |
+| 45 | `fn_admin_savecec_inst_map` |
 | 45 | `fn_admin_savereviewteacherassignsubject` |
 | 46 | `fn_admin_saveroutine` |
 | 47 | `fn_admin_savestudentmarks` |
@@ -545,6 +546,7 @@ This document provides a comprehensive analysis of all API routes defined in [`r
 | `POST` | `/api/admin/get-cdc-details` | Stored Procedure / PostgreSQL Function | `fn_get_cdc_details` | None (Uses Stored Procedure / Function) |
 | `POST` | `/api/admin/get-cec-details-by-cdc` | Stored Procedure / PostgreSQL Function | `fn_get_cec_details_by_cdc` | None (Uses Stored Procedure / Function) |
 | `POST` | `/api/admin/save-cec-inst-map` | Stored Procedure / PostgreSQL Function | `fn_admin_savecec_inst_map` | None (Uses Stored Procedure / Function) |
+| `POST` | `/api/admin/save-cec` | Stored Procedure / PostgreSQL Function | `fn_admin_savecec` | None (Uses Stored Procedure / Function) |
 
 
 ### 📁 Module: `api/marks-entry`
