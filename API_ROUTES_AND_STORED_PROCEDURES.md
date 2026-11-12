@@ -6,14 +6,14 @@ This document provides a comprehensive analysis of all API routes defined in [`r
 
 | Metric | Count |
 |:---|:---|
-| **Total API Route Endpoints** | **400** |
-| **Routes Using Stored Procedures / Functions Only** | **234** |
+| **Total API Route Endpoints** | **404** |
+| **Routes Using Stored Procedures / Functions Only** | **238** |
 | **Routes Using Hybrid (Stored Procedure + ORM / Query Builder)** | **8** |
 | **Routes Using Eloquent ORM / Query Builder (`DB::table`) Only** | **119** |
 | **Routes Using Non-DB / External Service / Utility (e.g. Mail/SMS/PDF/Zip)** | **39** |
-| **Unique Stored Procedures / Database Functions Identified** | **119** |
+| **Unique Stored Procedures / Database Functions Identified** | **126** |
 
-### 📋 List of Unique Stored Procedures / PostgreSQL Functions (119 total)
+### 📋 List of Unique Stored Procedures / PostgreSQL Functions (126 total)
 
 | # | Stored Procedure / Function Name |
 |---|----------------------------------|
@@ -59,84 +59,90 @@ This document provides a comprehensive analysis of all API routes defined in [`r
 | 40 | `fn_admin_getuserinstallocationsummary` |
 | 41 | `fn_admin_getusersubjectallocationsummary` |
 | 42 | `fn_admin_savebankinfo` |
-| 43 | `fn_admin_savereviewteacherassignsubject` |
-| 44 | `fn_admin_saveroutine` |
-| 45 | `fn_admin_savestudentmarks` |
-| 46 | `fn_admin_savestudentmarks_v3` |
-| 47 | `fn_admin_savestudentmarks_v4` |
-| 47 | `fn_admin_saveteacherassignmarkscorrection` |
-| 48 | `fn_admin_saveteacherassignsubject_v1` |
-| 49 | `fn_admin_saveteacherassignsubject_v2` |
-| 50 | `fn_admin_saveteacherinfo` |
-| 51 | `fn_admin_saveuserassignsubject_v2` |
-| 52 | `fn_admin_saveuserinfo` |
-| 53 | `fn_admin_transfer_cec` |
-| 54 | `fn_cdc_getanswerscriptintake` |
-| 55 | `fn_cdc_saveanswerscriptintake` |
-| 56 | `fn_cec_saveteacherassignsubject` |
-| 57 | `fn_check_studenteligible_inexam_studentid` |
-| 58 | `fn_downlaodstudentregitration_registrationid` |
-| 59 | `fn_enrollmentstudent_generateorderid` |
-| 60 | `fn_generate_registration_certificates` |
-| 61 | `fn_generateotp` |
-| 62 | `fn_generateotp_student` |
-| 63 | `fn_get_answerscriptinfobysubject` |
-| 64 | `fn_get_council_board_list` |
-| 65 | `fn_get_enrollment_report` |
-| 66 | `fn_get_institute_list` |
-| 67 | `fn_get_payment_response_studentid` |
-| 68 | `fn_get_ra_institute_list` |
-| 69 | `fn_get_ra_student_list` |
-| 70 | `fn_get_reviewstudentdetailsbyteacherid` |
-| 71 | `fn_get_routinelist` |
-| 72 | `fn_get_schedule_list` |
-| 73 | `fn_get_studentcountinexaminationcenter` |
-| 74 | `fn_get_studentpayment_type_studentid` |
-| 75 | `fn_get_teacherinfobyinst` |
-| 76 | `fn_get_teacherinfobyinstandsubject` |
-| 77 | `fn_get_teacherlistofreviewsubject` |
-| 78 | `fn_getadmindetailsbyusername` |
-| 79 | `fn_getadmitcard_details` |
-| 80 | `fn_getdistrictlistbyadmin` |
-| 81 | `fn_getenrollstudentdetails` |
-| 82 | `fn_getlatestotpbyusername` |
-| 83 | `fn_getpaymentdetailsbytransno` |
-| 84 | `fn_getpendingpaymentdetails` |
-| 85 | `fn_getradetailslistbystudentregistartionnumber` |
-| 86 | `fn_getregistredstudentdetailslistbyinstrituteadmin` |
-| 87 | `fn_getregistredstudentdetailslistbystudentid` |
-| 88 | `fn_getresulatdownload_inst` |
-| 89 | `fn_getresulatstatuscount_inst` |
-| 90 | `fn_getresulatstatusdetails_inst` |
-| 91 | `fn_getreviewdetailslistbystudentregistartionnumber` |
-| 92 | `fn_getreviewresulatdownload_inst` |
-| 93 | `fn_getstudentdetailsbyusername` |
-| 94 | `fn_getstudentdetailslistbyinstrituteadmin` |
-| 95 | `fn_getstudentdetailsmarkscorrection` |
-| 96 | `fn_getstudentmarksdetails` |
-| 97 | `fn_getstudentreviewdetailslistbycouncil` |
-| 98 | `fn_save_confirmation_status` |
-| 99 | `fn_save_examinationcenter` |
-| 100 | `fn_save_instritute` |
-| 101 | `fn_save_markscorrection_subject_marks` |
-| 102 | `fn_save_pharmacy_review_subject` |
-| 103 | `fn_save_ra_decission_student` |
-| 104 | `fn_save_review_subject_marks` |
-| 105 | `fn_save_schedule_details` |
-| 106 | `fn_savepaymentdtls` |
-| 107 | `fn_savepharmacypaymentresponse` |
-| 108 | `fn_savesbipaymentdtls` |
-| 109 | `fn_student_generateorderid` |
-| 110 | `fn_student_review_generateorderid` |
-| 111 | `fn_update_ra_studentmarks` |
-| 112 | `fn_updateexamattendencestatusbyinst` |
-| 113 | `fn_updatesbipaymentresponse` |
-| 114 | `fn_updatestudentdetailsbyadmin` |
-| 115 | `fn_updatestudentdetailsbyadmin_v1` |
-| 116 | `fn_updatestudentenrollmentstatusbyadmin` |
-| 117 | `fn_updatestudentphoneoraadhaardetailsbyinstadmin` |
-| 118 | `fn_updatestudentregistrationstatusbyadmin` |
-| 119 | `fn_updateuserotpbycontactno` |
+| 43 | `fn_admin_savecdc` |
+| 44 | `fn_admin_savereviewteacherassignsubject` |
+| 45 | `fn_admin_saveroutine` |
+| 46 | `fn_admin_savestudentmarks` |
+| 47 | `fn_admin_savestudentmarks_v3` |
+| 48 | `fn_admin_savestudentmarks_v4` |
+| 49 | `fn_admin_saveteacherassignmarkscorrection` |
+| 50 | `fn_admin_saveteacherassignsubject_v1` |
+| 51 | `fn_admin_saveteacherassignsubject_v2` |
+| 52 | `fn_admin_saveteacherinfo` |
+| 53 | `fn_admin_saveuser` |
+| 54 | `fn_admin_saveuserassignsubject_v2` |
+| 55 | `fn_admin_saveuserinfo` |
+| 56 | `fn_admin_transfer_cec` |
+| 57 | `fn_cdc_getanswerscriptintake` |
+| 58 | `fn_cdc_saveanswerscriptintake` |
+| 59 | `fn_cec_saveteacherassignsubject` |
+| 60 | `fn_check_studenteligible_inexam_studentid` |
+| 61 | `fn_downlaodstudentregitration_registrationid` |
+| 62 | `fn_enrollmentstudent_generateorderid` |
+| 63 | `fn_generate_registration_certificates` |
+| 64 | `fn_generateotp` |
+| 65 | `fn_generateotp_student` |
+| 66 | `fn_get_answerscriptinfobysubject` |
+| 67 | `fn_get_cdc_details` |
+| 68 | `fn_get_cec_details_by_cdc` |
+| 69 | `fn_get_council_board_list` |
+| 70 | `fn_get_enrollment_report` |
+| 71 | `fn_get_institute_list` |
+| 72 | `fn_get_payment_response_studentid` |
+| 73 | `fn_get_ra_institute_list` |
+| 74 | `fn_get_ra_student_list` |
+| 75 | `fn_get_reviewstudentdetailsbyteacherid` |
+| 76 | `fn_get_routinelist` |
+| 77 | `fn_get_schedule_list` |
+| 78 | `fn_get_studentcountinexaminationcenter` |
+| 79 | `fn_get_studentpayment_type_studentid` |
+| 80 | `fn_get_teacherinfobyinst` |
+| 81 | `fn_get_teacherinfobyinstandsubject` |
+| 82 | `fn_get_teacherlistofreviewsubject` |
+| 83 | `fn_get_user_list` |
+| 84 | `fn_getadmindetailsbyusername` |
+| 85 | `fn_getadmitcard_details` |
+| 86 | `fn_getdistrictlistbyadmin` |
+| 87 | `fn_getenrollstudentdetails` |
+| 88 | `fn_getlatestotpbyusername` |
+| 89 | `fn_getpaymentdetailsbytransno` |
+| 90 | `fn_getpendingpaymentdetails` |
+| 91 | `fn_getradetailslistbystudentregistartionnumber` |
+| 92 | `fn_getregistredstudentdetailslistbyinstrituteadmin` |
+| 93 | `fn_getregistredstudentdetailslistbystudentid` |
+| 94 | `fn_getresulatdownload_inst` |
+| 95 | `fn_getresulatstatuscount_inst` |
+| 96 | `fn_getresulatstatusdetails_inst` |
+| 97 | `fn_getreviewdetailslistbystudentregistartionnumber` |
+| 98 | `fn_getreviewresulatdownload_inst` |
+| 99 | `fn_getstudentdetailsbyusername` |
+| 100 | `fn_getstudentdetailslistbyinstrituteadmin` |
+| 101 | `fn_getstudentdetailsmarkscorrection` |
+| 102 | `fn_getstudentmarksdetails` |
+| 103 | `fn_getstudentreviewdetailslistbycouncil` |
+| 104 | `fn_save_cdc_inst_map` |
+| 105 | `fn_save_confirmation_status` |
+| 106 | `fn_save_examinationcenter` |
+| 107 | `fn_save_instritute` |
+| 108 | `fn_save_markscorrection_subject_marks` |
+| 109 | `fn_save_pharmacy_review_subject` |
+| 110 | `fn_save_ra_decission_student` |
+| 111 | `fn_save_review_subject_marks` |
+| 112 | `fn_save_schedule_details` |
+| 113 | `fn_savepaymentdtls` |
+| 114 | `fn_savepharmacypaymentresponse` |
+| 115 | `fn_savesbipaymentdtls` |
+| 116 | `fn_student_generateorderid` |
+| 117 | `fn_student_review_generateorderid` |
+| 118 | `fn_update_ra_studentmarks` |
+| 119 | `fn_updateexamattendencestatusbyinst` |
+| 120 | `fn_updatesbipaymentresponse` |
+| 121 | `fn_updatestudentdetailsbyadmin` |
+| 122 | `fn_updatestudentdetailsbyadmin_v1` |
+| 123 | `fn_updatestudentenrollmentstatusbyadmin` |
+| 124 | `fn_updatestudentphoneoraadhaardetailsbyinstadmin` |
+| 125 | `fn_updatestudentregistrationstatusbyadmin` |
+| 126 | `fn_updateuserotpbycontactno` |
 
 ---
 
@@ -490,6 +496,8 @@ This document provides a comprehensive analysis of all API routes defined in [`r
 | `POST` | `/api/admin/get-entered-student-marks-info` | Stored Procedure / PostgreSQL Function | `fn_admin_getenteredstudentmarksinfo` | None (Uses Stored Procedure / Function) |
 | `POST` | `/api/admin/save-scrutinizer-user-info` | Stored Procedure / PostgreSQL Function | `fn_admin_saveuserinfo`<br>`fn_admin_saveuserassignsubject_v2` | None (Uses Stored Procedure / Function) |
 | `POST` | `/api/admin/save-user-info` | Stored Procedure / PostgreSQL Function | `fn_admin_saveuserinfo`<br>`fn_admin_saveuserassignsubject_v2` | None (Uses Stored Procedure / Function) |
+| `POST` | `/api/admin/addUser` | Stored Procedure / PostgreSQL Function | `fn_admin_saveuser` | None (Uses Stored Procedure / Function) |
+| `POST` | `/api/admin/get-user-list` | Stored Procedure / PostgreSQL Function | `fn_get_user_list` | None (Uses Stored Procedure / Function) |
 | `POST` | `/api/admin/save-user-assign-subject-v2` | Stored Procedure / PostgreSQL Function | `fn_admin_saveuserassignsubject_v2` | None (Uses Stored Procedure / Function) |
 | `POST` | `/api/admin/get-user-inst-allocation-summary` | Stored Procedure / PostgreSQL Function | `fn_admin_getuserinstallocationsummary` | None (Uses Stored Procedure / Function) |
 | `POST` | `/api/admin/get-user-subject-allocation-summary` | Stored Procedure / PostgreSQL Function | `fn_admin_getusersubjectallocationsummary` | None (Uses Stored Procedure / Function) |
@@ -531,6 +539,10 @@ This document provides a comprehensive analysis of all API routes defined in [`r
 | `POST` | `/api/admin/get-external-examiner-answer-script-details` | Stored Procedure / PostgreSQL Function | `fn_admin_getexternalexamineranswerscriptdetails` | None (Uses Stored Procedure / Function) |
 | `POST` | `/api/admin/get-schedule-list` | Stored Procedure / PostgreSQL Function | `fn_get_schedule_list` | None (Uses Stored Procedure / Function) |
 | `POST` | `/api/admin/save-schedule-details` | Stored Procedure / PostgreSQL Function | `fn_save_schedule_details` | None (Uses Stored Procedure / Function) |
+| `POST` | `/api/admin/save-cdc` | Stored Procedure / PostgreSQL Function | `fn_admin_savecdc` | None (Uses Stored Procedure / Function) |
+| `POST` | `/api/admin/save-cdc-inst-map` | Stored Procedure / PostgreSQL Function | `fn_save_cdc_inst_map` | None (Uses Stored Procedure / Function) |
+| `POST` / `GET` | `/api/admin/get-cdc-details` | Stored Procedure / PostgreSQL Function | `fn_get_cdc_details` | None (Uses Stored Procedure / Function) |
+| `POST` | `/api/admin/get-cec-details-by-cdc` | Stored Procedure / PostgreSQL Function | `fn_get_cec_details_by_cdc` | None (Uses Stored Procedure / Function) |
 
 
 ### 📁 Module: `api/marks-entry`
