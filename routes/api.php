@@ -52,6 +52,8 @@ use App\Http\Controllers\AdminGetExternalExaminerDetailsController;
 use App\Http\Controllers\AdminGetExternalExaminerAnswerScriptDetailsController;
 use App\Http\Controllers\AdminGetScheduleListController;
 use App\Http\Controllers\AdminSaveScheduleDetailsController;
+use App\Http\Controllers\AdminSaveCDCController;
+use App\Http\Controllers\AdminSaveCDCInstMapController;
 
 
 
@@ -574,7 +576,11 @@ Route::prefix('admin')->middleware('authenticate')->group(function () {
     Route::post('/get-external-examiner-answerscript-details', [AdminGetExternalExaminerAnswerScriptDetailsController::class, 'getExternalExaminerAnswerScriptDetails']);
     Route::post('/get-external-examiner-answer-script-details', [AdminGetExternalExaminerAnswerScriptDetailsController::class, 'getExternalExaminerAnswerScriptDetails']);
     Route::post('/get-schedule-list', [AdminGetScheduleListController::class, 'getScheduleList']);
-    Route::post('/save-schedule-details', [AdminSaveScheduleDetailsController::class, 'saveScheduleDetails']);   
+    Route::post('/save-schedule-details', [AdminSaveScheduleDetailsController::class, 'saveScheduleDetails']);
+    Route::post('/save-cdc', [AdminSaveCDCController::class, 'saveCDC']);
+    Route::post('/save-cdc-inst-map', [AdminSaveCDCInstMapController::class, 'saveCDCInstMap']);
+    Route::post('/get-cdc-details', [AdminSaveCDCInstMapController::class, 'getCDCDetails']);
+    Route::post('/get-cec-details-by-cdc', [AdminSaveCDCInstMapController::class, 'getCECDetailsByCDC']);
 });
 
 Route::prefix('sms')->group(function () {
