@@ -14,14 +14,15 @@ class AdminSaveCECController extends Controller
      *     path="/api/admin/save-cec",
      *     tags={"Admin - CEC"},
      *     summary="Save or Update CEC Record",
-     *     description="Creates or updates a CEC record in public.tbl_cec_mstr by calling public.fn_admin_savecec(p_cec_id, p_cec_code, p_exam_year, p_semester_id, p_activestatus, p_entry_user_id)",
+     *     description="Creates or updates a CEC record in public.tbl_cec_mstr by calling public.fn_admin_savecec(p_cec_id, p_cec_code, p_cdc_code, p_exam_year, p_semester_id, p_activestatus, p_entry_user_id)",
      *     security={{"token": {}}},
      *     @OA\RequestBody(
      *         required=true,
      *         @OA\JsonContent(
-     *             required={"cec_code", "exam_year", "semester_id", "activestatus", "entry_user_id"},
+     *             required={"cec_code", "cdc_code", "exam_year", "semester_id", "activestatus", "entry_user_id"},
      *             @OA\Property(property="cec_id", type="integer", example=0, description="CEC ID: 0 for new record or existing ID for update"),
      *             @OA\Property(property="cec_code", type="string", example="BPPC", description="CEC Code (Center Code)"),
+     *             @OA\Property(property="cdc_code", type="string", example="CDC01", description="CDC Code"),
      *             @OA\Property(property="exam_year", type="string", example="2026", description="Exam Year"),
      *             @OA\Property(property="semester_id", type="string", example="Part-II", description="Semester / Part Name (e.g. Part-I, Part-II)"),
      *             @OA\Property(property="activestatus", type="integer", example=1, description="Status: 1 = Active, 0 = Inactive"),
@@ -72,6 +73,7 @@ class AdminSaveCECController extends Controller
      * Calls: public.fn_admin_savecec(
      *          p_cec_id::bigint,
      *          p_cec_code::varchar,
+     *          p_cdc_code::varchar,
      *          p_exam_year::varchar,
      *          p_semester_id::varchar,
      *          p_activestatus::smallint,
@@ -100,6 +102,7 @@ class AdminSaveCECController extends Controller
         $inputData = [
             'cec_id'        => $request->input('cec_id', $request->input('p_cec_id', 0)),
             'cec_code'      => $request->input('cec_code', $request->input('p_cec_code', $request->input('cecCode'))),
+            'cdc_code'      => $request->input('cdc_code', $request->input('p_cdc_code', $request->input('cdcCode'))),
             'exam_year'     => $request->input('exam_year', $request->input('p_exam_year', $request->input('p_examyear', $request->input('examYear')))),
             'semester_id'   => $request->input('semester_id', $request->input('p_semester_id', $request->input('p_semester', $request->input('semesterId')))),
             'activestatus'  => $request->input('activestatus', $request->input('active_status', $request->input('p_activestatus', 1))),
@@ -109,12 +112,14 @@ class AdminSaveCECController extends Controller
         $validator = Validator::make($inputData, [
             'cec_id'        => 'nullable|integer',
             'cec_code'      => 'required|string|max:100',
+            'cdc_code'      => 'required|string|max:100',
             'exam_year'     => 'required|string|max:20',
             'semester_id'   => 'required|string|max:50',
             'activestatus'  => 'required|integer|in:0,1',
             'entry_user_id' => 'required|integer',
         ], [
             'cec_code.required'      => 'CEC code is required.',
+            'cdc_code.required'      => 'CDC code is required.',
             'exam_year.required'     => 'Exam year is required.',
             'semester_id.required'   => 'Semester ID is required.',
             'activestatus.required'  => 'Active status is required.',
@@ -138,6 +143,7 @@ class AdminSaveCECController extends Controller
 
         $cecId    = (int) $inputData['cec_id'];
         $cecCode  = strtoupper(trim((string) $inputData['cec_code']));
+        $cdcCode  = strtoupper(trim((string) $inputData['cdc_code']));
         $examYear = trim((string) $inputData['exam_year']);
 
         // Normalize semester_id format
@@ -156,6 +162,7 @@ class AdminSaveCECController extends Controller
         Log::channel('daily')->info('📤 Calling fn_admin_savecec with parameters:', [
             'p_cec_id'        => $cecId,
             'p_cec_code'      => $cecCode,
+            'p_cdc_code'      => $cdcCode,
             'p_exam_year'     => $examYear,
             'p_semester_id'   => $semesterId,
             'p_activestatus'  => $activeStatus,
@@ -163,11 +170,12 @@ class AdminSaveCECController extends Controller
         ]);
 
         try {
-            $sql = 'SELECT public.fn_admin_savecec(?::bigint, ?::varchar, ?::varchar, ?::varchar, ?::smallint, ?::bigint) AS data';
+            $sql = 'SELECT public.fn_admin_savecec(?::bigint, ?::varchar, ?::varchar, ?::varchar, ?::varchar, ?::smallint, ?::bigint) AS data';
 
             $result = DB::selectOne($sql, [
                 $cecId,
                 $cecCode,
+                $cdcCode,
                 $examYear,
                 $semesterId,
                 $activeStatus,
