@@ -583,6 +583,7 @@ Route::prefix('admin')->middleware('authenticate')->group(function () {
     Route::post('/save-cdc-inst-map', [AdminSaveCDCInstMapController::class, 'saveCDCInstMap']);
     Route::post('/get-cdc-details', [AdminSaveCDCInstMapController::class, 'getCDCDetails']);
     Route::post('/get-cec-details-by-cdc', [AdminSaveCDCInstMapController::class, 'getCECDetailsByCDC']);
+    Route::post('/get-inst-map-details-by-cdc', [AdminSaveCDCInstMapController::class, 'getInstMapDetailsByCDC']);
     Route::post('/save-cec-inst-map', [AdminSaveCECInstMapController::class, 'saveCECInstMap']);
     Route::post('/save-cec', [AdminSaveCECController::class, 'saveCEC']);
 });

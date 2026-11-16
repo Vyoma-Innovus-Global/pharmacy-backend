@@ -38,9 +38,19 @@ class DocumentUploadController extends Controller
             ], 422);
         }
 
-        try {
-            $file = $request->file('document');
+        $file = $request->file('document');
+        $originalFileName = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
+        if (preg_match('/[^a-zA-Z0-9_\-\s]/', $originalFileName)) {
+            return response()->json([
+                'error' => true,
+                'message' => 'Special characters are not allowed in the uploaded file name. Please rename the file and try again.',
+                'errors' => [
+                    'document' => ['Special characters are not allowed in the uploaded file name. Please rename the file and try again.']
+                ]
+            ], 422);
+        }
 
+        try {
             // Get file details
             $originalName = $file->getClientOriginalName();
             $fileSize = $file->getSize(); // in bytes

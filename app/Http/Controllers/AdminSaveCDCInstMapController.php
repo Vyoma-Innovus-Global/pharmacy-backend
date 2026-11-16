@@ -453,7 +453,7 @@ class AdminSaveCDCInstMapController extends Controller
         ];
 
         $validator = Validator::make($inputData, [
-            'cdc_code'    => 'required|string|max:100',
+            'cdc_code'    => 'nullable|string|max:100',
             'semester_id' => 'required|string|max:50',
             'exam_year'   => 'required|string|max:20',
         ], [
@@ -543,6 +543,209 @@ class AdminSaveCDCInstMapController extends Controller
 
         } catch (\Exception $e) {
             Log::channel('daily')->error('🔥 EXCEPTION in getCECDetailsByCDC:', [
+                'message' => $e->getMessage(),
+                'file'    => $e->getFile(),
+                'line'    => $e->getLine(),
+                'trace'   => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'version' => '1.0',
+                'status'  => 1,
+                'message' => 'Internal server error: ' . $e->getMessage(),
+                'data'    => [],
+            ], 500);
+        }
+    }
+
+    /**
+     * @OA\Post(
+     *     path="/api/admin/get-inst-map-details-by-cdc",
+     *     tags={"Admin - CDC"},
+     *     summary="Get Mapped Institute Details by CDC",
+     *     description="Fetches mapped institute details for a CDC by calling public.fn_get_inst_map_details_by_cdc(p_cdc_code, p_semester, p_examyear)",
+     *     security={{"token": {}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"cdc_code", "semester_id", "exam_year"},
+     *             @OA\Property(property="cdc_code", type="string", example="JCG", description="CDC Code"),
+     *             @OA\Property(property="semester_id", type="string", example="part-II", description="Semester (e.g. part-I, part-II)"),
+     *             @OA\Property(property="exam_year", type="string", example="2026", description="Exam Year")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Institute mapping details fetched successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="version", type="string", example="1.0"),
+     *             @OA\Property(property="status", type="integer", example=0),
+     *             @OA\Property(property="message", type="string", example="Mapped institute details fetched successfully"),
+     *             @OA\Property(
+     *                 property="data",
+     *                 type="array",
+     *                 @OA\Items(
+     *                     @OA\Property(property="CdcInstCode", type="string", example="JCG"),
+     *                     @OA\Property(
+     *                         property="mappedInstitutes",
+     *                         type="array",
+     *                         @OA\Items(
+     *                             @OA\Property(property="CdcInstId", type="integer", example=9),
+     *                             @OA\Property(property="CdcInstCode", type="string", example="JCG"),
+     *                             @OA\Property(property="CdcMappInstCode", type="string", example="AHCP"),
+     *                             @OA\Property(property="CdcMappedInstName", type="string", example="AL HERA COLLEGE OF PHARMACY")
+     *                         )
+     *                     )
+     *                 )
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=400,
+     *         description="Validation error",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="version", type="string", example="1.0"),
+     *             @OA\Property(property="status", type="integer", example=1),
+     *             @OA\Property(property="message", type="string", example="Validation failed: ..."),
+     *             @OA\Property(property="data", type="array", @OA\Items())
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=500,
+     *         description="Internal server error",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="version", type="string", example="1.0"),
+     *             @OA\Property(property="status", type="integer", example=1),
+     *             @OA\Property(property="message", type="string", example="Internal server error: ..."),
+     *             @OA\Property(property="data", type="array", @OA\Items())
+     *         )
+     *     )
+     * )
+     *
+     * POST /api/admin/get-inst-map-details-by-cdc
+     * Calls: public.fn_get_inst_map_details_by_cdc(p_cdc_code::varchar, p_semester::varchar, p_examyear::varchar)
+     */
+    public function getInstMapDetailsByCDC(Request $request)
+    {
+        Log::channel('daily')->info('🚀 === GET INST MAP DETAILS BY CDC API - REQUEST START ===', [
+            'payload' => $request->all(),
+            'url'     => $request->fullUrl(),
+        ]);
+
+        $inputData = [
+            'cdc_code'    => $request->input('cdc_code', $request->input('p_cdc_code', $request->input('cdcCode'))),
+            'semester_id' => $request->input('semester_id', $request->input('p_semester', $request->input('p_semester_id', $request->input('semesterId')))),
+            'exam_year'   => $request->input('exam_year', $request->input('p_examyear', $request->input('p_exam_year', $request->input('examYear')))),
+        ];
+
+        $validator = Validator::make($inputData, [
+            'cdc_code'    => 'nullable|string|max:100',
+            'semester_id' => 'required|string|max:50',
+            'exam_year'   => 'required|string|max:20',
+        ], [
+            'cdc_code.required'    => 'CDC code is required.',
+            'semester_id.required' => 'Semester ID is required.',
+            'exam_year.required'   => 'Exam year is required.',
+        ]);
+
+        if ($validator->fails()) {
+            Log::channel('daily')->error('❌ VALIDATION FAILED in getInstMapDetailsByCDC:', [
+                'errors' => $validator->errors()->all(),
+                'input'  => $request->all(),
+            ]);
+
+            return response()->json([
+                'version' => '1.0',
+                'status'  => 1,
+                'message' => 'Validation failed: ' . $validator->errors()->first(),
+                'data'    => [],
+            ], 400);
+        }
+
+        $cdcCode = trim((string) $inputData['cdc_code']);
+        $semesterId = trim((string) $inputData['semester_id']);
+        $examYear = trim((string) $inputData['exam_year']);
+
+        Log::channel('daily')->info('📤 Calling fn_get_inst_map_details_by_cdc with parameters:', [
+            'p_cdc_code' => $cdcCode,
+            'p_semester' => $semesterId,
+            'p_examyear' => $examYear,
+        ]);
+
+        try {
+            $sql = 'SELECT public.fn_get_inst_map_details_by_cdc(?::varchar, ?::varchar, ?::varchar) AS data';
+
+            $result = DB::selectOne($sql, [
+                $cdcCode,
+                $semesterId,
+                $examYear,
+            ]);
+
+            if (!$result || !isset($result->data)) {
+                Log::channel('daily')->warning('⚠️ No result returned from fn_get_inst_map_details_by_cdc');
+                return response()->json([
+                    'version' => '1.0',
+                    'status'  => 0,
+                    'message' => 'No mapped institute details found for this CDC.',
+                    'data'    => [],
+                ], 200);
+            }
+
+            $raw  = $result->data;
+            $data = is_string($raw) ? json_decode($raw, true) : (array) $raw;
+
+            if (is_string($raw) && json_last_error() !== JSON_ERROR_NONE) {
+                Log::channel('daily')->error('❌ JSON parsing error in fn_get_inst_map_details_by_cdc:', [
+                    'error' => json_last_error_msg(),
+                    'raw'   => $raw,
+                ]);
+
+                return response()->json([
+                    'version' => '1.0',
+                    'status'  => 1,
+                    'message' => 'Failed to parse database response.',
+                    'data'    => [],
+                ], 500);
+            }
+
+            $rawList = is_array($data) ? $data : [];
+            $grouped = [];
+
+            foreach ($rawList as $row) {
+                if (!is_array($row)) {
+                    continue;
+                }
+
+                $cdcInstCode = $row['CdcInstCode'] ?? 'UNKNOWN';
+
+                if (!isset($grouped[$cdcInstCode])) {
+                    $grouped[$cdcInstCode] = [
+                        'CdcInstCode'      => $cdcInstCode,
+                        'mappedInstitutes' => [],
+                    ];
+                }
+
+                $grouped[$cdcInstCode]['mappedInstitutes'][] = [
+                    'CdcInstId'         => $row['CdcInstId'] ?? null,
+                    'CdcInstCode'       => $cdcInstCode,
+                    'CdcMappInstCode'   => $row['CdcMappInstCode'] ?? null,
+                    'CdcMappedInstName' => $row['CdcMappedInstName'] ?? null,
+                ];
+            }
+
+            $formattedData = array_values($grouped);
+
+            Log::channel('daily')->info('✅ GET INST MAP DETAILS BY CDC SUCCESS, groups count: ' . count($formattedData));
+
+            return response()->json([
+                'version' => '1.0',
+                'status'  => 0,
+                'message' => 'Mapped institute details fetched successfully',
+                'data'    => $formattedData,
+            ], 200);
+
+        } catch (\Exception $e) {
+            Log::channel('daily')->error('🔥 EXCEPTION in getInstMapDetailsByCDC:', [
                 'message' => $e->getMessage(),
                 'file'    => $e->getFile(),
                 'line'    => $e->getLine(),
