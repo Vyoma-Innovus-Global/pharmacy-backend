@@ -14,15 +14,16 @@ class CDCGetAnswerscriptInfoBySubjectController extends Controller
      *     path="/api/admin/get-answerscript-info-by-subject",
      *     tags={"CDC - Answer Scripts"},
      *     summary="Get Answer Script Info by Subject",
-     *     description="Fetches answer script allocation and intake details for a specific subject by calling public.fn_get_answerscriptinfobysubject(p_examyear, p_semester, p_subjectcode)",
+     *     description="Fetches answer script allocation and intake details for a specific subject by calling public.fn_get_answerscriptinfobysubject(p_examyear, p_semester, p_subjectcode, p_ceccode)",
      *     security={{"token": {}}},
      *     @OA\RequestBody(
      *         required=true,
      *         @OA\JsonContent(
-     *             required={"exam_year", "semester", "subject_code"},
+     *             required={"exam_year", "semester", "subject_code", "cec_code"},
      *             @OA\Property(property="exam_year", type="string", example="2026", description="Exam Year (or p_examyear)"),
      *             @OA\Property(property="semester", type="string", example="Part-II", description="Semester / Part Name (e.g. Part-I, Part-II)"),
-     *             @OA\Property(property="subject_code", type="string", example="PHCO", description="Subject Code (or p_subjectcode)")
+     *             @OA\Property(property="subject_code", type="string", example="PHCO", description="Subject Code (or p_subjectcode)"),
+     *             @OA\Property(property="cec_code", type="string", example="BPPC", description="CEC Code (or p_ceccode)")
      *         )
      *     ),
      *     @OA\Response(
@@ -78,7 +79,8 @@ class CDCGetAnswerscriptInfoBySubjectController extends Controller
      * Calls: public.fn_get_answerscriptinfobysubject(
      *   p_examyear,
      *   p_semester,
-     *   p_subjectcode
+     *   p_subjectcode,
+     *   p_ceccode
      * )
      */
     public function getAnswerscriptInfoBySubject(Request $request)
@@ -95,17 +97,20 @@ class CDCGetAnswerscriptInfoBySubjectController extends Controller
         $rawExamYear    = $request->input('exam_year') ?? $request->input('p_examyear') ?? $request->input('p_exam_year') ?? $request->input('examYear') ?? $request->input('year');
         $rawSemester    = $request->input('semester') ?? $request->input('p_semester') ?? $request->input('semester_id') ?? $request->input('p_semester_id') ?? $request->input('semesterId');
         $rawSubjectCode = $request->input('subject_code') ?? $request->input('p_subjectcode') ?? $request->input('p_subject_code') ?? $request->input('subjectCode') ?? $request->input('subject');
+        $rawCecCode     = $request->input('cec_code') ?? $request->input('p_ceccode') ?? $request->input('p_cec_code') ?? $request->input('cecCode') ?? $request->input('ceccode');
 
         $inputData = [
             'exam_year'    => $rawExamYear !== null ? trim((string) $rawExamYear) : null,
             'semester'     => $rawSemester !== null ? trim((string) $rawSemester) : null,
             'subject_code' => $rawSubjectCode !== null ? trim((string) $rawSubjectCode) : null,
+            'cec_code'     => $rawCecCode !== null ? trim((string) $rawCecCode) : null,
         ];
 
         $validator = Validator::make($inputData, [
             'exam_year'    => 'required|string|max:20',
             'semester'     => 'required|string|max:50',
             'subject_code' => 'required|string|max:50',
+            'cec_code'     => 'required|string|max:50',
         ]);
 
         if ($validator->fails()) {
@@ -135,20 +140,23 @@ class CDCGetAnswerscriptInfoBySubjectController extends Controller
         }
 
         $subjectCode = strtoupper($inputData['subject_code']);
+        $cecCode     = strtoupper($inputData['cec_code']);
 
         Log::channel('daily')->info('📤 Calling fn_get_answerscriptinfobysubject with parameters:', [
             'p_examyear'    => $examYear,
             'p_semester'    => $semester,
             'p_subjectcode' => $subjectCode,
+            'p_ceccode'     => $cecCode,
         ]);
 
         try {
-            $sql = 'SELECT public.fn_get_answerscriptinfobysubject(?::varchar, ?::varchar, ?::varchar) AS data';
+            $sql = 'SELECT public.fn_get_answerscriptinfobysubject(?::varchar, ?::varchar, ?::varchar, ?::varchar) AS data';
 
             $result = DB::select($sql, [
                 $examYear,
                 $semester,
                 $subjectCode,
+                $cecCode,
             ]);
 
             if (empty($result) || !isset($result[0]->data)) {
