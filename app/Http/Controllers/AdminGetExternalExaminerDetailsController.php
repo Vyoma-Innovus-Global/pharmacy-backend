@@ -14,7 +14,7 @@ class AdminGetExternalExaminerDetailsController extends Controller
      *     path="/api/admin/get-external-examiner-details",
      *     tags={"Admin - Teacher"},
      *     summary="Get External Examiner Details",
-     *     description="Fetches external examiner/evaluator details by calling public.fn_admin_getexternalexaminerDetails(p_admin_user_id, p_evalutortype, p_examyear, p_semester)",
+     *     description="Fetches external examiner/evaluator details by calling public.fn_admin_getexternalexaminerdetails(p_admin_user_id, p_evalutortype, p_examyear, p_semester, p_cec_code)",
      *     security={{"token": {}}},
      *     @OA\RequestBody(
      *         required=true,
@@ -23,7 +23,8 @@ class AdminGetExternalExaminerDetailsController extends Controller
      *             @OA\Property(property="admin_user_id", type="integer", example=15, description="Admin User ID (or p_admin_user_id)"),
      *             @OA\Property(property="evaluator_type", type="string", example="Examiner", description="Evaluator / Examiner Type (or p_evalutortype, e.g. Examiner, Reviewer)"),
      *             @OA\Property(property="exam_year", type="string", example="2026", description="Exam Year (or p_examyear)"),
-     *             @OA\Property(property="semester", type="string", example="Part-II", description="Semester / Part Name (or p_semester, e.g. Part-I, Part-II)")
+     *             @OA\Property(property="semester", type="string", example="Part-II", description="Semester / Part Name (or p_semester, e.g. Part-I, Part-II)"),
+     *             @OA\Property(property="cec_code", type="string", example="BPPC", nullable=true, description="CEC Code (or p_cec_code, optional)")
      *         )
      *     ),
      *     @OA\Response(
@@ -67,11 +68,12 @@ class AdminGetExternalExaminerDetailsController extends Controller
      *
      * POST /api/admin/get-external-examiner-details
      *
-     * Calls: public.fn_admin_getexternalexaminerDetails(
+     * Calls: public.fn_admin_getexternalexaminerdetails(
      *   p_admin_user_id,
      *   p_evalutortype,
      *   p_examyear,
-     *   p_semester
+     *   p_semester,
+     *   p_cec_code
      * )
      */
     public function getExternalExaminerDetails(Request $request)
@@ -97,12 +99,14 @@ class AdminGetExternalExaminerDetailsController extends Controller
         $rawEvaluatorType = $request->input('evaluator_type') ?? $request->input('p_evalutortype') ?? $request->input('p_evaluatortype') ?? $request->input('p_evaluator_type') ?? $request->input('evaluatortype') ?? $request->input('evaluatorType') ?? $request->input('examiner_type') ?? $request->input('p_examinertype') ?? $request->input('examinerType');
         $rawExamYear      = $request->input('exam_year') ?? $request->input('p_examyear') ?? $request->input('p_exam_year') ?? $request->input('examYear') ?? $request->input('year');
         $rawSemester      = $request->input('semester') ?? $request->input('p_semester') ?? $request->input('semester_id') ?? $request->input('p_semester_id') ?? $request->input('semesterId') ?? $request->input('part') ?? $request->input('part_name');
+        $rawCecCode       = $request->input('cec_code') ?? $request->input('p_cec_code') ?? $request->input('cecCode') ?? $request->input('p_ceccode') ?? $request->input('ceccode');
 
         $inputData = [
             'admin_user_id'  => $rawAdminUserId !== null ? $rawAdminUserId : null,
             'evaluator_type' => $rawEvaluatorType !== null ? trim((string) $rawEvaluatorType) : null,
             'exam_year'      => $rawExamYear !== null ? trim((string) $rawExamYear) : null,
             'semester'       => $rawSemester !== null ? trim((string) $rawSemester) : null,
+            'cec_code'       => $rawCecCode !== null && trim((string) $rawCecCode) !== '' ? trim((string) $rawCecCode) : null,
         ];
 
         $validator = Validator::make($inputData, [
@@ -110,6 +114,7 @@ class AdminGetExternalExaminerDetailsController extends Controller
             'evaluator_type' => 'required|string|max:50',
             'exam_year'      => 'required|string|max:20',
             'semester'       => 'required|string|max:50',
+            'cec_code'       => 'nullable|string|max:100',
         ]);
 
         if ($validator->fails()) {
@@ -129,6 +134,7 @@ class AdminGetExternalExaminerDetailsController extends Controller
         $adminUserId   = (int) $inputData['admin_user_id'];
         $evaluatorType = $inputData['evaluator_type'];
         $examYear      = $inputData['exam_year'];
+        $cecCode       = $inputData['cec_code'];
 
         // Normalize semester format (e.g. 1 -> Part-I, 2 -> Part-II)
         $rawSem = $inputData['semester'];
@@ -140,21 +146,23 @@ class AdminGetExternalExaminerDetailsController extends Controller
             $semester = $rawSem;
         }
 
-        Log::channel('daily')->info('📤 Calling fn_admin_getexternalexaminerDetails with parameters:', [
+        Log::channel('daily')->info('📤 Calling fn_admin_getexternalexaminerdetails with parameters:', [
             'p_admin_user_id' => $adminUserId,
             'p_evalutortype'  => $evaluatorType,
             'p_examyear'      => $examYear,
             'p_semester'      => $semester,
+            'p_cec_code'      => $cecCode,
         ]);
 
         try {
-            $sql = 'SELECT public.fn_admin_getexternalexaminerDetails(?::bigint, ?::varchar, ?::varchar, ?::varchar) AS data';
+            $sql = 'SELECT public.fn_admin_getexternalexaminerdetails(?::bigint, ?::varchar, ?::varchar, ?::varchar, ?::varchar) AS data';
 
             $result = DB::select($sql, [
                 $adminUserId,
                 $evaluatorType,
                 $examYear,
                 $semester,
+                $cecCode,
             ]);
 
             if (empty($result) || !isset($result[0]->data)) {

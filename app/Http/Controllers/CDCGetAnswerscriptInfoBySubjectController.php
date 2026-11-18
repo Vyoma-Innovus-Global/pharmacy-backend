@@ -110,7 +110,7 @@ class CDCGetAnswerscriptInfoBySubjectController extends Controller
             'exam_year'    => 'required|string|max:20',
             'semester'     => 'required|string|max:50',
             'subject_code' => 'required|string|max:50',
-            'cec_code'     => 'required|string|max:50',
+            'cec_code'     => 'nullable|string|max:50',
         ]);
 
         if ($validator->fails()) {
